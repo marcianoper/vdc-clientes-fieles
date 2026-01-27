@@ -3,10 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VDC360° — Cliente Fiel 1(QR + Puntos)</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <title>VDC360° — Clientes Fieles (QR + Puntos)</title>
 
   <style>
     :root{--brand:#0a7a3b;--bg:#f6f7f8;--card:#fff;--ink:#111;--muted:#6b7280}
@@ -17,21 +14,29 @@
     main{max-width:980px;margin:0 auto;padding:16px;display:grid;gap:16px}
     .card{background:var(--card);border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:16px}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    label{display:block;font-weight:700;margin-top:10px}
+    @media (max-width:720px){.grid{grid-template-columns:1fr}}
+    label{display:block;font-weight:800;margin-top:10px}
     input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #d1d5db;font-size:16px}
-    button{background:var(--brand);color:#fff;border:none;font-weight:800;cursor:pointer;margin-top:12px}
+    button{background:var(--brand);color:#fff;border:none;font-weight:900;cursor:pointer;margin-top:12px}
     button.secondary{background:#111}
     .row{display:flex;gap:10px;flex-wrap:wrap}
-    .pill{display:inline-block;background:#eef2ff;border:1px solid #c7d2fe;color:#1e3a8a;padding:6px 10px;border-radius:999px;font-weight:700}
+    .pill{display:inline-block;background:#eef7ef;border:1px solid #cfe9d1;color:#1f6f26;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px}
     .muted{color:var(--muted)}
-    #qrBox{display:grid;place-items:center;padding:12px;border:1px dashed #d1d5db;border-radius:12px;min-height:220px}
+    #qrBox{display:grid;place-items:center;padding:12px;border:1px dashed #d1d5db;border-radius:12px;min-height:240px}
     code{background:#f1f5f9;padding:2px 6px;border-radius:8px}
+    .err{background:#fff1f2;border:1px solid #fecdd3;color:#b91c1c;padding:10px;border-radius:12px;white-space:pre-wrap}
+    .ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:10px;border-radius:12px;white-space:pre-wrap}
   </style>
+
+  <!-- Supabase JS (igual estilo que tu otro sistema) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- QR -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 
 <body>
 <header>
-  <h1>VDC360° — Cliente Fiel (QR + Puntos)</h1>
+  <h1>VDC360° — Clientes Fieles (QR + Puntos)</h1>
 </header>
 
 <main>
@@ -42,32 +47,38 @@
       <div>
         <label>Teléfono (10 dígitos)</label>
         <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" />
+        <div class="muted" style="margin-top:6px">Tip: puedes pegar con espacios, yo lo limpio.</div>
       </div>
       <div>
         <label>Nombre (opcional)</label>
         <input id="nombre" placeholder="Ej. Taquería Don Chuy" />
       </div>
     </div>
+
     <div class="row">
       <button id="btnBuscar">Buscar cliente</button>
       <button id="btnCrear" class="secondary">Crear / Actualizar</button>
     </div>
-    <p class="muted" style="margin:10px 0 0">
-      Si el cliente ya existe, “Crear/Actualizar” solo actualiza el nombre (si lo mandas).
-    </p>
+
+    <div id="msg" class="muted" style="margin-top:10px"></div>
   </section>
 
   <section class="card">
     <h2 style="margin:0 0 6px">2) QR del cliente</h2>
-    <p class="muted" style="margin-top:0">
-      Este QR contiene un ID (no datos sensibles). Tú lo escaneas en mostrador y listo.
-    </p>
+    <p class="muted" style="margin-top:0">El QR contiene una URL del sitio con <code>?cid=</code> para cargar al cliente automáticamente (tipo Cinépolis).</p>
+
     <div id="qrBox"><span class="muted">Aquí aparecerá el QR</span></div>
-    <p class="muted" id="qrText" style="margin:10px 0 0"></p>
+    <div class="muted" id="qrText" style="margin-top:10px"></div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="pill" id="stCliente">Cliente: —</span>
+      <span class="pill" id="stPuntos">Puntos: —</span>
+      <span class="pill" id="stSaldo">Saldo kg: —</span>
+    </div>
   </section>
 
   <section class="card">
-    <h2 style="margin:0 0 6px">3) Cerrar venta (mostrador/crédito)</h2>
+    <h2 style="margin:0 0 6px">3) Cerrar venta (puntos solo mostrador)</h2>
     <div class="grid">
       <div>
         <label>Tipo de venta</label>
@@ -82,36 +93,64 @@
       </div>
     </div>
     <button id="btnCerrar">Cerrar venta y aplicar puntos</button>
+    <div id="log" class="muted" style="margin-top:10px"></div>
+  </section>
 
-    <div style="margin-top:12px">
-      <span class="pill" id="stCliente">Cliente: —</span>
-      <span class="pill" id="stPuntos">Puntos: —</span>
-      <span class="pill" id="stSaldo">Saldo kg: —</span>
-    </div>
-
-    <p class="muted" id="log" style="margin:10px 0 0"></p>
+  <section class="card">
+    <h2 style="margin:0 0 6px">Diagnóstico</h2>
+    <div id="diag" class="muted">—</div>
   </section>
 
 </main>
 
 <script>
-  // 1) CONFIG
+  /* ===== CONFIG (tus credenciales) ===== */
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
 
-  const SUPABASE = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  const sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
-  // Estado
-  let currentClient = null; // {id, telefono, nombre, puntos, saldo_kg}
+  /* ===== TABLAS ===== */
+  const T_CLIENTES = "clientes";
+  const T_VENTAS = "ventas";
 
-  // Helpers
-  const $ = (id) => document.getElementById(id);
-  const cleanPhone = (s) => (s || "").replace(/\D/g, "").slice(-10);
+  /* ===== Estado ===== */
+  let currentClient = null;
+
+  /* ===== Helpers ===== */
+  const $ = (id)=>document.getElementById(id);
+
+  function setMsg(type, text){
+    const el = $("msg");
+    if(!el) return;
+    el.className = type === "err" ? "err" : (type==="ok" ? "ok" : "muted");
+    el.textContent = text;
+  }
+
+  function setLog(type, text){
+    const el = $("log");
+    if(!el) return;
+    el.className = type === "err" ? "err" : (type==="ok" ? "ok" : "muted");
+    el.textContent = text;
+  }
+
+  function cleanPhone(s){
+    return String(s || "").replace(/\D/g, "").slice(-10);
+  }
 
   function renderStatus(){
     $("stCliente").textContent = "Cliente: " + (currentClient ? (currentClient.nombre || currentClient.telefono) : "—");
     $("stPuntos").textContent  = "Puntos: " + (currentClient ? currentClient.puntos : "—");
     $("stSaldo").textContent   = "Saldo kg: " + (currentClient ? Number(currentClient.saldo_kg).toFixed(3) : "—");
+  }
+
+  function siteBaseUrl(){
+    // base de tu GitHub Pages actual
+    // ejemplo: https://marcianoper.github.io/vdc-clientes-fieles/
+    const u = new URL(window.location.href);
+    return u.origin + u.pathname.replace(/index\.html$/,'');
   }
 
   async function renderQR(){
@@ -120,82 +159,99 @@
     $("qrText").textContent = "";
 
     if(!currentClient){
-      box.innerHTML = '<span class="muted">Primero selecciona/crea un cliente</span>';
+      box.innerHTML = '<span class="muted">Primero crea/selecciona un cliente</span>';
       return;
     }
 
-    // El QR puede contener un "payload" simple, por ejemplo:
-    // vdc://cliente?id=<uuid>
-    const payload = `vdc://cliente?id=${currentClient.id}`;
+    // QR tipo Cinépolis: URL del sitio + ?cid=uuid
+    const payload = `${siteBaseUrl()}?cid=${currentClient.id}`;
+
     const canvas = document.createElement("canvas");
-    await QRCode.toCanvas(canvas, payload, { width: 220, margin: 1 });
+    await QRCode.toCanvas(canvas, payload, { width: 240, margin: 1 });
     box.appendChild(canvas);
-    $("qrText").innerHTML = `Payload: <code>${payload}</code>`;
+    $("qrText").innerHTML = `URL en QR: <code>${payload}</code>`;
   }
 
+  function formatErr(err){
+    // Supabase devuelve varias formas
+    if(!err) return "Error desconocido";
+    if(typeof err === "string") return err;
+    if(err.message) return err.message;
+    if(err.error_description) return err.error_description;
+    try { return JSON.stringify(err, null, 2); } catch { return String(err); }
+  }
+
+  /* ===== Acciones ===== */
   async function buscarClientePorTelefono(){
+    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
+
     const tel = cleanPhone($("tel").value);
     if(tel.length !== 10) throw new Error("Teléfono inválido (deben ser 10 dígitos).");
 
     const { data, error } = await sb
-      .from("clientes")
+      .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
       .eq("telefono", tel)
       .maybeSingle();
 
     if(error) throw error;
+
     currentClient = data || null;
     renderStatus();
     await renderQR();
-    $("log").textContent = data ? "Cliente encontrado." : "No existe: crea el cliente.";
+
+    setMsg(data ? "ok" : "muted", data ? "Cliente encontrado." : "No existe: crea el cliente.");
   }
 
   async function crearOActualizarCliente(){
+    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
+
     const tel = cleanPhone($("tel").value);
     const nombre = ($("nombre").value || "").trim() || null;
     if(tel.length !== 10) throw new Error("Teléfono inválido (deben ser 10 dígitos).");
 
-    // UPSERT por telefono (requiere UNIQUE en telefono)
+    // upsert por telefono (telefono debe ser UNIQUE)
     const payload = { telefono: tel };
     if(nombre) payload.nombre = nombre;
 
     const { data, error } = await sb
-      .from("clientes")
+      .from(T_CLIENTES)
       .upsert(payload, { onConflict: "telefono" })
       .select("id,telefono,nombre,puntos,saldo_kg")
       .single();
 
     if(error) throw error;
+
     currentClient = data;
     renderStatus();
     await renderQR();
-    $("log").textContent = "Cliente creado/actualizado.";
+
+    setMsg("ok", "Cliente creado/actualizado y QR generado.");
   }
 
   async function cerrarVentaYAplicarPuntos(){
+    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
+    if(!currentClient) throw new Error("Primero crea/selecciona un cliente.");
+
     const tipo = $("tipo").value;
     const kg = Number(String($("kg").value).replace(",", "."));
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
-    if(!currentClient){
-      throw new Error("Primero selecciona/crea un cliente (para acumular puntos).");
-    }
 
-    // 1) Insertar venta (con puntos_otorgados=0 por ahora)
-    const ventaBase = {
-      tipo,
-      cliente_id: currentClient.id,
-      total_kg: kg,
-      puntos_otorgados: 0
-    };
-
+    // 1) Inserta venta
     const { data: venta, error: e1 } = await sb
-      .from("ventas")
-      .insert(ventaBase)
-      .select("id,fecha,tipo,cliente_id,total_kg,puntos_otorgados")
+      .from(T_VENTAS)
+      .insert({
+        tipo,
+        cliente_id: currentClient.id,
+        total_kg: kg,
+        puntos_otorgados: 0
+      })
+      .select("id,tipo,total_kg,puntos_otorgados")
       .single();
+
     if(e1) throw e1;
 
-    // 2) Si es MOSTRADOR, calcular y aplicar puntos
+    // 2) Aplica puntos solo mostrador
     let puntosGanados = 0;
     let nuevoSaldo = Number(currentClient.saldo_kg);
 
@@ -204,9 +260,8 @@
       puntosGanados = Math.floor(acumulado / 100);
       nuevoSaldo = acumulado % 100;
 
-      // actualizar cliente
       const { data: cli2, error: e2 } = await sb
-        .from("clientes")
+        .from(T_CLIENTES)
         .update({
           puntos: currentClient.puntos + puntosGanados,
           saldo_kg: nuevoSaldo
@@ -214,39 +269,80 @@
         .eq("id", currentClient.id)
         .select("id,telefono,nombre,puntos,saldo_kg")
         .single();
+
       if(e2) throw e2;
       currentClient = cli2;
 
-      // guardar auditoría en venta
       const { error: e3 } = await sb
-        .from("ventas")
+        .from(T_VENTAS)
         .update({ puntos_otorgados: puntosGanados })
         .eq("id", venta.id);
+
       if(e3) throw e3;
     }
 
     renderStatus();
-    $("log").textContent =
-      `Venta cerrada (${tipo}). Kg: ${kg.toFixed(3)}. Puntos ganados: ${puntosGanados}. Saldo kg: ${Number(currentClient.saldo_kg).toFixed(3)}.`;
+    setLog("ok", `Venta cerrada (${tipo}). Kg: ${kg.toFixed(2)}. Puntos ganados: ${puntosGanados}. Saldo kg: ${Number(currentClient.saldo_kg).toFixed(3)}.`);
+    $("kg").value = "";
   }
 
-  // Eventos
-  $("btnBuscar").addEventListener("click", async () => {
-    $("log").textContent = "Buscando...";
-    try{ await buscarClientePorTelefono(); } catch(err){ $("log").textContent = err.message; }
+  /* ===== Arranque + Diagnóstico ===== */
+  function diag(){
+    const d = [];
+    d.push("Supabase cargado: " + (!!sb));
+    d.push("QRCode cargado: " + (typeof QRCode !== "undefined"));
+    d.push("Base URL del sitio: " + siteBaseUrl());
+    $("diag").textContent = d.join("\n");
+  }
+
+  async function cargarClientePorQuery(){
+    const u = new URL(window.location.href);
+    const cid = u.searchParams.get("cid");
+    if(!cid || !sb) return;
+
+    // buscar por id
+    const { data, error } = await sb
+      .from(T_CLIENTES)
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .eq("id", cid)
+      .maybeSingle();
+
+    if(error){
+      console.error(error);
+      setMsg("err", "Error cargando cliente por QR: " + formatErr(error));
+      return;
+    }
+    if(!data){
+      setMsg("err", "Este QR no encontró cliente (cid no existe).");
+      return;
+    }
+    currentClient = data;
+    renderStatus();
+    await renderQR();
+    setMsg("ok", "Cliente cargado desde QR.");
+  }
+
+  $("btnBuscar").addEventListener("click", async ()=>{
+    setMsg("muted","Buscando...");
+    try{ await buscarClientePorTelefono(); }
+    catch(err){ console.error(err); setMsg("err", formatErr(err)); }
   });
 
-  $("btnCrear").addEventListener("click", async () => {
-    $("log").textContent = "Guardando...";
-    try{ await crearOActualizarCliente(); } catch(err){ $("log").textContent = err.message; }
+  $("btnCrear").addEventListener("click", async ()=>{
+    setMsg("muted","Guardando...");
+    try{ await crearOActualizarCliente(); }
+    catch(err){ console.error(err); setMsg("err", formatErr(err)); }
   });
 
-  $("btnCerrar").addEventListener("click", async () => {
-    $("log").textContent = "Cerrando venta...";
-    try{ await cerrarVentaYAplicarPuntos(); } catch(err){ $("log").textContent = err.message; }
+  $("btnCerrar").addEventListener("click", async ()=>{
+    setLog("muted","Cerrando venta...");
+    try{ await cerrarVentaYAplicarPuntos(); }
+    catch(err){ console.error(err); setLog("err", formatErr(err)); }
   });
 
+  diag();
   renderStatus();
+  cargarClientePorQuery();
 </script>
 </body>
 </html>
