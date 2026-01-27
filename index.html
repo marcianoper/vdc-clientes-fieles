@@ -153,24 +153,28 @@
     return u.origin + u.pathname.replace(/index\.html$/,'');
   }
 
-  async function renderQR(){
-    const box = $("qrBox");
-    box.innerHTML = "";
-    $("qrText").textContent = "";
+async function renderQR(){
+  const box = $("qrBox");
+  box.innerHTML = "";
+  $("qrText").textContent = "";
 
-    if(!currentClient){
-      box.innerHTML = '<span class="muted">Primero crea/selecciona un cliente</span>';
-      return;
-    }
-
-    // QR tipo Cinépolis: URL del sitio + ?cid=uuid
-    const payload = `${siteBaseUrl()}?cid=${currentClient.id}`;
-
-    const canvas = document.createElement("canvas");
-    await QRCode.toCanvas(canvas, payload, { width: 240, margin: 1 });
-    box.appendChild(canvas);
-    $("qrText").innerHTML = `URL en QR: <code>${payload}</code>`;
+  if(!currentClient){
+    box.innerHTML = '<span class="muted">Primero crea/selecciona un cliente</span>';
+    return;
   }
+
+  // QR tipo Cinépolis: URL del sitio + ?cid=uuid
+  const payload = `${siteBaseUrl()}?cid=${currentClient.id}`;
+
+  const img = document.createElement("img");
+  img.alt = "QR del cliente";
+  img.style.width = "240px";
+  img.style.height = "240px";
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`;
+
+  box.appendChild(img);
+  $("qrText").innerHTML = `URL en QR: <code>${payload}</code>`;
+}
 
   function formatErr(err){
     // Supabase devuelve varias formas
