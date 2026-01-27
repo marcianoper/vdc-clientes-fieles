@@ -152,7 +152,6 @@
     const u = new URL(window.location.href);
     return u.origin + u.pathname.replace(/index\.html$/,'');
   }
-
 async function renderQR(){
   const box = $("qrBox");
   box.innerHTML = "";
@@ -163,7 +162,6 @@ async function renderQR(){
     return;
   }
 
-  // QR tipo Cinépolis: URL del sitio + ?cid=uuid
   const payload = `${siteBaseUrl()}?cid=${currentClient.id}`;
 
   const img = document.createElement("img");
@@ -175,6 +173,7 @@ async function renderQR(){
   box.appendChild(img);
   $("qrText").innerHTML = `URL en QR: <code>${payload}</code>`;
 }
+
 
   function formatErr(err){
     // Supabase devuelve varias formas
