@@ -96,9 +96,9 @@
 
 <script>
   // 1) CONFIG
-  const SUPABASE_URL = "PON_AQUI_TU_SUPABASE_URL";
-  const SUPABASE_ANON_KEY = "PON_AQUI_TU_SUPABASE_ANON_KEY";
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseUrl = 'https://eqynjddcosvdqjzztznn.supabase.co'
+  const supabaseKey = process.env.SUPABASE_KEY
+  const supabase = createClient(supabaseUrl, supabaseKey)
 
   // Estado
   let currentClient = null; // {id, telefono, nombre, puntos, saldo_kg}
