@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VDC360° — Clientes Fieles (QR + Puntos)</title>
+  <title>VDC360° — Clientes Fieles (QR + Puntos + Tickets)</title>
 
   <style>
     :root{--brand:#0a7a3b;--bg:#f6f7f8;--card:#fff;--ink:#111;--muted:#6b7280}
@@ -16,9 +16,11 @@
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width:720px){.grid{grid-template-columns:1fr}}
     label{display:block;font-weight:800;margin-top:10px}
-    input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #d1d5db;font-size:16px}
+    input,select,button,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #d1d5db;font-size:16px}
+    textarea{min-height:140px;resize:vertical}
     button{background:var(--brand);color:#fff;border:none;font-weight:900;cursor:pointer;margin-top:12px}
     button.secondary{background:#111}
+    button.ghost{background:#fff;color:#111;border:1px solid #d1d5db}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .pill{display:inline-block;background:#eef7ef;border:1px solid #cfe9d1;color:#1f6f26;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px}
     .muted{color:var(--muted)}
@@ -26,9 +28,15 @@
     code{background:#f1f5f9;padding:2px 6px;border-radius:8px}
     .err{background:#fff1f2;border:1px solid #fecdd3;color:#b91c1c;padding:10px;border-radius:12px;white-space:pre-wrap}
     .ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:10px;border-radius:12px;white-space:pre-wrap}
+
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;vertical-align:top}
+    th{background:#f9fafb}
+    .mini{font-size:12px;color:var(--muted)}
+    .right{text-align:right}
   </style>
 
-  <!-- Supabase JS (igual estilo que tu otro sistema) -->
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- QR -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -36,7 +44,7 @@
 
 <body>
 <header>
-  <h1>VDC360° — Clientes Fieles (QR + Puntos)</h1>
+  <h1>VDC360° — Clientes Fieles (QR + Puntos + Tickets)</h1>
 </header>
 
 <main>
@@ -65,7 +73,7 @@
 
   <section class="card">
     <h2 style="margin:0 0 6px">2) QR del cliente</h2>
-    <p class="muted" style="margin-top:0">El QR contiene una URL del sitio con <code>?cid=</code> para cargar al cliente automáticamente (tipo Cinépolis).</p>
+    <p class="muted" style="margin-top:0">El QR contiene una URL del sitio con <code>?cid=</code> para cargar al cliente automáticamente.</p>
 
     <div id="qrBox"><span class="muted">Aquí aparecerá el QR</span></div>
     <div class="muted" id="qrText" style="margin-top:10px"></div>
@@ -77,22 +85,44 @@
     </div>
   </section>
 
+  <!-- NUEVO: Captura Ticket (texto pegado) -->
   <section class="card">
-    <h2 style="margin:0 0 6px">3) Cerrar venta (puntos solo mostrador)</h2>
-    <div class="grid">
+    <h2 style="margin:0 0 6px">3) Capturar compra por Ticket (Opción 1: pegar texto)</h2>
+    <p class="muted" style="margin-top:0">
+      Escanea el ticket con tu teléfono (iPhone Live Text / Google Lens), <b>copias el texto</b> y lo pegas aquí.
+      Yo detecto líneas con <b>kg</b>, armo el detalle y calculo el total.
+    </p>
+
+    <label>Texto del ticket (pegado)</label>
+    <textarea id="ticketText" placeholder="Pega aquí el texto del ticket..."></textarea>
+
+    <div class="row">
+      <button id="btnProcesar" class="ghost">Procesar ticket</button>
+      <button id="btnLimpiar" class="ghost">Limpiar</button>
+    </div>
+
+    <div class="grid" style="margin-top:10px">
+      <div>
+        <label>Total kg detectado</label>
+        <input id="kgAuto" inputmode="decimal" placeholder="0.00" />
+        <div class="mini">Se llena automático; puedes editar si hace falta.</div>
+      </div>
       <div>
         <label>Tipo de venta</label>
         <select id="tipo">
           <option value="mostrador">mostrador (SÍ puntos)</option>
           <option value="credito">crédito (NO puntos)</option>
         </select>
-      </div>
-      <div>
-        <label>Total kg del ticket</label>
-        <input id="kg" inputmode="decimal" placeholder="Ej. 125.50" />
+        <div class="mini">Para puntos: solo mostrador.</div>
       </div>
     </div>
-    <button id="btnCerrar">Cerrar venta y aplicar puntos</button>
+
+    <div id="detalleBox" class="muted" style="margin-top:10px">—</div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin:0 0 6px">4) Guardar venta (guarda encabezado + detalle)</h2>
+    <button id="btnGuardar">Guardar venta desde ticket</button>
     <div id="log" class="muted" style="margin-top:10px"></div>
   </section>
 
@@ -114,10 +144,15 @@
 
   /* ===== TABLAS ===== */
   const T_CLIENTES = "clientes";
-  const T_VENTAS = "ventas";
+  const T_VENTAS   = "ventas";
+  const T_ITEMS    = "ventas_items"; // <-- NUEVA tabla detalle
 
   /* ===== Estado ===== */
   let currentClient = null;
+
+  // items extraídos del ticket (editables)
+  // formato: [{producto:'Tripa', kg:12.5}]
+  let ticketItems = [];
 
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
@@ -147,36 +182,31 @@
   }
 
   function siteBaseUrl(){
-    // base de tu GitHub Pages actual
-    // ejemplo: https://marcianoper.github.io/vdc-clientes-fieles/
     const u = new URL(window.location.href);
     return u.origin + u.pathname.replace(/index\.html$/,'');
   }
-async function renderQR(){
-  const box = $("qrBox");
-  box.innerHTML = "";
-  $("qrText").textContent = "";
 
-  if(!currentClient){
-    box.innerHTML = '<span class="muted">Primero crea/selecciona un cliente</span>';
-    return;
+  async function renderQR(){
+    const box = $("qrBox");
+    box.innerHTML = "";
+    $("qrText").textContent = "";
+
+    if(!currentClient){
+      box.innerHTML = '<span class="muted">Primero crea/selecciona un cliente</span>';
+      return;
+    }
+
+    const payload = `${siteBaseUrl()}?cid=${currentClient.id}`;
+    const img = document.createElement("img");
+    img.alt = "QR del cliente";
+    img.style.width = "240px";
+    img.style.height = "240px";
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`;
+    box.appendChild(img);
+    $("qrText").innerHTML = `URL en QR: <code>${payload}</code>`;
   }
 
-  const payload = `${siteBaseUrl()}?cid=${currentClient.id}`;
-
-  const img = document.createElement("img");
-  img.alt = "QR del cliente";
-  img.style.width = "240px";
-  img.style.height = "240px";
-  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`;
-
-  box.appendChild(img);
-  $("qrText").innerHTML = `URL en QR: <code>${payload}</code>`;
-}
-
-
   function formatErr(err){
-    // Supabase devuelve varias formas
     if(!err) return "Error desconocido";
     if(typeof err === "string") return err;
     if(err.message) return err.message;
@@ -184,7 +214,162 @@ async function renderQR(){
     try { return JSON.stringify(err, null, 2); } catch { return String(err); }
   }
 
-  /* ===== Acciones ===== */
+  function toNum(s){
+    const v = Number(String(s ?? "").replace(",", ".").trim());
+    return Number.isFinite(v) ? v : NaN;
+  }
+
+  function normalizeProductName(s){
+    return String(s || "")
+      .replace(/\s+/g, " ")
+      .replace(/[•·]/g, " ")
+      .trim();
+  }
+
+  // ======== PARSER (Ticket Text -> items) ========
+  // Regla: detecta líneas con "kg" y saca el número.
+  // Ejemplos válidos:
+  // "Tripa 12.50 kg"
+  // "Cabeza de res: 30 KG"
+  // "Menudo National 27.22kg"
+  function parseTicketText(raw){
+    const text = String(raw || "").replace(/\r/g, "");
+    const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
+
+    const items = [];
+    const kgRegex = /(\d+(?:[.,]\d{1,3})?)\s*(kg|kgr|kilo|kilos)\b/i;
+
+    for(const line of lines){
+      const m = line.match(kgRegex);
+      if(!m) continue;
+
+      const kg = toNum(m[1]);
+      if(!Number.isFinite(kg) || kg <= 0) continue;
+
+      // producto = linea sin el tramo del kg
+      let producto = line.replace(kgRegex, " ").trim();
+
+      // limpia cosas típicas (opcionales)
+      producto = producto.replace(/[:\-]+$/g, "").trim();
+
+      // descartar líneas que sean total general (si trae "total")
+      if(/\btotal\b/i.test(producto) && producto.length <= 12) continue;
+
+      producto = normalizeProductName(producto);
+      if(!producto) producto = "Producto sin nombre";
+
+      items.push({ producto, kg });
+    }
+
+    // agrupar por producto (para sumar)
+    const map = new Map();
+    for(const it of items){
+      const key = it.producto.toLowerCase();
+      map.set(key, (map.get(key) || 0) + it.kg);
+    }
+
+    const out = [];
+    for(const [k,sum] of map.entries()){
+      out.push({ producto: normalizeProductName(k), kg: Number(sum) });
+    }
+
+    // re-capitaliza "bonito" sin cambiar demasiado (solo primera letra)
+    for(const it of out){
+      it.producto = it.producto.charAt(0).toUpperCase() + it.producto.slice(1);
+    }
+
+    // ordenar por kg desc (opcional)
+    out.sort((a,b)=>b.kg - a.kg);
+
+    return out;
+  }
+
+  function calcTotalKg(items){
+    return items.reduce((acc,it)=>acc + (Number(it.kg)||0), 0);
+  }
+
+  function renderDetalleEditable(){
+    const box = $("detalleBox");
+    if(!ticketItems.length){
+      box.className = "muted";
+      box.textContent = "—";
+      return;
+    }
+
+    const rows = ticketItems.map((it, idx)=>`
+      <tr>
+        <td style="width:65%">
+          <input data-idx="${idx}" data-field="producto" value="${escapeHtml(it.producto)}" />
+        </td>
+        <td style="width:25%">
+          <input data-idx="${idx}" data-field="kg" inputmode="decimal" value="${Number(it.kg).toFixed(3)}" />
+        </td>
+        <td class="right" style="width:10%">
+          <button class="ghost" data-del="${idx}" style="margin:0;padding:8px;border-radius:10px">X</button>
+        </td>
+      </tr>
+    `).join("");
+
+    box.className = "";
+    box.innerHTML = `
+      <div class="mini">Puedes corregir nombres y kilos antes de guardar.</div>
+      <table>
+        <thead>
+          <tr><th>Producto</th><th>Kg</th><th class="right">Del</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="row" style="margin-top:10px">
+        <button id="btnAgregarLinea" class="ghost">+ Agregar línea</button>
+      </div>
+    `;
+
+    // listeners inputs (delegación simple)
+    box.querySelectorAll('input[data-idx]').forEach(inp=>{
+      inp.addEventListener("input", ()=>{
+        const idx = Number(inp.getAttribute("data-idx"));
+        const field = inp.getAttribute("data-field");
+        if(!ticketItems[idx]) return;
+        if(field === "kg"){
+          const v = toNum(inp.value);
+          ticketItems[idx].kg = Number.isFinite(v) ? v : 0;
+        }else{
+          ticketItems[idx].producto = normalizeProductName(inp.value);
+        }
+        $("kgAuto").value = calcTotalKg(ticketItems).toFixed(2);
+      });
+    });
+
+    // delete line
+    box.querySelectorAll('button[data-del]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const idx = Number(btn.getAttribute("data-del"));
+        ticketItems.splice(idx, 1);
+        $("kgAuto").value = calcTotalKg(ticketItems).toFixed(2);
+        renderDetalleEditable();
+      });
+    });
+
+    // add line
+    const addBtn = $("btnAgregarLinea");
+    if(addBtn){
+      addBtn.addEventListener("click", ()=>{
+        ticketItems.push({ producto:"Producto", kg:0 });
+        renderDetalleEditable();
+      });
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  /* ===== Acciones Cliente ===== */
   async function buscarClientePorTelefono(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
 
@@ -213,7 +398,6 @@ async function renderQR(){
     const nombre = ($("nombre").value || "").trim() || null;
     if(tel.length !== 10) throw new Error("Teléfono inválido (deben ser 10 dígitos).");
 
-    // upsert por telefono (telefono debe ser UNIQUE)
     const payload = { telefono: tel };
     if(nombre) payload.nombre = nombre;
 
@@ -232,29 +416,84 @@ async function renderQR(){
     setMsg("ok", "Cliente creado/actualizado y QR generado.");
   }
 
-  async function cerrarVentaYAplicarPuntos(){
+  /* ===== NUEVO: Procesar ticket ===== */
+  function procesarTicket(){
+    const raw = $("ticketText").value || "";
+    const items = parseTicketText(raw);
+
+    ticketItems = items;
+    const total = calcTotalKg(ticketItems);
+
+    $("kgAuto").value = Number.isFinite(total) ? total.toFixed(2) : "";
+    renderDetalleEditable();
+
+    if(!items.length){
+      setLog("err", "No pude detectar líneas con 'kg'. Asegúrate de pegar el texto completo del ticket y que incluya 'kg'.");
+    }else{
+      setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
+    }
+  }
+
+  function limpiarTicket(){
+    $("ticketText").value = "";
+    $("kgAuto").value = "";
+    ticketItems = [];
+    renderDetalleEditable();
+    setLog("muted","Listo.");
+  }
+
+  /* ===== Guardar venta + items + puntos ===== */
+  async function guardarVentaDesdeTicket(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
     if(!currentClient) throw new Error("Primero crea/selecciona un cliente.");
 
     const tipo = $("tipo").value;
-    const kg = Number(String($("kg").value).replace(",", "."));
+    const rawTicket = ($("ticketText").value || "").trim();
+
+    // items deben existir (pero si quieres permitir manual, dejamos que al menos haya total>0)
+    // total_kg sale del auto (editable)
+    const kg = toNum($("kgAuto").value);
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
-    // 1) Inserta venta
+    // sanitiza items: producto no vacío y kg > 0
+    const items = (ticketItems || [])
+      .map(it=>({ producto: normalizeProductName(it.producto), kg: Number(it.kg) }))
+      .filter(it=>it.producto && Number.isFinite(it.kg) && it.kg > 0);
+
+    // 1) Inserta encabezado venta
+    const ventaInsert = {
+      tipo,
+      cliente_id: currentClient.id,
+      total_kg: kg,
+      puntos_otorgados: 0,
+      raw_ticket: rawTicket || null,
+      captura: "ticket_text"
+    };
+
     const { data: venta, error: e1 } = await sb
       .from(T_VENTAS)
-      .insert({
-        tipo,
-        cliente_id: currentClient.id,
-        total_kg: kg,
-        puntos_otorgados: 0
-      })
+      .insert(ventaInsert)
       .select("id,tipo,total_kg,puntos_otorgados")
       .single();
 
     if(e1) throw e1;
 
-    // 2) Aplica puntos solo mostrador
+    // 2) Inserta items (si hay)
+    if(items.length){
+      const payloadItems = items.map(it=>({
+        venta_id: venta.id,
+        producto: it.producto,
+        kg: it.kg
+      }));
+
+      const { error: e2 } = await sb
+        .from(T_ITEMS)
+        .insert(payloadItems);
+
+      if(e2) throw e2;
+    }
+
+    // 3) Aplica puntos solo mostrador (mismo criterio que ya tenías)
     let puntosGanados = 0;
     let nuevoSaldo = Number(currentClient.saldo_kg);
 
@@ -263,7 +502,7 @@ async function renderQR(){
       puntosGanados = Math.floor(acumulado / 100);
       nuevoSaldo = acumulado % 100;
 
-      const { data: cli2, error: e2 } = await sb
+      const { data: cli2, error: e3 } = await sb
         .from(T_CLIENTES)
         .update({
           puntos: currentClient.puntos + puntosGanados,
@@ -273,20 +512,32 @@ async function renderQR(){
         .select("id,telefono,nombre,puntos,saldo_kg")
         .single();
 
-      if(e2) throw e2;
+      if(e3) throw e3;
       currentClient = cli2;
 
-      const { error: e3 } = await sb
+      const { error: e4 } = await sb
         .from(T_VENTAS)
         .update({ puntos_otorgados: puntosGanados })
         .eq("id", venta.id);
 
-      if(e3) throw e3;
+      if(e4) throw e4;
     }
 
     renderStatus();
-    setLog("ok", `Venta cerrada (${tipo}). Kg: ${kg.toFixed(2)}. Puntos ganados: ${puntosGanados}. Saldo kg: ${Number(currentClient.saldo_kg).toFixed(3)}.`);
-    $("kg").value = "";
+
+    setLog(
+      "ok",
+      `✅ Venta guardada.
+Cliente: ${currentClient.nombre || currentClient.telefono}
+Tipo: ${tipo}
+Total kg: ${kg.toFixed(2)}
+Puntos ganados: ${puntosGanados}
+Items guardados: ${items.length}
+Venta ID: ${venta.id}`
+    );
+
+    // limpia para siguiente captura
+    limpiarTicket();
   }
 
   /* ===== Arranque + Diagnóstico ===== */
@@ -303,7 +554,6 @@ async function renderQR(){
     const cid = u.searchParams.get("cid");
     if(!cid || !sb) return;
 
-    // buscar por id
     const { data, error } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
@@ -325,6 +575,7 @@ async function renderQR(){
     setMsg("ok", "Cliente cargado desde QR.");
   }
 
+  /* ===== Listeners ===== */
   $("btnBuscar").addEventListener("click", async ()=>{
     setMsg("muted","Buscando...");
     try{ await buscarClientePorTelefono(); }
@@ -337,14 +588,24 @@ async function renderQR(){
     catch(err){ console.error(err); setMsg("err", formatErr(err)); }
   });
 
-  $("btnCerrar").addEventListener("click", async ()=>{
-    setLog("muted","Cerrando venta...");
-    try{ await cerrarVentaYAplicarPuntos(); }
+  $("btnProcesar").addEventListener("click", ()=>{
+    try{ procesarTicket(); }
+    catch(err){ console.error(err); setLog("err", formatErr(err)); }
+  });
+
+  $("btnLimpiar").addEventListener("click", ()=>{
+    limpiarTicket();
+  });
+
+  $("btnGuardar").addEventListener("click", async ()=>{
+    setLog("muted","Guardando venta...");
+    try{ await guardarVentaDesdeTicket(); }
     catch(err){ console.error(err); setLog("err", formatErr(err)); }
   });
 
   diag();
   renderStatus();
+  renderDetalleEditable();
   cargarClientePorQuery();
 </script>
 </body>
