@@ -34,12 +34,21 @@
     th{background:#f9fafb}
     .mini{font-size:12px;color:var(--muted)}
     .right{text-align:right}
+
+    /* Cámara / OCR */
+    .camWrap{display:grid;gap:10px;margin-top:10px}
+    video{width:100%;border-radius:12px;border:1px solid #e5e7eb;background:#000;max-height:360px}
+    canvas{display:none}
+    .progressBar{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+    .progressBar > div{height:100%;width:0%;background:var(--brand)}
   </style>
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- QR -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- OCR (Tesseract.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 
 <body>
@@ -86,13 +95,32 @@
   </section>
 
   <section class="card">
-    <h2 style="margin:0 0 6px">3) Capturar compra por Ticket (Opción 1: pegar texto)</h2>
+    <h2 style="margin:0 0 6px">3) Capturar compra por Ticket</h2>
     <p class="muted" style="margin-top:0">
-      Escanea el ticket con tu teléfono (iPhone Live Text / Google Lens), <b>copias el texto</b> y lo pegas aquí.
-      Yo detecto tu formato POS (Cantidad / P.U / Importe) y calculo el total.
+      Puedes pegar el texto (opción 1), o <b>escanear aquí mismo</b> con cámara (OCR).
+      Tip: buena luz + ticket derecho = mejor lectura.
     </p>
 
-    <label>Texto del ticket (pegado)</label>
+    <div class="row">
+      <button id="btnStartCam" class="ghost">Escanear con cámara (OCR)</button>
+      <button id="btnStopCam" class="ghost" disabled>Apagar cámara</button>
+      <label class="ghost" style="display:block;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #d1d5db;cursor:pointer">
+        Subir foto (alternativa)
+        <input id="fileTicket" type="file" accept="image/*" capture="environment" style="display:none" />
+      </label>
+    </div>
+
+    <div class="camWrap" id="camWrap" style="display:none">
+      <video id="video" playsinline></video>
+      <canvas id="canvas"></canvas>
+      <div class="row">
+        <button id="btnSnap" class="ghost">Tomar foto y leer</button>
+      </div>
+      <div class="mini" id="ocrStatus">—</div>
+      <div class="progressBar"><div id="ocrBar"></div></div>
+    </div>
+
+    <label>Texto del ticket (pegado / OCR)</label>
     <textarea id="ticketText" placeholder="Pega aquí el texto del ticket..."></textarea>
 
     <div class="row">
@@ -149,6 +177,7 @@
   /* ===== Estado ===== */
   let currentClient = null;
   let ticketItems = []; // [{producto, kg}]
+  let camStream = null;
 
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
@@ -306,10 +335,8 @@
       if(fixed){
         kg = it.cantidad * fixed.kg_per_unit;
       }else{
-        // Si dice "CAJA" pero no sabemos el kg por caja, lo ignoramos por seguridad
-        if(/^CAJA\b/i.test(producto)) continue;
-        // Para BOFE/LIBRO/PATA BLANCA etc. la "cantidad" es kg
-        kg = it.cantidad;
+        if(/^CAJA\b/i.test(producto)) continue; // si no sabemos kg por caja, no inventamos
+        kg = it.cantidad; // para BOFE/LIBRO/PATA... la cantidad es kg
       }
 
       if(Number.isFinite(kg) && kg > 0){
@@ -462,7 +489,7 @@
     renderDetalleEditable();
 
     if(!items.length){
-      setLog("err", "No pude detectar productos. Tip: pega el texto completo (producto, código y línea de cantidad).");
+      setLog("err", "No pude detectar productos. Tip: pega texto completo o escanea con buena luz.");
     }else{
       setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
     }
@@ -497,7 +524,7 @@
       total_kg: kg,
       puntos_otorgados: 0,
       raw_ticket: rawTicket || null,
-      captura: "ticket_text"
+      captura: "ticket_ocr"
     };
 
     const { data: venta, error: e1 } = await sb
@@ -522,7 +549,6 @@
       if(e2) throw e2;
     }
 
-    // Puntos solo mostrador (igual que antes)
     let puntosGanados = 0;
     let nuevoSaldo = Number(currentClient.saldo_kg);
 
@@ -553,9 +579,7 @@
     }
 
     renderStatus();
-
-    setLog(
-      "ok",
+    setLog("ok",
       `✅ Venta guardada.
 Cliente: ${currentClient.nombre || currentClient.telefono}
 Tipo: ${tipo}
@@ -568,12 +592,130 @@ Venta ID: ${venta.id}`
     limpiarTicket();
   }
 
+  /* ===== OCR ===== */
+  function setOcrUI(status, progress){
+    $("ocrStatus").textContent = status || "—";
+    const p = Math.max(0, Math.min(1, Number(progress||0)));
+    $("ocrBar").style.width = (p*100).toFixed(0) + "%";
+  }
+
+  async function runOCRFromCanvas(){
+    if(typeof Tesseract === "undefined") throw new Error("OCR no cargó (Tesseract). Revisa internet/CDN.");
+
+    setOcrUI("Leyendo ticket... (OCR)", 0.02);
+    const canvas = $("canvas");
+
+    const { data: { text } } = await Tesseract.recognize(
+      canvas,
+      "spa",
+      {
+        logger: (m)=>{
+          if(m && m.status){
+            const prog = (typeof m.progress === "number") ? m.progress : 0;
+            setOcrUI(`OCR: ${m.status} ${(prog*100).toFixed(0)}%`, prog);
+          }
+        }
+      }
+    );
+
+    const cleaned = (text || "")
+      .replace(/\r/g, "")
+      .replace(/[ \t]+\n/g, "\n")
+      .trim();
+
+    $("ticketText").value = cleaned;
+    setOcrUI("OCR terminado ✅ (revisa el texto y luego Procesar ticket)", 1);
+    setLog("ok", "OCR listo. Ahora dale a “Procesar ticket”.");
+  }
+
+  async function runOCRFromFile(file){
+    const img = await fileToImage(file);
+    drawToCanvas(img);
+    await runOCRFromCanvas();
+  }
+
+  function fileToImage(file){
+    return new Promise((resolve,reject)=>{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = ()=>{ URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = (e)=>{ URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+
+  function drawToCanvas(img){
+    const canvas = $("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // escala para mejorar OCR (no demasiado grande)
+    const maxW = 1400;
+    const scale = Math.min(1, maxW / img.width);
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(img, 0, 0, w, h);
+  }
+
+  async function startCamera(){
+    // Requiere HTTPS en el celular (GitHub Pages / Vercel ok)
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error("Este navegador no soporta cámara por web.");
+
+    $("camWrap").style.display = "grid";
+    $("btnStartCam").disabled = true;
+    $("btnStopCam").disabled = false;
+
+    const video = $("video");
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false
+    });
+    video.srcObject = camStream;
+    await video.play();
+    setOcrUI("Cámara lista. Pon el ticket centrado y toma la foto.", 0);
+  }
+
+  function stopCamera(){
+    try{
+      if(camStream){
+        camStream.getTracks().forEach(t=>t.stop());
+        camStream = null;
+      }
+    }catch(_){}
+    $("video").srcObject = null;
+    $("camWrap").style.display = "none";
+    $("btnStartCam").disabled = false;
+    $("btnStopCam").disabled = true;
+    setOcrUI("—", 0);
+  }
+
+  function snapToCanvas(){
+    const video = $("video");
+    const canvas = $("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // toma frame del video
+    const w = video.videoWidth || 1280;
+    const h = video.videoHeight || 720;
+
+    // reduce tamaño para OCR
+    const maxW = 1400;
+    const scale = Math.min(1, maxW / w);
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  }
+
   /* ===== Arranque + Diagnóstico ===== */
   function diag(){
     const d = [];
     d.push("Supabase cargado: " + (!!sb));
     d.push("QRCode cargado: " + (typeof QRCode !== "undefined"));
+    d.push("OCR cargado: " + (typeof Tesseract !== "undefined"));
     d.push("Base URL del sitio: " + siteBaseUrl());
+    d.push("HTTPS recomendado para cámara.");
     $("diag").textContent = d.join("\n");
   }
 
@@ -629,6 +771,47 @@ Venta ID: ${venta.id}`
     setLog("muted","Guardando venta...");
     try{ await guardarVentaDesdeTicket(); }
     catch(err){ console.error(err); setLog("err", formatErr(err)); }
+  });
+
+  $("btnStartCam").addEventListener("click", async ()=>{
+    try{ await startCamera(); }
+    catch(err){ console.error(err); setLog("err", "No pude abrir cámara: " + formatErr(err)); stopCamera(); }
+  });
+
+  $("btnStopCam").addEventListener("click", ()=>{
+    stopCamera();
+  });
+
+  $("btnSnap").addEventListener("click", async ()=>{
+    try{
+      if(!camStream) throw new Error("Cámara no está encendida.");
+      setLog("muted","Tomando foto...");
+      snapToCanvas();
+      await runOCRFromCanvas();
+    }catch(err){
+      console.error(err);
+      setLog("err", "OCR falló: " + formatErr(err));
+    }
+  });
+
+  $("fileTicket").addEventListener("change", async (e)=>{
+    try{
+      const f = e.target.files?.[0];
+      if(!f) return;
+      setLog("muted","Leyendo foto (OCR)...");
+      await runOCRFromFile(f);
+    }catch(err){
+      console.error(err);
+      setLog("err", "OCR falló: " + formatErr(err));
+    }finally{
+      e.target.value = "";
+    }
+  });
+
+  // seguridad: apagar cámara si cierras/pierdes foco
+  window.addEventListener("beforeunload", stopCamera);
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.hidden) stopCamera();
   });
 
   diag();
