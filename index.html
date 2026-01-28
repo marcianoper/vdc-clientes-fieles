@@ -85,12 +85,11 @@
     </div>
   </section>
 
-  <!-- NUEVO: Captura Ticket (texto pegado) -->
   <section class="card">
     <h2 style="margin:0 0 6px">3) Capturar compra por Ticket (Opción 1: pegar texto)</h2>
     <p class="muted" style="margin-top:0">
       Escanea el ticket con tu teléfono (iPhone Live Text / Google Lens), <b>copias el texto</b> y lo pegas aquí.
-      Yo detecto líneas con <b>kg</b>, armo el detalle y calculo el total.
+      Yo detecto tu formato POS (Cantidad / P.U / Importe) y calculo el total.
     </p>
 
     <label>Texto del ticket (pegado)</label>
@@ -145,14 +144,11 @@
   /* ===== TABLAS ===== */
   const T_CLIENTES = "clientes";
   const T_VENTAS   = "ventas";
-  const T_ITEMS    = "ventas_items"; // <-- NUEVA tabla detalle
+  const T_ITEMS    = "ventas_items"; // tabla detalle (crear en Supabase)
 
   /* ===== Estado ===== */
   let currentClient = null;
-
-  // items extraídos del ticket (editables)
-  // formato: [{producto:'Tripa', kg:12.5}]
-  let ticketItems = [];
+  let ticketItems = []; // [{producto, kg}]
 
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
@@ -219,6 +215,15 @@
     return Number.isFinite(v) ? v : NaN;
   }
 
+  function escapeHtml(s){
+    return String(s || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
   function normalizeProductName(s){
     return String(s || "")
       .replace(/\s+/g, " ")
@@ -226,62 +231,102 @@
       .trim();
   }
 
-  // ======== PARSER (Ticket Text -> items) ========
-  // Regla: detecta líneas con "kg" y saca el número.
-  // Ejemplos válidos:
-  // "Tripa 12.50 kg"
-  // "Cabeza de res: 30 KG"
-  // "Menudo National 27.22kg"
+  /* ===== PARSER (soporta: con 'kg' y tu POS Cantidad/P.U/Importe) ===== */
   function parseTicketText(raw){
     const text = String(raw || "").replace(/\r/g, "");
     const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
 
-    const items = [];
-    const kgRegex = /(\d+(?:[.,]\d{1,3})?)\s*(kg|kgr|kilo|kilos)\b/i;
+    // Reglas de "cajas" a kg fijo (ajusta si aplica)
+    const FIXED_KG = [
+      { match: /CAJA\s+CANADIAN/i, kg_per_unit: 27.22 },
+      { match: /CAJA\s+MENUDO\s+NATIONAL/i, kg_per_unit: 27.22 },
+      { match: /CAJA\s+WASHINGTON/i, kg_per_unit: 27.22 },
+    ];
 
+    const isNumericCode = (s)=>/^\d{6,}$/.test(String(s||"").replace(/\s/g,""));
+    const parseMoneyOrQty = (s)=>{
+      const v = Number(String(s).replace(/,/g,"").trim());
+      return Number.isFinite(v) ? v : NaN;
+    };
+
+    // A) Si un día tu ticket trae "kg"
+    const itemsKgText = [];
+    const kgRegex = /(\d+(?:[.,]\d{1,3})?)\s*(kg|kgr|kilo|kilos)\b/i;
     for(const line of lines){
       const m = line.match(kgRegex);
       if(!m) continue;
-
-      const kg = toNum(m[1]);
-      if(!Number.isFinite(kg) || kg <= 0) continue;
-
-      // producto = linea sin el tramo del kg
-      let producto = line.replace(kgRegex, " ").trim();
-
-      // limpia cosas típicas (opcionales)
-      producto = producto.replace(/[:\-]+$/g, "").trim();
-
-      // descartar líneas que sean total general (si trae "total")
+      const kg = Number(String(m[1]).replace(",", "."));
+      if(!Number.isFinite(kg) || kg<=0) continue;
+      let producto = line.replace(kgRegex, " ").replace(/[:\-]+$/g, "").trim();
       if(/\btotal\b/i.test(producto) && producto.length <= 12) continue;
-
-      producto = normalizeProductName(producto);
-      if(!producto) producto = "Producto sin nombre";
-
-      items.push({ producto, kg });
+      if(producto) itemsKgText.push({ producto, kg });
+    }
+    if(itemsKgText.length){
+      const map = new Map();
+      for(const it of itemsKgText){
+        const key = it.producto.toLowerCase();
+        map.set(key, (map.get(key)||0) + it.kg);
+      }
+      return [...map.entries()].map(([k,kg])=>({
+        producto: k.charAt(0).toUpperCase()+k.slice(1),
+        kg: Number(kg)
+      })).sort((a,b)=>b.kg-a.kg);
     }
 
-    // agrupar por producto (para sumar)
-    const map = new Map();
-    for(const it of items){
-      const key = it.producto.toLowerCase();
-      map.set(key, (map.get(key) || 0) + it.kg);
+    // B) Formato POS como tu foto:
+    // PRODUCTO
+    // CODIGO
+    // CANTIDAD  PU  IMPORTE
+    const rawItems = [];
+    for(let i=0;i<lines.length;i++){
+      const productoLine = lines[i];
+      const codeLine = lines[i+1] || "";
+      const numsLine = lines[i+2] || "";
+
+      if(isNumericCode(codeLine)){
+        const parts = numsLine.split(/\s+/).filter(Boolean);
+        const nums = parts.map(parseMoneyOrQty).filter(n=>Number.isFinite(n));
+        if(nums.length >= 3){
+          const cantidad = nums[0];
+          if(Number.isFinite(cantidad) && cantidad > 0){
+            rawItems.push({ producto: productoLine, cantidad });
+            i = i + 2;
+          }
+        }
+      }
     }
 
+    // Convertir cantidad->kg
     const out = [];
-    for(const [k,sum] of map.entries()){
-      out.push({ producto: normalizeProductName(k), kg: Number(sum) });
+    for(const it of rawItems){
+      let producto = normalizeProductName(it.producto);
+      let kg = null;
+
+      const fixed = FIXED_KG.find(r=>r.match.test(producto));
+      if(fixed){
+        kg = it.cantidad * fixed.kg_per_unit;
+      }else{
+        // Si dice "CAJA" pero no sabemos el kg por caja, lo ignoramos por seguridad
+        if(/^CAJA\b/i.test(producto)) continue;
+        // Para BOFE/LIBRO/PATA BLANCA etc. la "cantidad" es kg
+        kg = it.cantidad;
+      }
+
+      if(Number.isFinite(kg) && kg > 0){
+        out.push({ producto, kg: Number(kg) });
+      }
     }
 
-    // re-capitaliza "bonito" sin cambiar demasiado (solo primera letra)
+    // agrupar por producto
+    const map = new Map();
     for(const it of out){
-      it.producto = it.producto.charAt(0).toUpperCase() + it.producto.slice(1);
+      const key = it.producto.toLowerCase();
+      map.set(key, (map.get(key)||0) + it.kg);
     }
-
-    // ordenar por kg desc (opcional)
-    out.sort((a,b)=>b.kg - a.kg);
-
-    return out;
+    return [...map.entries()].map(([k,kg])=>({
+      producto: k.charAt(0).toUpperCase()+k.slice(1),
+      kg: Number(kg)
+    })).sort((a,b)=>b.kg-a.kg);
   }
 
   function calcTotalKg(items){
@@ -324,12 +369,12 @@
       </div>
     `;
 
-    // listeners inputs (delegación simple)
     box.querySelectorAll('input[data-idx]').forEach(inp=>{
       inp.addEventListener("input", ()=>{
         const idx = Number(inp.getAttribute("data-idx"));
         const field = inp.getAttribute("data-field");
         if(!ticketItems[idx]) return;
+
         if(field === "kg"){
           const v = toNum(inp.value);
           ticketItems[idx].kg = Number.isFinite(v) ? v : 0;
@@ -340,7 +385,6 @@
       });
     });
 
-    // delete line
     box.querySelectorAll('button[data-del]').forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const idx = Number(btn.getAttribute("data-del"));
@@ -350,7 +394,6 @@
       });
     });
 
-    // add line
     const addBtn = $("btnAgregarLinea");
     if(addBtn){
       addBtn.addEventListener("click", ()=>{
@@ -358,15 +401,6 @@
         renderDetalleEditable();
       });
     }
-  }
-
-  function escapeHtml(s){
-    return String(s || "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
   }
 
   /* ===== Acciones Cliente ===== */
@@ -416,7 +450,7 @@
     setMsg("ok", "Cliente creado/actualizado y QR generado.");
   }
 
-  /* ===== NUEVO: Procesar ticket ===== */
+  /* ===== Procesar ticket ===== */
   function procesarTicket(){
     const raw = $("ticketText").value || "";
     const items = parseTicketText(raw);
@@ -428,7 +462,7 @@
     renderDetalleEditable();
 
     if(!items.length){
-      setLog("err", "No pude detectar líneas con 'kg'. Asegúrate de pegar el texto completo del ticket y que incluya 'kg'.");
+      setLog("err", "No pude detectar productos. Tip: pega el texto completo (producto, código y línea de cantidad).");
     }else{
       setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
     }
@@ -442,7 +476,7 @@
     setLog("muted","Listo.");
   }
 
-  /* ===== Guardar venta + items + puntos ===== */
+  /* ===== Guardar venta + detalle + puntos ===== */
   async function guardarVentaDesdeTicket(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
     if(!currentClient) throw new Error("Primero crea/selecciona un cliente.");
@@ -450,17 +484,13 @@
     const tipo = $("tipo").value;
     const rawTicket = ($("ticketText").value || "").trim();
 
-    // items deben existir (pero si quieres permitir manual, dejamos que al menos haya total>0)
-    // total_kg sale del auto (editable)
     const kg = toNum($("kgAuto").value);
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
-    // sanitiza items: producto no vacío y kg > 0
     const items = (ticketItems || [])
       .map(it=>({ producto: normalizeProductName(it.producto), kg: Number(it.kg) }))
       .filter(it=>it.producto && Number.isFinite(it.kg) && it.kg > 0);
 
-    // 1) Inserta encabezado venta
     const ventaInsert = {
       tipo,
       cliente_id: currentClient.id,
@@ -478,7 +508,6 @@
 
     if(e1) throw e1;
 
-    // 2) Inserta items (si hay)
     if(items.length){
       const payloadItems = items.map(it=>({
         venta_id: venta.id,
@@ -493,7 +522,7 @@
       if(e2) throw e2;
     }
 
-    // 3) Aplica puntos solo mostrador (mismo criterio que ya tenías)
+    // Puntos solo mostrador (igual que antes)
     let puntosGanados = 0;
     let nuevoSaldo = Number(currentClient.saldo_kg);
 
@@ -536,7 +565,6 @@ Items guardados: ${items.length}
 Venta ID: ${venta.id}`
     );
 
-    // limpia para siguiente captura
     limpiarTicket();
   }
 
