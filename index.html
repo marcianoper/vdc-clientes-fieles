@@ -191,6 +191,7 @@
     { key: "Corazon",       aliases: [/^CORAZON\b/i] },
     { key: "Tripa",         aliases: [/^TRIPA\b/i] },
     { key: "Bofe",          aliases: [/^BOFE\b/i] },
+    { key: "Cabeza",        aliases: [/^CABEZA\b/i, /^CABEZA\s+DE\s+RES\b/i, /^CABEZA\s+RASTRO\b/i, /^CABEZA\s+DE\s+RASTRO\b/i] },
     { key: "Pata Blanca",   aliases: [/^PATA\s*BLANCA\b/i] },
     { key: "Pata Morena",   aliases: [/^PATA\s*MORENA\b/i, /^PATAS\s*MORENA\b/i, /^PATA\s+MORENA\b/i] },
 
@@ -663,17 +664,13 @@ Venta ID: ${venta.id}`
       .replace(/[ \t]+\n/g, "\n")
       .trim();
 
-    // 1) Guardar OCR completo (para parsear productos + kg)
     rawOcrText = cleaned;
 
-    // 2) Mostrar vista filtrada (solo números chicos)
     filteredOcrView = filterSmallNumbersOnly(cleaned);
     $("ticketText").value = filteredOcrView || cleaned;
 
-    setOcrUI("OCR terminado ✅ (vista filtrada: solo números chicos)", 1);
-    setLog("ok", "OCR listo. Ahora procesa el ticket (o se procesará automático).");
+    setOcrUI("OCR terminado ✅", 1);
 
-    // Auto-procesar al terminar OCR (opcional, aquí ya activado)
     try { procesarTicket(); } catch(e){ console.error(e); }
   }
 
