@@ -98,7 +98,7 @@
     <h2 style="margin:0 0 6px">3) Capturar compra por Ticket</h2>
     <p class="muted" style="margin-top:0">
       Puedes pegar el texto (opción 1), o <b>escanear aquí mismo</b> con cámara (OCR).
-      Tip: buena luz + ticket derecho = mejor lectura.
+      La caja mostrará una <b>vista filtrada</b> (solo números chicos), pero el sistema guardará el OCR completo para procesar productos.
     </p>
 
     <div class="row">
@@ -120,8 +120,8 @@
       <div class="progressBar"><div id="ocrBar"></div></div>
     </div>
 
-    <label>Texto del ticket (pegado / OCR)</label>
-    <textarea id="ticketText" placeholder="Pega aquí el texto del ticket..."></textarea>
+    <label>Texto del ticket (vista filtrada / pegado)</label>
+    <textarea id="ticketText" placeholder="Aquí aparecerán solo números chicos (ej. 55, 7.35, 4.45). El OCR completo se guarda en segundo plano."></textarea>
 
     <div class="row">
       <button id="btnProcesar" class="ghost">Procesar ticket</button>
@@ -178,6 +178,10 @@
   let currentClient = null;
   let ticketItems = []; // [{producto, kg}]
   let camStream = null;
+
+  // OCR: guardamos el texto COMPLETO (para parsear) y una vista filtrada (para mostrar)
+  let rawOcrText = "";
+  let filteredOcrView = "";
 
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
@@ -258,6 +262,37 @@
       .replace(/\s+/g, " ")
       .replace(/[•·]/g, " ")
       .trim();
+  }
+
+  /* ===== VISTA FILTRADA (solo números chicos) ===== */
+  function filterSmallNumbersOnly(text){
+    // Mantiene SOLO:
+    // - enteros de 1 a 2 dígitos: 0-99
+    // - decimales cuyo entero sea 1-2 dígitos: 0.00 - 99.99 (ej 4.45, 27.22)
+    // Elimina cualquier número con 3+ dígitos en la parte entera (ej 182109, 4111339, 4626275412)
+    const tokens = String(text || "")
+      .replace(/\r/g, "")
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const keep = [];
+    for(const t of tokens){
+      const s = t.replace(/,/g, ""); // quita separadores de miles
+
+      const m = s.match(/^(\d{1,6})(?:\.(\d{1,6}))?$/);
+      if(!m) continue;
+
+      const intPart = m[1];
+      if(intPart.length > 2) continue;
+
+      keep.push(s);
+    }
+    return keep.join("\n");
+  }
+
+  function getTicketTextForParsing(){
+    // Para parsear: OCR completo si existe; si no, usa lo que el usuario pegó
+    return (rawOcrText && rawOcrText.trim()) ? rawOcrText : ($("ticketText").value || "");
   }
 
   /* ===== PARSER (soporta: con 'kg' y tu POS Cantidad/P.U/Importe) ===== */
@@ -479,7 +514,7 @@
 
   /* ===== Procesar ticket ===== */
   function procesarTicket(){
-    const raw = $("ticketText").value || "";
+    const raw = getTicketTextForParsing();
     const items = parseTicketText(raw);
 
     ticketItems = items;
@@ -489,7 +524,7 @@
     renderDetalleEditable();
 
     if(!items.length){
-      setLog("err", "No pude detectar productos. Tip: pega texto completo o escanea con buena luz.");
+      setLog("err", "No pude detectar productos. Tip: escanea con buena luz o pega el texto completo.");
     }else{
       setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
     }
@@ -499,6 +534,8 @@
     $("ticketText").value = "";
     $("kgAuto").value = "";
     ticketItems = [];
+    rawOcrText = "";
+    filteredOcrView = "";
     renderDetalleEditable();
     setLog("muted","Listo.");
   }
@@ -509,7 +546,7 @@
     if(!currentClient) throw new Error("Primero crea/selecciona un cliente.");
 
     const tipo = $("tipo").value;
-    const rawTicket = ($("ticketText").value || "").trim();
+    const rawTicket = getTicketTextForParsing().trim();
 
     const kg = toNum($("kgAuto").value);
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
@@ -594,7 +631,8 @@ Venta ID: ${venta.id}`
 
   /* ===== OCR ===== */
   function setOcrUI(status, progress){
-    $("ocrStatus").textContent = status || "—";
+    const st = $("ocrStatus");
+    if(st) st.textContent = status || "—";
     const p = Math.max(0, Math.min(1, Number(progress||0)));
     $("ocrBar").style.width = (p*100).toFixed(0) + "%";
   }
@@ -623,9 +661,15 @@ Venta ID: ${venta.id}`
       .replace(/[ \t]+\n/g, "\n")
       .trim();
 
-    $("ticketText").value = cleaned;
-    setOcrUI("OCR terminado ✅ (revisa el texto y luego Procesar ticket)", 1);
-    setLog("ok", "OCR listo. Ahora dale a “Procesar ticket”.");
+    // 1) Guardar OCR completo (para parsear productos + kg)
+    rawOcrText = cleaned;
+
+    // 2) Mostrar vista filtrada (solo números chicos)
+    filteredOcrView = filterSmallNumbersOnly(cleaned);
+    $("ticketText").value = filteredOcrView || cleaned;
+
+    setOcrUI("OCR terminado ✅ (vista filtrada: solo números chicos)", 1);
+    setLog("ok", "OCR listo. La caja muestra números chicos, pero el sistema guardó el texto completo para procesar.");
   }
 
   async function runOCRFromFile(file){
@@ -648,7 +692,6 @@ Venta ID: ${venta.id}`
     const canvas = $("canvas");
     const ctx = canvas.getContext("2d");
 
-    // escala para mejorar OCR (no demasiado grande)
     const maxW = 1400;
     const scale = Math.min(1, maxW / img.width);
     const w = Math.round(img.width * scale);
@@ -660,7 +703,6 @@ Venta ID: ${venta.id}`
   }
 
   async function startCamera(){
-    // Requiere HTTPS en el celular (GitHub Pages / Vercel ok)
     if(!navigator.mediaDevices?.getUserMedia) throw new Error("Este navegador no soporta cámara por web.");
 
     $("camWrap").style.display = "grid";
@@ -696,11 +738,9 @@ Venta ID: ${venta.id}`
     const canvas = $("canvas");
     const ctx = canvas.getContext("2d");
 
-    // toma frame del video
     const w = video.videoWidth || 1280;
     const h = video.videoHeight || 720;
 
-    // reduce tamaño para OCR
     const maxW = 1400;
     const scale = Math.min(1, maxW / w);
     canvas.width = Math.round(w * scale);
@@ -808,7 +848,6 @@ Venta ID: ${venta.id}`
     }
   });
 
-  // seguridad: apagar cámara si cierras/pierdes foco
   window.addEventListener("beforeunload", stopCamera);
   document.addEventListener("visibilitychange", ()=>{
     if(document.hidden) stopCamera();
