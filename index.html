@@ -97,7 +97,7 @@
   <section class="card">
     <h2 style="margin:0 0 6px">3) Capturar compra por Ticket</h2>
     <p class="muted" style="margin-top:0">
-      Puedes pegar el texto (opción 1), o <b>escanear aquí mismo</b> con cámara (OCR).
+      Puedes pegar el texto o <b>escanear aquí mismo</b> con cámara (OCR).
       La caja mostrará una <b>vista filtrada</b> (solo números chicos), pero el sistema guardará el OCR completo para procesar productos.
     </p>
 
@@ -183,6 +183,26 @@
   let rawOcrText = "";
   let filteredOcrView = "";
 
+  /* ===== Catálogo de productos (tu lista) + alias ===== */
+  const PRODUCT_CATALOG = [
+    { key: "Panza",         aliases: [/^PANZA\b/i] },
+    { key: "Higado",        aliases: [/^HIGADO\b/i] },
+    { key: "Libro",         aliases: [/^LIBRO\b/i] },
+    { key: "Corazon",       aliases: [/^CORAZON\b/i] },
+    { key: "Tripa",         aliases: [/^TRIPA\b/i] },
+    { key: "Bofe",          aliases: [/^BOFE\b/i] },
+    { key: "Pata Blanca",   aliases: [/^PATA\s*BLANCA\b/i] },
+    { key: "Pata Morena",   aliases: [/^PATA\s*MORENA\b/i, /^PATAS\s*MORENA\b/i, /^PATA\s+MORENA\b/i] },
+
+    { key: "Caja Washington",      aliases: [/^WASHINGTON\b/i, /^CAJA\s+WASHINGTON\b/i] },
+    { key: "Caja Menudo National", aliases: [/^NATIONAL\b/i, /^CAJA\s+MENUDO\s+NATIONAL\b/i, /^CAJA\s+NATIONAL\b/i, /^CAJA\s+MENUDO\s+NACIONAL\b/i] },
+    { key: "Caja Canadian",        aliases: [/^CANADIAN\b/i, /^CAJA\s+CANADIAN\b/i, /^MENUDO\s+CANADIAN\b/i, /^CAJA\s+CANADIAN\s+COMPLETA\b/i] },
+  ];
+
+  const KG_PER_BOX = 27.22;
+  const MAX_KG_LINE = 60.00;       // para líneas que son kg (bofe, panza, etc.)
+  const MAX_BOXES_ALLOWED = 500;   // seguridad para cajas
+
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
 
@@ -257,19 +277,29 @@
       .replaceAll("'","&#039;");
   }
 
-  function normalizeProductName(s){
-    return String(s || "")
+  function normalizeLine(s){
+    return String(s||"")
+      .replace(/[•·]/g," ")
       .replace(/\s+/g, " ")
-      .replace(/[•·]/g, " ")
       .trim();
+  }
+
+  function mapToCatalogProduct(line){
+    const l = normalizeLine(line).toUpperCase();
+    for(const p of PRODUCT_CATALOG){
+      for(const rx of p.aliases){
+        if(rx.test(l)) return p.key;
+      }
+    }
+    return null;
+  }
+
+  function isBoxProduct(productKey){
+    return /^Caja\b/i.test(productKey) || /Washington|National|Canadian/i.test(productKey);
   }
 
   /* ===== VISTA FILTRADA (solo números chicos) ===== */
   function filterSmallNumbersOnly(text){
-    // Mantiene SOLO:
-    // - enteros de 1 a 2 dígitos: 0-99
-    // - decimales cuyo entero sea 1-2 dígitos: 0.00 - 99.99 (ej 4.45, 27.22)
-    // Elimina cualquier número con 3+ dígitos en la parte entera (ej 182109, 4111339, 4626275412)
     const tokens = String(text || "")
       .replace(/\r/g, "")
       .split(/\s+/)
@@ -278,7 +308,6 @@
     const keep = [];
     for(const t of tokens){
       const s = t.replace(/,/g, ""); // quita separadores de miles
-
       const m = s.match(/^(\d{1,6})(?:\.(\d{1,6}))?$/);
       if(!m) continue;
 
@@ -291,104 +320,77 @@
   }
 
   function getTicketTextForParsing(){
-    // Para parsear: OCR completo si existe; si no, usa lo que el usuario pegó
     return (rawOcrText && rawOcrText.trim()) ? rawOcrText : ($("ticketText").value || "");
   }
 
-  /* ===== PARSER (soporta: con 'kg' y tu POS Cantidad/P.U/Importe) ===== */
+  /* ===== PARSER NUEVO (solo tus productos + kg <= 60, cajas por 27.22) ===== */
   function parseTicketText(raw){
     const text = String(raw || "").replace(/\r/g, "");
     const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
 
-    // Reglas de "cajas" a kg fijo (ajusta si aplica)
-    const FIXED_KG = [
-      { match: /CAJA\s+CANADIAN/i, kg_per_unit: 27.22 },
-      { match: /CAJA\s+MENUDO\s+NATIONAL/i, kg_per_unit: 27.22 },
-      { match: /CAJA\s+WASHINGTON/i, kg_per_unit: 27.22 },
-    ];
-
     const isNumericCode = (s)=>/^\d{6,}$/.test(String(s||"").replace(/\s/g,""));
-    const parseMoneyOrQty = (s)=>{
+    const parseNum = (s)=>{
       const v = Number(String(s).replace(/,/g,"").trim());
       return Number.isFinite(v) ? v : NaN;
     };
 
-    // A) Si un día tu ticket trae "kg"
-    const itemsKgText = [];
-    const kgRegex = /(\d+(?:[.,]\d{1,3})?)\s*(kg|kgr|kilo|kilos)\b/i;
-    for(const line of lines){
-      const m = line.match(kgRegex);
-      if(!m) continue;
-      const kg = Number(String(m[1]).replace(",", "."));
-      if(!Number.isFinite(kg) || kg<=0) continue;
-      let producto = line.replace(kgRegex, " ").replace(/[:\-]+$/g, "").trim();
-      if(/\btotal\b/i.test(producto) && producto.length <= 12) continue;
-      if(producto) itemsKgText.push({ producto, kg });
-    }
-    if(itemsKgText.length){
-      const map = new Map();
-      for(const it of itemsKgText){
-        const key = it.producto.toLowerCase();
-        map.set(key, (map.get(key)||0) + it.kg);
-      }
-      return [...map.entries()].map(([k,kg])=>({
-        producto: k.charAt(0).toUpperCase()+k.slice(1),
-        kg: Number(kg)
-      })).sort((a,b)=>b.kg-a.kg);
-    }
+    const out = [];
 
-    // B) Formato POS como tu foto:
-    // PRODUCTO
-    // CODIGO
-    // CANTIDAD  PU  IMPORTE
-    const rawItems = [];
+    // B) Formato POS de tu ticket: PRODUCTO / CODIGO / CANTIDAD PU IMPORTE
     for(let i=0;i<lines.length;i++){
       const productoLine = lines[i];
       const codeLine = lines[i+1] || "";
       const numsLine = lines[i+2] || "";
 
-      if(isNumericCode(codeLine)){
-        const parts = numsLine.split(/\s+/).filter(Boolean);
-        const nums = parts.map(parseMoneyOrQty).filter(n=>Number.isFinite(n));
-        if(nums.length >= 3){
-          const cantidad = nums[0];
-          if(Number.isFinite(cantidad) && cantidad > 0){
-            rawItems.push({ producto: productoLine, cantidad });
-            i = i + 2;
-          }
-        }
-      }
-    }
+      if(!isNumericCode(codeLine)) continue;
 
-    // Convertir cantidad->kg
-    const out = [];
-    for(const it of rawItems){
-      let producto = normalizeProductName(it.producto);
-      let kg = null;
+      const mapped = mapToCatalogProduct(productoLine);
+      if(!mapped){ i = i + 2; continue; }
 
-      const fixed = FIXED_KG.find(r=>r.match.test(producto));
-      if(fixed){
-        kg = it.cantidad * fixed.kg_per_unit;
+      const parts = numsLine.split(/\s+/).filter(Boolean);
+      const nums = parts.map(parseNum).filter(n=>Number.isFinite(n));
+      if(nums.length < 1){ i = i + 2; continue; }
+
+      const cantidad = nums[0];
+      if(!Number.isFinite(cantidad) || cantidad <= 0){ i = i + 2; continue; }
+
+      if(isBoxProduct(mapped)){
+        if(cantidad > MAX_BOXES_ALLOWED){ i = i + 2; continue; }
+        out.push({ producto: mapped, kg: cantidad * KG_PER_BOX });
       }else{
-        if(/^CAJA\b/i.test(producto)) continue; // si no sabemos kg por caja, no inventamos
-        kg = it.cantidad; // para BOFE/LIBRO/PATA... la cantidad es kg
+        if(cantidad > MAX_KG_LINE){ i = i + 2; continue; }
+        out.push({ producto: mapped, kg: cantidad });
       }
 
-      if(Number.isFinite(kg) && kg > 0){
-        out.push({ producto, kg: Number(kg) });
-      }
+      i = i + 2;
     }
 
-    // agrupar por producto
+    // A) Rescate si aparece “xx kg” en texto suelto
+    const kgRegex = /(\d+(?:[.,]\d{1,3})?)\s*(kg|kgr|kilo|kilos)\b/i;
+    for(const line of lines){
+      const m = line.match(kgRegex);
+      if(!m) continue;
+
+      const kg = Number(String(m[1]).replace(",", "."));
+      if(!Number.isFinite(kg) || kg <= 0 || kg > MAX_KG_LINE) continue;
+
+      const prodTxt = normalizeLine(line.replace(kgRegex, " "));
+      const mapped = mapToCatalogProduct(prodTxt);
+      if(!mapped) continue;
+
+      out.push({ producto: mapped, kg });
+    }
+
+    // Agrupar por producto
     const map = new Map();
     for(const it of out){
       const key = it.producto.toLowerCase();
       map.set(key, (map.get(key)||0) + it.kg);
     }
-    return [...map.entries()].map(([k,kg])=>({
-      producto: k.charAt(0).toUpperCase()+k.slice(1),
-      kg: Number(kg)
-    })).sort((a,b)=>b.kg-a.kg);
+
+    return [...map.entries()]
+      .map(([k,kg])=>({ producto: k.charAt(0).toUpperCase()+k.slice(1), kg: Number(kg) }))
+      .sort((a,b)=>b.kg-a.kg);
   }
 
   function calcTotalKg(items){
@@ -441,7 +443,7 @@
           const v = toNum(inp.value);
           ticketItems[idx].kg = Number.isFinite(v) ? v : 0;
         }else{
-          ticketItems[idx].producto = normalizeProductName(inp.value);
+          ticketItems[idx].producto = normalizeLine(inp.value);
         }
         $("kgAuto").value = calcTotalKg(ticketItems).toFixed(2);
       });
@@ -524,7 +526,7 @@
     renderDetalleEditable();
 
     if(!items.length){
-      setLog("err", "No pude detectar productos. Tip: escanea con buena luz o pega el texto completo.");
+      setLog("err", "No pude detectar productos. Tip: escanea con buena luz y que se vean las líneas del producto.");
     }else{
       setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
     }
@@ -552,7 +554,7 @@
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
     const items = (ticketItems || [])
-      .map(it=>({ producto: normalizeProductName(it.producto), kg: Number(it.kg) }))
+      .map(it=>({ producto: normalizeLine(it.producto), kg: Number(it.kg) }))
       .filter(it=>it.producto && Number.isFinite(it.kg) && it.kg > 0);
 
     const ventaInsert = {
@@ -669,7 +671,10 @@ Venta ID: ${venta.id}`
     $("ticketText").value = filteredOcrView || cleaned;
 
     setOcrUI("OCR terminado ✅ (vista filtrada: solo números chicos)", 1);
-    setLog("ok", "OCR listo. La caja muestra números chicos, pero el sistema guardó el texto completo para procesar.");
+    setLog("ok", "OCR listo. Ahora procesa el ticket (o se procesará automático).");
+
+    // Auto-procesar al terminar OCR (opcional, aquí ya activado)
+    try { procesarTicket(); } catch(e){ console.error(e); }
   }
 
   async function runOCRFromFile(file){
@@ -752,7 +757,6 @@ Venta ID: ${venta.id}`
   function diag(){
     const d = [];
     d.push("Supabase cargado: " + (!!sb));
-    d.push("QRCode cargado: " + (typeof QRCode !== "undefined"));
     d.push("OCR cargado: " + (typeof Tesseract !== "undefined"));
     d.push("Base URL del sitio: " + siteBaseUrl());
     d.push("HTTPS recomendado para cámara.");
