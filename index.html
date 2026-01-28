@@ -63,28 +63,18 @@
     <div class="grid">
       <div>
         <label>Teléfono (10 dígitos)</label>
-
-        <!-- ✅ AÑADIDO: list + datalist (NO rompe nada) -->
-        <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" list="telList" autocomplete="off" />
-        <datalist id="telList"></datalist>
-
+        <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" />
         <div class="muted" style="margin-top:6px">Tip: puedes pegar con espacios, yo lo limpio.</div>
-        <!-- ✅ AÑADIDO: nota de uso -->
-        <div class="mini">Tip extra: pica el campo y te mostrará teléfonos guardados. Puedes escribir y te filtra.</div>
       </div>
       <div>
         <label>Nombre (opcional)</label>
         <input id="nombre" placeholder="Ej. Taquería Don Chuy" />
-        <div class="mini">Se llena automático si seleccionas un teléfono existente.</div>
       </div>
     </div>
 
     <div class="row">
       <button id="btnBuscar">Buscar cliente</button>
       <button id="btnCrear" class="secondary">Crear / Actualizar</button>
-
-      <!-- ✅ AÑADIDO: recargar teléfonos -->
-      <button id="btnRecargarTelefonos" class="ghost" type="button" style="width:auto">↻ Recargar teléfonos</button>
     </div>
 
     <div id="msg" class="muted" style="margin-top:10px"></div>
@@ -192,9 +182,6 @@
   // OCR: guardamos el texto COMPLETO (para parsear) y una vista filtrada (para mostrar)
   let rawOcrText = "";
   let filteredOcrView = "";
-
-  /* ✅ AÑADIDO: cache de teléfonos para autocompletar */
-  let clientesCache = []; // [{id, telefono, nombre, puntos, saldo_kg}]
 
   /* ===== Catálogo de productos (tu lista) + alias ===== */
   const PRODUCT_CATALOG = [
@@ -310,43 +297,6 @@
 
   function isBoxProduct(productKey){
     return /^Caja\b/i.test(productKey) || /Washington|National|Canadian/i.test(productKey);
-  }
-
-  /* ✅ AÑADIDO: cargar teléfonos y llenar datalist */
-  async function cargarTelefonosGuardados(){
-    if(!sb) return;
-
-    const { data, error } = await sb
-      .from(T_CLIENTES)
-      .select("id,telefono,nombre,puntos,saldo_kg")
-      .order("telefono", { ascending: true })
-      .limit(2000);
-
-    if(error){
-      console.error(error);
-      // no detiene el sistema, solo avisa
-      return;
-    }
-
-    clientesCache = data || [];
-    const dl = $("telList");
-    if(!dl) return;
-
-    dl.innerHTML = clientesCache.map(c=>{
-      const label = `${c.telefono}${c.nombre ? " — " + c.nombre : ""}`;
-      return `<option value="${escapeHtml(c.telefono)}" label="${escapeHtml(label)}"></option>`;
-    }).join("");
-  }
-
-  /* ✅ AÑADIDO: si eliges un teléfono de la lista, autollenar nombre */
-  function autollenarNombreSiExiste(){
-    const tel10 = cleanPhone($("tel").value);
-    if(tel10.length !== 10) return;
-
-    const found = (clientesCache || []).find(c => String(c.telefono || "") === tel10);
-    if(found){
-      $("nombre").value = found.nombre || $("nombre").value || "";
-    }
   }
 
   /* ===== VISTA FILTRADA (solo números chicos) ===== */
@@ -563,9 +513,6 @@
     await renderQR();
 
     setMsg("ok", "Cliente creado/actualizado y QR generado.");
-
-    /* ✅ AÑADIDO: refrescar lista tras crear */
-    cargarTelefonosGuardados();
   }
 
   /* ===== Procesar ticket ===== */
@@ -852,24 +799,6 @@ Venta ID: ${venta.id}`
     catch(err){ console.error(err); setMsg("err", formatErr(err)); }
   });
 
-  /* ✅ AÑADIDO: recargar teléfonos manual */
-  $("btnRecargarTelefonos").addEventListener("click", async ()=>{
-    setMsg("muted","Recargando teléfonos...");
-    try{
-      await cargarTelefonosGuardados();
-      setMsg("ok","Teléfonos recargados ✅");
-    }catch(err){
-      console.error(err);
-      setMsg("err", "No pude recargar teléfonos: " + formatErr(err));
-    }
-  });
-
-  /* ✅ AÑADIDO: al cambiar teléfono, autollenar nombre si existe */
-  $("tel").addEventListener("input", ()=>{
-    // no dispara supabase, solo autollenado local
-    autollenarNombreSiExiste();
-  });
-
   $("btnProcesar").addEventListener("click", ()=>{
     try{ procesarTicket(); }
     catch(err){ console.error(err); setLog("err", formatErr(err)); }
@@ -929,9 +858,6 @@ Venta ID: ${venta.id}`
   renderStatus();
   renderDetalleEditable();
   cargarClientePorQuery();
-
-  /* ✅ AÑADIDO: cargar teléfonos al iniciar (NO rompe nada) */
-  cargarTelefonosGuardados();
 </script>
 </body>
 </html>
