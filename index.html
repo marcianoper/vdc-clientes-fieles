@@ -35,7 +35,6 @@
     .mini{font-size:12px;color:var(--muted)}
     .right{text-align:right}
 
-    /* Cámara / OCR */
     .camWrap{display:grid;gap:10px;margin-top:10px}
     video{width:100%;border-radius:12px;border:1px solid #e5e7eb;background:#000;max-height:360px}
     canvas{display:none}
@@ -43,11 +42,8 @@
     .progressBar > div{height:100%;width:0%;background:var(--brand)}
   </style>
 
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- QR -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <!-- OCR (Tesseract.js) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 
@@ -58,28 +54,35 @@
 
 <main>
 
+  <!-- =========================
+       1) CLIENTE (INVERTIDO)
+       - Nombre: obligatorio + muestra nombres guardados
+       - Teléfono: se autollena al elegir nombre (editable)
+       ========================= -->
   <section class="card">
-    <h2 style="margin:0 0 6px">1) Buscar / Crear cliente (solo teléfono)</h2>
+    <h2 style="margin:0 0 6px">1) Buscar / Crear cliente</h2>
+
     <div class="grid">
       <div>
-        <label>Teléfono (10 dígitos)</label>
-        <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" list="telList" />
-        <datalist id="telList"></datalist>
+        <label>Nombre (obligatorio)</label>
+        <input id="nombre" placeholder="Ej. Taquería Don Chuy" list="nombreList" />
+        <datalist id="nombreList"></datalist>
         <div class="muted" style="margin-top:6px">
-          Tip: pica el campo y te mostrará teléfonos guardados. Puedes escribir y te filtra.
+          Tip: pica el campo y te mostrará nombres guardados. Puedes escribir y te filtra.
         </div>
       </div>
+
       <div>
-        <label>Nombre (opcional)</label>
-        <input id="nombre" placeholder="Ej. Taquería Don Chuy" />
-        <div class="mini">Se llena automático si seleccionas un teléfono existente.</div>
+        <label>Teléfono (10 dígitos)</label>
+        <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" />
+        <div class="mini">Se llena automático si seleccionas un nombre existente.</div>
       </div>
     </div>
 
     <div class="row">
       <button id="btnBuscar">Buscar cliente</button>
       <button id="btnCrear" class="secondary">Crear / Actualizar</button>
-      <button id="btnReloadTels" class="ghost" type="button">↻ Recargar teléfonos</button>
+      <button id="btnReloadNames" class="ghost" type="button">↻ Recargar nombres</button>
     </div>
 
     <div id="msg" class="muted" style="margin-top:10px"></div>
@@ -199,7 +202,7 @@
 </main>
 
 <script>
-  /* ===== CONFIG (tus credenciales) ===== */
+  /* ===== CONFIG ===== */
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
 
@@ -220,20 +223,12 @@
   let rawOcrText = "";
   let filteredOcrView = "";
 
-  /* ===================================================================================
-     ✅ CATÁLOGO COMPLETO (NO CAJAS)
-     - Se agregaron TODOS los productos que pueden aparecer en ticket
-     - EXCLUIMOS cualquier línea que sea "CAJA ..." (no se detecta ni se suma)
-  =================================================================================== */
-
+  /* ===== Catálogo (NO CAJAS) ===== */
   const PRODUCT_CATALOG = [
-    // Cabezas (más específicas primero)
     { key: "Cabeza Congelada",    aliases: [/^CABEZA\s+CONGELAD/i, /^CABEZA\s+CONGELADA\b/i] },
     { key: "Cabeza de Rastro",    aliases: [/^CABEZA\s+DE\s+RASTRO\b/i, /^CABEZA\s+RASTRO\b/i] },
     { key: "Cabeza sin lengua",   aliases: [/^CABEZA\s+SIN\s+LENGUA\b/i, /^CABEZA\s+S\/\s*LENGUA\b/i] },
     { key: "Cabeza de res",       aliases: [/^CABEZA\s+DE\s+RES\b/i, /^CABEZA\b/i, /^CABEZ[AÃ]\b/i] },
-
-    // Vísceras / piezas
     { key: "Corazon",             aliases: [/^CORAZON\b/i, /^CORAZ[OÓ]N\b/i] },
     { key: "Higado",              aliases: [/^HIGADO\b/i, /^H[IÍ]GADO\b/i] },
     { key: "Lengua",              aliases: [/^LENGUA\b/i] },
@@ -249,12 +244,9 @@
     { key: "Tripa",               aliases: [/^TRIPA\b/i] },
     { key: "Tripa de rastro",      aliases: [/^TRIPA\s+DE\s+RASTRO\b/i, /^TRIPA\s+RASTRO\b/i] },
     { key: "Tripa gorda",          aliases: [/^TRIPA\s+GORDA\b/i] },
-
-    // Producto libre (si tu ticket lo imprime así)
     { key: "Producto Libre",       aliases: [/^PRODUCTO\s+LIBRE\b/i] },
   ];
 
-  // Seguridad de lectura
   const MAX_KG_LINE = 250.00;
 
   /* ===== Helpers ===== */
@@ -276,6 +268,24 @@
 
   function cleanPhone(s){
     return String(s || "").replace(/\D/g, "").slice(-10);
+  }
+
+  function normalizeLine(s){
+    return String(s||"")
+      .replace(/[•·]/g," ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function stripDiacritics(s){
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function isCajaLine(line){
+    const u = stripDiacritics(String(line||"").toUpperCase());
+    return u.startsWith("CAJA ");
   }
 
   function renderStatus(){
@@ -331,30 +341,8 @@
       .replaceAll("'","&#039;");
   }
 
-  function normalizeLine(s){
-    return String(s||"")
-      .replace(/[•·]/g," ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  // Quita acentos para comparar mejor (ó -> o, ñ -> n, etc.)
-  function stripDiacritics(s){
-    return String(s || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  }
-
-  // ✅ Bloquea cajas: cualquier línea que empiece con "CAJA"
-  function isCajaLine(line){
-    const u = stripDiacritics(String(line||"").toUpperCase());
-    return u.startsWith("CAJA ");
-  }
-
   function mapToCatalogProduct(line){
     const cleaned = stripDiacritics(normalizeLine(line)).toUpperCase();
-
-    // 👇 si es CAJA..., NO la detectamos (tal como pediste)
     if(isCajaLine(cleaned)) return null;
 
     for(const p of PRODUCT_CATALOG){
@@ -365,7 +353,6 @@
     return null;
   }
 
-  /* ===== VISTA FILTRADA (solo números chicos) ===== */
   function filterSmallNumbersOnly(text){
     const tokens = String(text || "")
       .replace(/\r/g, "")
@@ -378,7 +365,7 @@
       const m = s.match(/^(\d{1,6})(?:\.(\d{1,6}))?$/);
       if(!m) continue;
       const intPart = m[1];
-      if(intPart.length > 2) continue; // solo 2 dígitos o menos
+      if(intPart.length > 2) continue;
       keep.push(s);
     }
     return keep.join("\n");
@@ -388,7 +375,6 @@
     return (rawOcrText && rawOcrText.trim()) ? rawOcrText : ($("ticketText").value || "");
   }
 
-  /* ===== PARSER (producto en una línea, números en la siguiente) ===== */
   function parseTicketText(raw){
     const text = String(raw || "").replace(/\r/g, "");
     const lines = text
@@ -409,7 +395,6 @@
     }
 
     function cleanLineForProduct(line){
-      // deja letras y espacios (y soporta Ñ/acentos, luego se normaliza)
       return normalizeLine(line)
         .replace(/[^\p{L}\s]/gu, " ")
         .replace(/\s+/g, " ")
@@ -418,8 +403,8 @@
 
     function extractNumbers(line){
       let s = String(line || "").trim();
-      s = s.replace(/(\d),(\d{2})(\b)/g, "$1.$2");     // 50,00 -> 50.00
-      s = s.replace(/(\d),(?=\d{3}\b)/g, "");          // 3,150.00 -> 3150.00
+      s = s.replace(/(\d),(\d{2})(\b)/g, "$1.$2");
+      s = s.replace(/(\d),(?=\d{3}\b)/g, "");
       s = s.replace(/[^\d.\s]/g, " ");
       return s.split(/\s+/).filter(Boolean)
         .map(x => Number(x))
@@ -430,10 +415,7 @@
       const cleaned = cleanLineForProduct(line);
       if(!cleaned) return null;
       if(isStopLine(cleaned)) return null;
-
-      // 👇 si la línea es "CAJA..." se ignora
       if(isCajaLine(cleaned)) return null;
-
       return mapToCatalogProduct(cleaned);
     }
 
@@ -448,13 +430,12 @@
       const nums = nums1.length ? nums1 : nums2;
       if(!nums.length) continue;
 
-      const qty = nums[0]; // Cantidad (kg)
+      const qty = nums[0];
       if(!Number.isFinite(qty) || qty <= 0 || qty > MAX_KG_LINE) continue;
 
       out.push({ producto: prod, kg: qty });
     }
 
-    // Agrupa por producto
     const map = new Map();
     for(const it of out){
       const key = it.producto.toLowerCase();
@@ -540,22 +521,98 @@
     }
   }
 
-  /* ===== Acciones Cliente ===== */
-  async function buscarClientePorTelefono(){
-    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
+  /* =========================================================
+     ✅ NUEVO: LISTA DE NOMBRES (datalist) + AUTOLLENADO TEL
+     - Al elegir nombre existente => se llena teléfono y se carga cliente
+     - Botón recargar nombres
+  ========================================================= */
+  let clientsCache = [];
 
-    const tel = cleanPhone($("tel").value);
-    if(tel.length !== 10) throw new Error("Teléfono inválido (deben ser 10 dígitos).");
+  async function loadNameDatalist(){
+    if(!sb) return;
+    const dl = $("nombreList");
+    if(!dl) return;
 
+    // Trae clientes (si son demasiados, baja limit o paginación)
     const { data, error } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
-      .eq("telefono", tel)
+      .order("nombre", { ascending: true })
+      .limit(5000);
+
+    if(error){
+      console.error(error);
+      return;
+    }
+
+    clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
+
+    // Para evitar duplicados por mismo nombre, lo dejamos tal cual pero con label
+    dl.innerHTML = "";
+    for(const c of clientsCache){
+      const opt = document.createElement("option");
+      opt.value = c.nombre;
+      opt.label = `${c.nombre} — ${c.telefono || ""}`;
+      dl.appendChild(opt);
+    }
+  }
+
+  function findClientByName(name){
+    const n = normalizeLine(name).toLowerCase();
+    return clientsCache.find(c => normalizeLine(c.nombre || "").toLowerCase() === n) || null;
+  }
+
+  // Cuando el usuario escribe/selecciona un nombre
+  $("nombre").addEventListener("input", async ()=>{
+    const c = findClientByName($("nombre").value);
+    if(c){
+      $("tel").value = c.telefono || "";
+      currentClient = c;
+      renderStatus();
+      await renderQR();
+      setMsg("ok", "Cliente cargado por nombre.");
+    }
+  });
+
+  $("btnReloadNames").addEventListener("click", async ()=>{
+    setMsg("muted","Cargando nombres...");
+    await loadNameDatalist();
+    setMsg("ok","Nombres recargados ✅");
+  });
+
+  /* ===== Acciones Cliente (AJUSTADAS A NOMBRE OBLIGATORIO) ===== */
+  async function buscarClientePorNombreOTel(){
+    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
+
+    const nombre = normalizeLine($("nombre").value);
+    const tel = cleanPhone($("tel").value);
+
+    if(!nombre) throw new Error("Nombre es obligatorio.");
+
+    // 1) Si el nombre existe en cache, úsalo directo
+    const cached = findClientByName(nombre);
+    if(cached){
+      currentClient = cached;
+      $("tel").value = cached.telefono || tel;
+      renderStatus();
+      await renderQR();
+      setMsg("ok","Cliente encontrado (por nombre).");
+      return;
+    }
+
+    // 2) Busca por nombre exacto en BD
+    const { data, error } = await sb
+      .from(T_CLIENTES)
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .ilike("nombre", nombre)  // si quieres exacto, cambia a .eq("nombre", nombre)
       .maybeSingle();
 
     if(error) throw error;
 
     currentClient = data || null;
+    if(data){
+      $("tel").value = data.telefono || tel;
+    }
     renderStatus();
     await renderQR();
 
@@ -565,19 +622,33 @@
   async function crearOActualizarCliente(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
 
+    const nombre = normalizeLine($("nombre").value);
     const tel = cleanPhone($("tel").value);
-    const nombre = ($("nombre").value || "").trim() || null;
-    if(tel.length !== 10) throw new Error("Teléfono inválido (deben ser 10 dígitos).");
 
-    const payload = { telefono: tel };
-    if(nombre) payload.nombre = nombre;
+    if(!nombre) throw new Error("Nombre es obligatorio.");
+    if(tel && tel.length !== 10) throw new Error("Teléfono inválido (si lo pones debe ser de 10 dígitos).");
 
-    const { data, error } = await sb
-      .from(T_CLIENTES)
-      .upsert(payload, { onConflict: "telefono" })
-      .select("id,telefono,nombre,puntos,saldo_kg")
-      .single();
+    const payload = { nombre };
+    if(tel) payload.telefono = tel;
 
+    // Si tú tienes UNIQUE por teléfono, ok. Si NO, conviene UNIQUE por nombre o un campo "telefono" único.
+    // Aquí hacemos upsert por teléfono si existe; si no hay teléfono, hacemos insert normal.
+    let res;
+    if(tel){
+      res = await sb
+        .from(T_CLIENTES)
+        .upsert(payload, { onConflict: "telefono" })
+        .select("id,telefono,nombre,puntos,saldo_kg")
+        .single();
+    }else{
+      res = await sb
+        .from(T_CLIENTES)
+        .insert(payload)
+        .select("id,telefono,nombre,puntos,saldo_kg")
+        .single();
+    }
+
+    const { data, error } = res;
     if(error) throw error;
 
     currentClient = data;
@@ -585,35 +656,8 @@
     await renderQR();
 
     setMsg("ok", "Cliente creado/actualizado y QR generado.");
-    await loadPhoneDatalist();
-  }
 
-  /* ===== Procesar ticket ===== */
-  function procesarTicket(){
-    const raw = getTicketTextForParsing();
-    const items = parseTicketText(raw);
-
-    ticketItems = items;
-    const total = calcTotalKg(ticketItems);
-
-    $("kgAuto").value = Number.isFinite(total) ? total.toFixed(2) : "";
-    renderDetalleEditable();
-
-    if(!items.length){
-      setLog("err", "No pude detectar productos. Tip: escanea con buena luz y que se vea el texto del producto.");
-    }else{
-      setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
-    }
-  }
-
-  function limpiarTicket(){
-    $("ticketText").value = "";
-    $("kgAuto").value = "";
-    ticketItems = [];
-    rawOcrText = "";
-    filteredOcrView = "";
-    renderDetalleEditable();
-    setLog("muted","Listo.");
+    await loadNameDatalist();
   }
 
   /* ===== Guardar venta + detalle + puntos ===== */
@@ -655,10 +699,7 @@
         kg: it.kg
       }));
 
-      const { error: e2 } = await sb
-        .from(T_ITEMS)
-        .insert(payloadItems);
-
+      const { error: e2 } = await sb.from(T_ITEMS).insert(payloadItems);
       if(e2) throw e2;
     }
 
@@ -705,7 +746,7 @@ Venta ID: ${venta.id}`
     limpiarTicket();
   }
 
-  /* ===== OCR ===== */
+  /* ===== OCR + Cámara ===== */
   function setOcrUI(status, progress){
     const st = $("ocrStatus");
     if(st) st.textContent = status || "—";
@@ -822,98 +863,35 @@ Venta ID: ${venta.id}`
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   }
 
-  /* ===== Diagnóstico + QR load ===== */
-  function diag(){
-    const d = [];
-    d.push("Supabase cargado: " + (!!sb));
-    d.push("OCR cargado: " + (typeof Tesseract !== "undefined"));
-    d.push("Base URL del sitio: " + siteBaseUrl());
-    d.push("HTTPS recomendado para cámara.");
-    $("diag").textContent = d.join("\n");
-  }
+  /* ===== Procesar ticket ===== */
+  function procesarTicket(){
+    const raw = getTicketTextForParsing();
+    const items = parseTicketText(raw);
 
-  async function cargarClientePorQuery(){
-    const u = new URL(window.location.href);
-    const cid = u.searchParams.get("cid");
-    if(!cid || !sb) return;
+    ticketItems = items;
+    const total = calcTotalKg(ticketItems);
 
-    const { data, error } = await sb
-      .from(T_CLIENTES)
-      .select("id,telefono,nombre,puntos,saldo_kg")
-      .eq("id", cid)
-      .maybeSingle();
+    $("kgAuto").value = Number.isFinite(total) ? total.toFixed(2) : "";
+    renderDetalleEditable();
 
-    if(error){
-      console.error(error);
-      setMsg("err", "Error cargando cliente por QR: " + formatErr(error));
-      return;
-    }
-    if(!data){
-      setMsg("err", "Este QR no encontró cliente (cid no existe).");
-      return;
-    }
-    currentClient = data;
-    renderStatus();
-    await renderQR();
-    setMsg("ok", "Cliente cargado desde QR.");
-  }
-
-  /* ===== Teléfonos guardados (datalist) ===== */
-  let phonesCache = [];
-
-  async function loadPhoneDatalist(){
-    if(!sb) return;
-    const dl = $("telList");
-    if(!dl) return;
-
-    const { data, error } = await sb
-      .from(T_CLIENTES)
-      .select("id,telefono,nombre,puntos,saldo_kg")
-      .order("telefono", { ascending: true })
-      .limit(5000);
-
-    if(error){
-      console.error(error);
-      return;
-    }
-
-    phonesCache = data || [];
-    dl.innerHTML = "";
-
-    for(const c of phonesCache){
-      const opt = document.createElement("option");
-      opt.value = c.telefono || "";
-      opt.label = (c.nombre ? `${c.telefono} — ${c.nombre}` : c.telefono);
-      dl.appendChild(opt);
+    if(!items.length){
+      setLog("err", "No pude detectar productos. Tip: escanea con buena luz y que se vea el texto del producto.");
+    }else{
+      setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
     }
   }
 
-  function findClientInCacheByPhone(tel){
-    const t = cleanPhone(tel);
-    return phonesCache.find(x => cleanPhone(x.telefono) === t) || null;
+  function limpiarTicket(){
+    $("ticketText").value = "";
+    $("kgAuto").value = "";
+    ticketItems = [];
+    rawOcrText = "";
+    filteredOcrView = "";
+    renderDetalleEditable();
+    setLog("muted","Listo.");
   }
 
-  $("tel").addEventListener("input", async ()=>{
-    const t = cleanPhone($("tel").value);
-    if(t.length !== 10) return;
-
-    const c = findClientInCacheByPhone(t);
-    if(c){
-      $("nombre").value = c.nombre || "";
-      currentClient = c;
-      renderStatus();
-      await renderQR();
-      setMsg("ok", "Cliente cargado desde lista.");
-    }
-  });
-
-  $("btnReloadTels").addEventListener("click", async ()=>{
-    setMsg("muted","Cargando teléfonos...");
-    await loadPhoneDatalist();
-    setMsg("ok","Teléfonos recargados ✅");
-  });
-
-  /* ===== HISTORIAL ===== */
+  /* ===== Historial ===== */
   function setDateInputsDefault(){
     const to = new Date();
     const from = new Date();
@@ -1062,10 +1040,38 @@ Venta ID: ${venta.id}`
     $("histFrom").value = from.toISOString().slice(0,10);
   }
 
+  async function cargarClientePorQuery(){
+    const u = new URL(window.location.href);
+    const cid = u.searchParams.get("cid");
+    if(!cid || !sb) return;
+
+    const { data, error } = await sb
+      .from(T_CLIENTES)
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .eq("id", cid)
+      .maybeSingle();
+
+    if(error){
+      console.error(error);
+      setMsg("err", "Error cargando cliente por QR: " + formatErr(error));
+      return;
+    }
+    if(!data){
+      setMsg("err", "Este QR no encontró cliente (cid no existe).");
+      return;
+    }
+    currentClient = data;
+    $("nombre").value = data.nombre || "";
+    $("tel").value = data.telefono || "";
+    renderStatus();
+    await renderQR();
+    setMsg("ok", "Cliente cargado desde QR.");
+  }
+
   /* ===== Listeners ===== */
   $("btnBuscar").addEventListener("click", async ()=>{
     setMsg("muted","Buscando...");
-    try{ await buscarClientePorTelefono(); }
+    try{ await buscarClientePorNombreOTel(); }
     catch(err){ console.error(err); setMsg("err", formatErr(err)); }
   });
 
@@ -1163,7 +1169,7 @@ Venta ID: ${venta.id}`
     renderStatus();
     renderDetalleEditable();
     cargarClientePorQuery();
-    loadPhoneDatalist();
+    loadNameDatalist();
     setDateInputsDefault();
   })();
 </script>
