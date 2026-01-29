@@ -54,11 +54,6 @@
 
 <main>
 
-  <!-- =========================
-       1) CLIENTE (INVERTIDO)
-       - Nombre: obligatorio + muestra nombres guardados
-       - Teléfono: se autollena al elegir nombre (editable)
-       ========================= -->
   <section class="card">
     <h2 style="margin:0 0 6px">1) Buscar / Crear cliente</h2>
 
@@ -223,8 +218,22 @@
   let rawOcrText = "";
   let filteredOcrView = "";
 
-  /* ===== Catálogo (NO CAJAS) ===== */
+  /* =========================================================
+     ✅ CAJAS: pesos fijos para convertir “cantidad de cajas” → kg
+     (ajusta si alguna caja pesa distinto)
+  ========================================================= */
+  const BOX_WEIGHT_KG = {
+    "Caja Washington": 27.22,
+    "Caja Menudo National": 27.22,
+    "Caja Menudo Swift": 27.22,
+    "Caja Excel": 27.22,
+    "Caja menudo vísceras": 27.22,
+    "Caja de tripa": 27.22
+  };
+
+  /* ===== Catálogo (INCLUYE CAJAS AHORA) ===== */
   const PRODUCT_CATALOG = [
+    // NO CAJAS
     { key: "Cabeza Congelada",    aliases: [/^CABEZA\s+CONGELAD/i, /^CABEZA\s+CONGELADA\b/i] },
     { key: "Cabeza de Rastro",    aliases: [/^CABEZA\s+DE\s+RASTRO\b/i, /^CABEZA\s+RASTRO\b/i] },
     { key: "Cabeza sin lengua",   aliases: [/^CABEZA\s+SIN\s+LENGUA\b/i, /^CABEZA\s+S\/\s*LENGUA\b/i] },
@@ -242,18 +251,22 @@
     { key: "SEBO",                aliases: [/^SEBO\b/i] },
     { key: "Teleco",              aliases: [/^TELECO\b/i] },
     { key: "Tripa",               aliases: [/^TRIPA\b/i] },
-    { key: "Tripa de rastro",      aliases: [/^TRIPA\s+DE\s+RASTRO\b/i, /^TRIPA\s+RASTRO\b/i] },
-    { key: "Tripa Gorda",          aliases: [/^TRIPA\s+GORDA\b/i] },
-    { key: "Producto Libre",       aliases: [/^PRODUCTO\s+LIBRE\b/i] },
-    { key: "Bofe",                 aliases: [/^BOFE\b/i] },
-    { key: "Canadian",             aliases: [/^CANADIAN\b/i] },
-    { key: "Azul",                 aliases: [/^AZUL\b/i] },
-    { key: "Pellejo",              aliases: [/^PELLEJO\b/i] },
-    { key: "Caja",                aliases: [/^CAJA\b/i] }
-    
+    { key: "Tripa de rastro",     aliases: [/^TRIPA\s+DE\s+RASTRO\b/i, /^TRIPA\s+RASTRO\b/i] },
+    { key: "Tripa Gorda",         aliases: [/^TRIPA\s+GORDA\b/i] },
+    { key: "Producto Libre",      aliases: [/^PRODUCTO\s+LIBRE\b/i] },
+    { key: "Bofe",                aliases: [/^BOFE\b/i] },
+
+    // ✅ CAJAS (según tu lista)
+    { key: "Caja Washington",       aliases: [/^CAJA\s+WASHINGTON\b/i, /^CAJA\s+WASHINGT0N\b/i] },
+    { key: "Caja Menudo National",  aliases: [/^CAJA\s+MENUDO\s+NATIONAL\b/i, /^CAJA\s+NATIONAL\b/i] },
+    { key: "Caja Menudo Swift",     aliases: [/^CAJA\s+MENUDO\s+SWIFT\b/i, /^CAJA\s+SWIFT\b/i] },
+    { key: "Caja Excel",            aliases: [/^CAJA\s+EXCEL\b/i] },
+    { key: "Caja menudo vísceras",  aliases: [/^CAJA\s+MENUDO\s+V[ÍI]SCERAS\b/i, /^CAJA\s+MENUDO\s+VISCERAS\b/i] },
+    { key: "Caja de tripa",         aliases: [/^CAJA\s+DE\s+TRIPA\b/i, /^CAJA\s+TRIPA\b/i] },
   ];
 
-  const MAX_KG_LINE = 250.00;
+  const MAX_KG_LINE = 250.00; // para líneas en kg (no cajas)
+  const MAX_BOX_QTY = 200;    // máximo de cajas razonable en un ticket
 
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
@@ -287,7 +300,6 @@
     return String(s || "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
-  }
   }
 
   function renderStatus(){
@@ -375,6 +387,13 @@
     return (rawOcrText && rawOcrText.trim()) ? rawOcrText : ($("ticketText").value || "");
   }
 
+  /* =========================================================
+     ✅ PARSER MEJORADO PARA CAJAS
+     - Detecta producto (incluye CAJA ...)
+     - Lee cantidad en la(s) línea(s) de abajo
+     - Si es caja y cantidad parece “# de cajas” => multiplica por peso fijo
+     - Si parece kg, lo deja como kg
+  ========================================================= */
   function parseTicketText(raw){
     const text = String(raw || "").replace(/\r/g, "");
     const lines = text
@@ -403,7 +422,9 @@
 
     function extractNumbers(line){
       let s = String(line || "").trim();
+      // 50,00 -> 50.00
       s = s.replace(/(\d),(\d{2})(\b)/g, "$1.$2");
+      // 3,150.00 o 3,150 -> 3150 / 3150.00
       s = s.replace(/(\d),(?=\d{3}\b)/g, "");
       s = s.replace(/[^\d.\s]/g, " ");
       return s.split(/\s+/).filter(Boolean)
@@ -418,6 +439,23 @@
       return mapToCatalogProduct(cleaned);
     }
 
+    function maybeConvertCajaToKg(producto, qty){
+      const w = BOX_WEIGHT_KG[producto];
+      if(!w) return qty;
+
+      // Heurística:
+      // - Si qty es entero o casi entero y es "chico", lo tratamos como # cajas
+      // - Si qty viene grande/decimal (ej 189.54), lo tratamos como kg ya
+      const nearInt = Math.abs(qty - Math.round(qty)) < 0.0001;
+
+      if(nearInt && qty > 0 && qty <= MAX_BOX_QTY){
+        return qty * w;
+      }
+
+      // Si el ticket te trae cantidad en kg ya, lo dejamos
+      return qty;
+    }
+
     const out = [];
 
     for(let i=0; i<lines.length; i++){
@@ -426,15 +464,25 @@
 
       const nums1 = extractNumbers(lines[i+1] || "");
       const nums2 = extractNumbers(lines[i+2] || "");
-      const nums = nums1.length ? nums1 : nums2;
+      const nums  = nums1.length ? nums1 : nums2;
       if(!nums.length) continue;
 
-      const qty = nums[0];
-      if(!Number.isFinite(qty) || qty <= 0 || qty > MAX_KG_LINE) continue;
+      const qty = nums[0]; // cantidad
+      if(!Number.isFinite(qty) || qty <= 0) continue;
 
+      // Si es caja: convertir
+      if(BOX_WEIGHT_KG[prod]){
+        const kg = maybeConvertCajaToKg(prod, qty);
+        out.push({ producto: prod, kg });
+        continue;
+      }
+
+      // Si no es caja: validar como kg razonable
+      if(qty > MAX_KG_LINE) continue;
       out.push({ producto: prod, kg: qty });
     }
 
+    // Merge por producto
     const map = new Map();
     for(const it of out){
       const key = it.producto.toLowerCase();
@@ -521,9 +569,7 @@
   }
 
   /* =========================================================
-     ✅ NUEVO: LISTA DE NOMBRES (datalist) + AUTOLLENADO TEL
-     - Al elegir nombre existente => se llena teléfono y se carga cliente
-     - Botón recargar nombres
+     LISTA DE NOMBRES (datalist) + AUTOLLENADO TEL
   ========================================================= */
   let clientsCache = [];
 
@@ -532,7 +578,6 @@
     const dl = $("nombreList");
     if(!dl) return;
 
-    // Trae clientes (si son demasiados, baja limit o paginación)
     const { data, error } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
@@ -546,7 +591,6 @@
 
     clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
 
-    // Para evitar duplicados por mismo nombre, lo dejamos tal cual pero con label
     dl.innerHTML = "";
     for(const c of clientsCache){
       const opt = document.createElement("option");
@@ -561,7 +605,6 @@
     return clientsCache.find(c => normalizeLine(c.nombre || "").toLowerCase() === n) || null;
   }
 
-  // Cuando el usuario escribe/selecciona un nombre
   $("nombre").addEventListener("input", async ()=>{
     const c = findClientByName($("nombre").value);
     if(c){
@@ -579,7 +622,6 @@
     setMsg("ok","Nombres recargados ✅");
   });
 
-  /* ===== Acciones Cliente (AJUSTADAS A NOMBRE OBLIGATORIO) ===== */
   async function buscarClientePorNombreOTel(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
 
@@ -588,7 +630,6 @@
 
     if(!nombre) throw new Error("Nombre es obligatorio.");
 
-    // 1) Si el nombre existe en cache, úsalo directo
     const cached = findClientByName(nombre);
     if(cached){
       currentClient = cached;
@@ -599,11 +640,10 @@
       return;
     }
 
-    // 2) Busca por nombre exacto en BD
     const { data, error } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
-      .ilike("nombre", nombre)  // si quieres exacto, cambia a .eq("nombre", nombre)
+      .ilike("nombre", nombre)
       .maybeSingle();
 
     if(error) throw error;
@@ -630,8 +670,6 @@
     const payload = { nombre };
     if(tel) payload.telefono = tel;
 
-    // Si tú tienes UNIQUE por teléfono, ok. Si NO, conviene UNIQUE por nombre o un campo "telefono" único.
-    // Aquí hacemos upsert por teléfono si existe; si no hay teléfono, hacemos insert normal.
     let res;
     if(tel){
       res = await sb
@@ -655,11 +693,9 @@
     await renderQR();
 
     setMsg("ok", "Cliente creado/actualizado y QR generado.");
-
     await loadNameDatalist();
   }
 
-  /* ===== Guardar venta + detalle + puntos ===== */
   async function guardarVentaDesdeTicket(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
     if(!currentClient) throw new Error("Primero selecciona un cliente.");
@@ -862,7 +898,6 @@ Venta ID: ${venta.id}`
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   }
 
-  /* ===== Procesar ticket ===== */
   function procesarTicket(){
     const raw = getTicketTextForParsing();
     const items = parseTicketText(raw);
@@ -914,79 +949,6 @@ Venta ID: ${venta.id}`
     }
   }
 
-  function renderHistResumen({count, totalKg, totalPts, byProduct}){
-    $("stHistCompras").textContent = `Compras: ${count}`;
-    $("stHistKg").textContent      = `Kg en periodo: ${totalKg.toFixed(2)}`;
-    $("stHistPts").textContent     = `Puntos en periodo: ${totalPts}`;
-
-    if(!count){
-      $("histResumen").className = "muted";
-      $("histResumen").textContent = "—";
-      return;
-    }
-
-    const rows = Object.entries(byProduct)
-      .sort((a,b)=>b[1]-a[1])
-      .map(([prod,kg])=>`
-        <tr>
-          <td>${escapeHtml(prod)}</td>
-          <td class="right">${Number(kg).toFixed(3)}</td>
-        </tr>
-      `).join("");
-
-    $("histResumen").className = "";
-    $("histResumen").innerHTML = `
-      <div class="mini">Resumen por producto (kg):</div>
-      <table>
-        <thead><tr><th>Producto</th><th class="right">Kg</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="2" class="muted">Sin items</td></tr>`}</tbody>
-      </table>
-    `;
-  }
-
-  function renderHistDetalle(ventas){
-    const box = $("histDetalle");
-    if(!ventas?.length){
-      box.className = "muted";
-      box.textContent = "—";
-      return;
-    }
-
-    const rows = ventas.map(v=>{
-      const items = (v.ventas_items || []);
-      const itemTxt = items.length
-        ? items.map(it=>`${escapeHtml(it.producto)}: ${Number(it.kg||0).toFixed(3)} kg`).join("<br>")
-        : `<span class="mini muted">Sin detalle</span>`;
-
-      return `
-        <tr>
-          <td style="white-space:nowrap">${fmtDate(v.created_at)}</td>
-          <td>${escapeHtml(v.tipo || "")}</td>
-          <td class="right">${Number(v.total_kg||0).toFixed(2)}</td>
-          <td class="right">${Number(v.puntos_otorgados||0)}</td>
-          <td>${itemTxt}</td>
-        </tr>
-      `;
-    }).join("");
-
-    box.className = "";
-    box.innerHTML = `
-      <div class="mini">Detalle de compras:</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th class="right">Kg</th>
-            <th class="right">Pts</th>
-            <th>Items</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    `;
-  }
-
   async function fetchHistorial(){
     if(!sb) throw new Error("Supabase no cargó.");
     if(!currentClient) throw new Error("Primero selecciona un cliente.");
@@ -1027,8 +989,51 @@ Venta ID: ${venta.id}`
       }
     }
 
-    renderHistResumen({ count: ventas.length, totalKg, totalPts, byProduct });
-    renderHistDetalle(ventas);
+    $("stHistCompras").textContent = `Compras: ${ventas.length}`;
+    $("stHistKg").textContent      = `Kg en periodo: ${totalKg.toFixed(2)}`;
+    $("stHistPts").textContent     = `Puntos en periodo: ${totalPts}`;
+
+    const rows = Object.entries(byProduct)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([prod,kg])=>`
+        <tr><td>${escapeHtml(prod)}</td><td class="right">${Number(kg).toFixed(3)}</td></tr>
+      `).join("");
+
+    $("histResumen").className = "";
+    $("histResumen").innerHTML = `
+      <div class="mini">Resumen por producto (kg):</div>
+      <table>
+        <thead><tr><th>Producto</th><th class="right">Kg</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="2" class="muted">Sin items</td></tr>`}</tbody>
+      </table>
+    `;
+
+    const detRows = ventas.map(v=>{
+      const items = (v.ventas_items || []);
+      const itemTxt = items.length
+        ? items.map(it=>`${escapeHtml(it.producto)}: ${Number(it.kg||0).toFixed(3)} kg`).join("<br>")
+        : `<span class="mini muted">Sin detalle</span>`;
+      return `
+        <tr>
+          <td style="white-space:nowrap">${fmtDate(v.created_at)}</td>
+          <td>${escapeHtml(v.tipo || "")}</td>
+          <td class="right">${Number(v.total_kg||0).toFixed(2)}</td>
+          <td class="right">${Number(v.puntos_otorgados||0)}</td>
+          <td>${itemTxt}</td>
+        </tr>
+      `;
+    }).join("");
+
+    $("histDetalle").className = "";
+    $("histDetalle").innerHTML = `
+      <div class="mini">Detalle de compras:</div>
+      <table>
+        <thead>
+          <tr><th>Fecha</th><th>Tipo</th><th class="right">Kg</th><th class="right">Pts</th><th>Items</th></tr>
+        </thead>
+        <tbody>${detRows}</tbody>
+      </table>
+    `;
   }
 
   function setQuickRange(days){
@@ -1156,13 +1161,13 @@ Venta ID: ${venta.id}`
     if(document.hidden) stopCamera();
   });
 
-  /* ===== INIT ===== */
   (function init(){
     const d = [];
     d.push("Supabase cargado: " + (!!sb));
     d.push("OCR cargado: " + (typeof Tesseract !== "undefined"));
     d.push("Base URL del sitio: " + siteBaseUrl());
     d.push("HTTPS recomendado para cámara.");
+    d.push("Cajas activas: " + Object.keys(BOX_WEIGHT_KG).length);
     $("diag").textContent = d.join("\n");
 
     renderStatus();
