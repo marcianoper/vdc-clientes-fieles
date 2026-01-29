@@ -288,10 +288,6 @@
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
   }
-
-  function isCajaLine(line){
-    const u = stripDiacritics(String(line||"").toUpperCase());
-    return u.startsWith("CAJA ");
   }
 
   function renderStatus(){
@@ -349,8 +345,6 @@
 
   function mapToCatalogProduct(line){
     const cleaned = stripDiacritics(normalizeLine(line)).toUpperCase();
-    if(isCajaLine(cleaned)) return null;
-
     for(const p of PRODUCT_CATALOG){
       for(const rx of p.aliases){
         if(rx.test(cleaned)) return p.key;
@@ -421,7 +415,6 @@
       const cleaned = cleanLineForProduct(line);
       if(!cleaned) return null;
       if(isStopLine(cleaned)) return null;
-      if(isCajaLine(cleaned)) return null;
       return mapToCatalogProduct(cleaned);
     }
 
