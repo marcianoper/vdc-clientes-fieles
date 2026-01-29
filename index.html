@@ -63,11 +63,8 @@
     <div class="grid">
       <div>
         <label>Teléfono (10 dígitos)</label>
-
-        <!-- ✅ datalist para sugerencias -->
         <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" list="telList" />
         <datalist id="telList"></datalist>
-
         <div class="muted" style="margin-top:6px">
           Tip: pica el campo y te mostrará teléfonos guardados. Puedes escribir y te filtra.
         </div>
@@ -129,7 +126,7 @@
     </div>
 
     <label>Texto del ticket (vista filtrada / pegado)</label>
-    <textarea id="ticketText" placeholder="Aquí aparecerán solo números chicos (ej. 55, 7.35, 4.45). El OCR completo se guarda en segundo plano."></textarea>
+    <textarea id="ticketText" placeholder="Aquí aparecerán solo números chicos. El OCR completo se guarda en segundo plano."></textarea>
 
     <div class="row">
       <button id="btnProcesar" class="ghost">Procesar ticket</button>
@@ -161,7 +158,6 @@
     <div id="log" class="muted" style="margin-top:10px"></div>
   </section>
 
-  <!-- ✅ NUEVO: HISTORIAL -->
   <section class="card">
     <h2 style="margin:0 0 6px">5) Historial del cliente (rango de fechas)</h2>
     <p class="muted" style="margin-top:0">
@@ -224,25 +220,42 @@
   let rawOcrText = "";
   let filteredOcrView = "";
 
-  /* ===== Catálogo + alias ===== */
+  /* ===================================================================================
+     ✅ CATÁLOGO COMPLETO (NO CAJAS)
+     - Se agregaron TODOS los productos que pueden aparecer en ticket
+     - EXCLUIMOS cualquier línea que sea "CAJA ..." (no se detecta ni se suma)
+  =================================================================================== */
+
   const PRODUCT_CATALOG = [
-    { key: "Panza",         aliases: [/^PANZA\b/i] },
-    { key: "Higado",        aliases: [/^HIGADO\b/i] },
-    { key: "Libro",         aliases: [/^LIBRO\b/i] },
-    { key: "Corazon",       aliases: [/^CORAZON\b/i] },
-    { key: "Tripa",         aliases: [/^TRIPA\b/i] },
-    { key: "Bofe",          aliases: [/^BOFE\b/i] },
-    { key: "Cabeza",        aliases: [/^CABEZA\b/i, /^CABEZA\s+DE\s+RES\b/i, /^CABEZA\s+RASTRO\b/i, /^CABEZA\s+DE\s+RASTRO\b/i] },
-    { key: "Pata Blanca",   aliases: [/^PATA\s*BLANCA\b/i] },
-    { key: "Pata Morena",   aliases: [/^PATA\s*MORENA\b/i, /^PATAS\s*MORENA\b/i, /^PATA\s+MORENA\b/i] },
-    { key: "Caja Washington",      aliases: [/^WASHINGTON\b/i, /^CAJA\s+WASHINGTON\b/i] },
-    { key: "Caja Menudo National", aliases: [/^NATIONAL\b/i, /^CAJA\s+MENUDO\s+NATIONAL\b/i, /^CAJA\s+NATIONAL\b/i, /^CAJA\s+MENUDO\s+NACIONAL\b/i] },
-    { key: "Caja Canadian",        aliases: [/^CANADIAN\b/i, /^CAJA\s+CANADIAN\b/i, /^MENUDO\s+CANADIAN\b/i, /^CAJA\s+CANADIAN\s+COMPLETA\b/i] },
+    // Cabezas (más específicas primero)
+    { key: "Cabeza Congelada",    aliases: [/^CABEZA\s+CONGELAD/i, /^CABEZA\s+CONGELADA\b/i] },
+    { key: "Cabeza de Rastro",    aliases: [/^CABEZA\s+DE\s+RASTRO\b/i, /^CABEZA\s+RASTRO\b/i] },
+    { key: "Cabeza sin lengua",   aliases: [/^CABEZA\s+SIN\s+LENGUA\b/i, /^CABEZA\s+S\/\s*LENGUA\b/i] },
+    { key: "Cabeza de res",       aliases: [/^CABEZA\s+DE\s+RES\b/i, /^CABEZA\b/i, /^CABEZ[AÃ]\b/i] },
+
+    // Vísceras / piezas
+    { key: "Corazon",             aliases: [/^CORAZON\b/i, /^CORAZ[OÓ]N\b/i] },
+    { key: "Higado",              aliases: [/^HIGADO\b/i, /^H[IÍ]GADO\b/i] },
+    { key: "Lengua",              aliases: [/^LENGUA\b/i] },
+    { key: "Libro",               aliases: [/^LIBRO\b/i] },
+    { key: "Menudo Canadian",     aliases: [/^MENUDO\s+CANADIAN\b/i, /^CANADIAN\b/i] },
+    { key: "Nana",                aliases: [/^NANA\b/i] },
+    { key: "Panza",               aliases: [/^PANZA\b/i] },
+    { key: "Pata Blanca",         aliases: [/^PATA\s*BLANCA\b/i] },
+    { key: "Pata Morena",         aliases: [/^PATA\s*MORENA\b/i, /^PATAS\s*MORENA\b/i] },
+    { key: "Cuajo",               aliases: [/^CUAJO\b/i] },
+    { key: "Sebo",                aliases: [/^SEBO\b/i] },
+    { key: "Teleco",              aliases: [/^TELECO\b/i] },
+    { key: "Tripa",               aliases: [/^TRIPA\b/i] },
+    { key: "Tripa de rastro",      aliases: [/^TRIPA\s+DE\s+RASTRO\b/i, /^TRIPA\s+RASTRO\b/i] },
+    { key: "Tripa gorda",          aliases: [/^TRIPA\s+GORDA\b/i] },
+
+    // Producto libre (si tu ticket lo imprime así)
+    { key: "Producto Libre",       aliases: [/^PRODUCTO\s+LIBRE\b/i] },
   ];
 
-  const KG_PER_BOX = 27.22;
-  const MAX_KG_LINE = 200.00;
-  const MAX_BOXES_ALLOWED = 500;
+  // Seguridad de lectura
+  const MAX_KG_LINE = 250.00;
 
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
@@ -325,20 +338,34 @@
       .trim();
   }
 
+  // Quita acentos para comparar mejor (ó -> o, ñ -> n, etc.)
+  function stripDiacritics(s){
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  // ✅ Bloquea cajas: cualquier línea que empiece con "CAJA"
+  function isCajaLine(line){
+    const u = stripDiacritics(String(line||"").toUpperCase());
+    return u.startsWith("CAJA ");
+  }
+
   function mapToCatalogProduct(line){
-    const l = normalizeLine(line).toUpperCase();
+    const cleaned = stripDiacritics(normalizeLine(line)).toUpperCase();
+
+    // 👇 si es CAJA..., NO la detectamos (tal como pediste)
+    if(isCajaLine(cleaned)) return null;
+
     for(const p of PRODUCT_CATALOG){
       for(const rx of p.aliases){
-        if(rx.test(l)) return p.key;
+        if(rx.test(cleaned)) return p.key;
       }
     }
     return null;
   }
 
-  function isBoxProduct(productKey){
-    return /^Caja\b/i.test(productKey) || /Washington|National|Canadian/i.test(productKey);
-  }
-
+  /* ===== VISTA FILTRADA (solo números chicos) ===== */
   function filterSmallNumbersOnly(text){
     const tokens = String(text || "")
       .replace(/\r/g, "")
@@ -351,7 +378,7 @@
       const m = s.match(/^(\d{1,6})(?:\.(\d{1,6}))?$/);
       if(!m) continue;
       const intPart = m[1];
-      if(intPart.length > 2) continue;
+      if(intPart.length > 2) continue; // solo 2 dígitos o menos
       keep.push(s);
     }
     return keep.join("\n");
@@ -377,11 +404,12 @@
     ];
 
     function isStopLine(line){
-      const U = String(line||"").toUpperCase();
+      const U = stripDiacritics(String(line||"").toUpperCase());
       return STOP.some(w => U.includes(w));
     }
 
     function cleanLineForProduct(line){
+      // deja letras y espacios (y soporta Ñ/acentos, luego se normaliza)
       return normalizeLine(line)
         .replace(/[^\p{L}\s]/gu, " ")
         .replace(/\s+/g, " ")
@@ -402,6 +430,10 @@
       const cleaned = cleanLineForProduct(line);
       if(!cleaned) return null;
       if(isStopLine(cleaned)) return null;
+
+      // 👇 si la línea es "CAJA..." se ignora
+      if(isCajaLine(cleaned)) return null;
+
       return mapToCatalogProduct(cleaned);
     }
 
@@ -416,19 +448,13 @@
       const nums = nums1.length ? nums1 : nums2;
       if(!nums.length) continue;
 
-      const qty = nums[0]; // Cantidad (kg o cajas)
+      const qty = nums[0]; // Cantidad (kg)
       if(!Number.isFinite(qty) || qty <= 0 || qty > MAX_KG_LINE) continue;
 
-      if(isBoxProduct(prod)){
-        const qInt = Math.round(qty);
-        if(Math.abs(qty - qInt) > 0.001) continue;
-        if(qInt <= 0 || qInt > MAX_BOXES_ALLOWED) continue;
-        out.push({ producto: prod, kg: qInt * KG_PER_BOX });
-      } else {
-        out.push({ producto: prod, kg: qty });
-      }
+      out.push({ producto: prod, kg: qty });
     }
 
+    // Agrupa por producto
     const map = new Map();
     for(const it of out){
       const key = it.producto.toLowerCase();
@@ -514,6 +540,7 @@
     }
   }
 
+  /* ===== Acciones Cliente ===== */
   async function buscarClientePorTelefono(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
 
@@ -561,6 +588,7 @@
     await loadPhoneDatalist();
   }
 
+  /* ===== Procesar ticket ===== */
   function procesarTicket(){
     const raw = getTicketTextForParsing();
     const items = parseTicketText(raw);
@@ -572,7 +600,7 @@
     renderDetalleEditable();
 
     if(!items.length){
-      setLog("err", "No pude detectar productos. Tip: escanea con buena luz y que se vea el texto del producto (TRIPA, CABEZA, etc.).");
+      setLog("err", "No pude detectar productos. Tip: escanea con buena luz y que se vea el texto del producto.");
     }else{
       setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
     }
@@ -588,6 +616,7 @@
     setLog("muted","Listo.");
   }
 
+  /* ===== Guardar venta + detalle + puntos ===== */
   async function guardarVentaDesdeTicket(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
     if(!currentClient) throw new Error("Primero selecciona un cliente.");
@@ -793,6 +822,7 @@ Venta ID: ${venta.id}`
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   }
 
+  /* ===== Diagnóstico + QR load ===== */
   function diag(){
     const d = [];
     d.push("Supabase cargado: " + (!!sb));
@@ -883,12 +913,7 @@ Venta ID: ${venta.id}`
     setMsg("ok","Teléfonos recargados ✅");
   });
 
-  /* =============================================================================
-     HISTORIAL DEL CLIENTE (ventas + items por rango)
-     - Requiere: ventas_items con venta_id, producto, kg
-     - ventas debe tener created_at
-  ============================================================================= */
-
+  /* ===== HISTORIAL ===== */
   function setDateInputsDefault(){
     const to = new Date();
     const from = new Date();
@@ -1037,27 +1062,6 @@ Venta ID: ${venta.id}`
     $("histFrom").value = from.toISOString().slice(0,10);
   }
 
-  $("btnHist").addEventListener("click", async ()=>{
-    setLog("muted","Cargando historial...");
-    try{
-      await fetchHistorial();
-      setLog("ok","Historial cargado ✅");
-    }catch(err){
-      console.error(err);
-      setLog("err", formatErr(err));
-    }
-  });
-
-  $("btnHist7").addEventListener("click", async ()=>{
-    setQuickRange(7);
-    $("btnHist").click();
-  });
-
-  $("btnHist30").addEventListener("click", async ()=>{
-    setQuickRange(30);
-    $("btnHist").click();
-  });
-
   /* ===== Listeners ===== */
   $("btnBuscar").addEventListener("click", async ()=>{
     setMsg("muted","Buscando...");
@@ -1121,18 +1125,47 @@ Venta ID: ${venta.id}`
     }
   });
 
+  $("btnHist").addEventListener("click", async ()=>{
+    setLog("muted","Cargando historial...");
+    try{
+      await fetchHistorial();
+      setLog("ok","Historial cargado ✅");
+    }catch(err){
+      console.error(err);
+      setLog("err", formatErr(err));
+    }
+  });
+
+  $("btnHist7").addEventListener("click", ()=>{
+    setQuickRange(7);
+    $("btnHist").click();
+  });
+
+  $("btnHist30").addEventListener("click", ()=>{
+    setQuickRange(30);
+    $("btnHist").click();
+  });
+
   window.addEventListener("beforeunload", stopCamera);
   document.addEventListener("visibilitychange", ()=>{
     if(document.hidden) stopCamera();
   });
 
   /* ===== INIT ===== */
-  diag();
-  renderStatus();
-  renderDetalleEditable();
-  cargarClientePorQuery();
-  loadPhoneDatalist();
-  setDateInputsDefault();
+  (function init(){
+    const d = [];
+    d.push("Supabase cargado: " + (!!sb));
+    d.push("OCR cargado: " + (typeof Tesseract !== "undefined"));
+    d.push("Base URL del sitio: " + siteBaseUrl());
+    d.push("HTTPS recomendado para cámara.");
+    $("diag").textContent = d.join("\n");
+
+    renderStatus();
+    renderDetalleEditable();
+    cargarClientePorQuery();
+    loadPhoneDatalist();
+    setDateInputsDefault();
+  })();
 </script>
 </body>
 </html>
