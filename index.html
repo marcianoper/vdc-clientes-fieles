@@ -41,6 +41,9 @@
     canvas{display:none}
     .progressBar{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
     .progressBar > div{height:100%;width:0%;background:var(--brand)}
+
+    /* Selector de teléfonos (datalist) */
+    .hint{font-size:12px;color:var(--muted);margin-top:6px}
   </style>
 
   <!-- Supabase JS -->
@@ -60,21 +63,32 @@
 
   <section class="card">
     <h2 style="margin:0 0 6px">1) Buscar / Crear cliente (solo teléfono)</h2>
+
     <div class="grid">
       <div>
         <label>Teléfono (10 dígitos)</label>
-        <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" />
-        <div class="muted" style="margin-top:6px">Tip: puedes pegar con espacios, yo lo limpio.</div>
+        <!-- ✅ AHORA con datalist: al picar el campo te muestra teléfonos guardados -->
+        <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" list="telList" />
+        <datalist id="telList"></datalist>
+
+        <div class="hint">Tip: pica el campo y te mostrará teléfonos guardados. Puedes escribir y te filtra.</div>
       </div>
+
       <div>
         <label>Nombre (opcional)</label>
         <input id="nombre" placeholder="Ej. Taquería Don Chuy" />
+        <div class="hint">Se llena automático si seleccionas un teléfono existente.</div>
       </div>
     </div>
 
     <div class="row">
       <button id="btnBuscar">Buscar cliente</button>
       <button id="btnCrear" class="secondary">Crear / Actualizar</button>
+    </div>
+
+    <!-- ✅ Botón opcional (no rompe nada) para refrescar teléfonos -->
+    <div class="row">
+      <button id="btnReloadPhones" class="ghost" type="button">↻ Recargar teléfonos</button>
     </div>
 
     <div id="msg" class="muted" style="margin-top:10px"></div>
@@ -185,18 +199,19 @@
 
   /* ===== Catálogo de productos (tu lista) + alias ===== */
   const PRODUCT_CATALOG = [
-    { key: "Panza",         aliases: [/^PANZA\b/i] },
-    { key: "Higado",        aliases: [/^HIGADO\b/i] },
-    { key: "Libro",         aliases: [/^LIBRO\b/i] },
-    { key: "Corazon",       aliases: [/^CORAZON\b/i] },
-    { key: "Tripa",         aliases: [/^TRIPA\b/i] },
-    { key: "Bofe",          aliases: [/^BOFE\b/i] },
-    { key: "Pata Blanca",   aliases: [/^PATA\s*BLANCA\b/i] },
-    { key: "Pata Morena",   aliases: [/^PATA\s*MORENA\b/i, /^PATAS\s*MORENA\b/i, /^PATA\s+MORENA\b/i] },
+    { key: "Panza",         aliases: [/\bPANZA\b/i] },
+    { key: "Higado",        aliases: [/\bHIGADO\b/i] },
+    { key: "Libro",         aliases: [/\bLIBRO\b/i] },
+    { key: "Corazon",       aliases: [/\bCORAZON\b/i] },
+    { key: "Tripa",         aliases: [/\bTRIPA\b/i] },
+    { key: "Bofe",          aliases: [/\bBOFE\b/i] },
+    { key: "Cabeza",        aliases: [/\bCABEZA\b/i, /\bCABEZA\s+DE\s+RES\b/i, /\bCABEZA\s+DE\s+RASTRO\b/i, /\bCABEZA\s+RASTRO\b/i] },
+    { key: "Pata Blanca",   aliases: [/\bPATA\s*BLANCA\b/i] },
+    { key: "Pata Morena",   aliases: [/\bPATA\s*MORENA\b/i, /\bPATAS\s*MORENA\b/i] },
 
-    { key: "Caja Washington",      aliases: [/^WASHINGTON\b/i, /^CAJA\s+WASHINGTON\b/i] },
-    { key: "Caja Menudo National", aliases: [/^NATIONAL\b/i, /^CAJA\s+MENUDO\s+NATIONAL\b/i, /^CAJA\s+NATIONAL\b/i, /^CAJA\s+MENUDO\s+NACIONAL\b/i] },
-    { key: "Caja Canadian",        aliases: [/^CANADIAN\b/i, /^CAJA\s+CANADIAN\b/i, /^MENUDO\s+CANADIAN\b/i, /^CAJA\s+CANADIAN\s+COMPLETA\b/i] },
+    { key: "Caja Washington",      aliases: [/\bWASHINGTON\b/i, /\bCAJA\s+WASHINGTON\b/i] },
+    { key: "Caja Menudo National", aliases: [/\bNATIONAL\b/i, /\bCAJA\s+MENUDO\s+NATIONAL\b/i, /\bCAJA\s+NATIONAL\b/i, /\bCAJA\s+MENUDO\s+NACIONAL\b/i] },
+    { key: "Caja Canadian",        aliases: [/\bCANADIAN\b/i, /\bCAJA\s+CANADIAN\b/i, /\bMENUDO\s+CANADIAN\b/i, /\bCAJA\s+CANADIAN\s+COMPLETA\b/i] },
   ];
 
   const KG_PER_BOX = 27.22;
@@ -284,8 +299,17 @@
       .trim();
   }
 
+  function normalizeForMatch(s){
+    return String(s||"")
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")   // quita acentos
+      .replace(/[^A-Z0-9\s]/g," ")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
   function mapToCatalogProduct(line){
-    const l = normalizeLine(line).toUpperCase();
+    const l = normalizeForMatch(line);
     for(const p of PRODUCT_CATALOG){
       for(const rx of p.aliases){
         if(rx.test(l)) return p.key;
@@ -307,13 +331,11 @@
 
     const keep = [];
     for(const t of tokens){
-      const s = t.replace(/,/g, ""); // quita separadores de miles
+      const s = t.replace(/,/g, "");
       const m = s.match(/^(\d{1,6})(?:\.(\d{1,6}))?$/);
       if(!m) continue;
-
       const intPart = m[1];
-      if(intPart.length > 2) continue;
-
+      if(intPart.length > 2) continue; // ✅ solo 2 dígitos en parte entera
       keep.push(s);
     }
     return keep.join("\n");
@@ -323,49 +345,81 @@
     return (rawOcrText && rawOcrText.trim()) ? rawOcrText : ($("ticketText").value || "");
   }
 
-  /* ===== PARSER NUEVO (solo tus productos + kg <= 60, cajas por 27.22) ===== */
+  /* ===== PARSER MEJORADO (detecta producto aunque OCR “aplane” líneas) ===== */
   function parseTicketText(raw){
     const text = String(raw || "").replace(/\r/g, "");
     const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
 
-    const isNumericCode = (s)=>/^\d{6,}$/.test(String(s||"").replace(/\s/g,""));
-    const parseNum = (s)=>{
-      const v = Number(String(s).replace(/,/g,"").trim());
-      return Number.isFinite(v) ? v : NaN;
-    };
+    // Quita números largos (códigos) de una línea para no confundirlos como cantidad
+    const stripLongCodes = (s)=> String(s||"").replace(/\b\d{6,}\b/g, " ");
+
+    // Extrae números candidatos de una línea
+    function extractNumbers(line){
+      const cleaned = String(line||"")
+        .replace(/,/g,"")
+        .replace(/[^\d.\s]/g," ");
+
+      return cleaned
+        .split(/\s+/).filter(Boolean)
+        .map(x=>Number(x))
+        .filter(n=>Number.isFinite(n) && n > 0);
+    }
+
+    function pickCantidadForProduct(productKey, nums){
+      if(!nums || !nums.length) return null;
+
+      if(isBoxProduct(productKey)){
+        const ints = nums.filter(n=>n <= MAX_BOXES_ALLOWED && Math.abs(n - Math.round(n)) < 1e-6);
+        if(ints.length) return ints[0];
+        const any = nums.find(n=>n <= MAX_BOXES_ALLOWED);
+        return any ?? null;
+      }else{
+        const any = nums.find(n=>n <= MAX_KG_LINE);
+        return any ?? null;
+      }
+    }
 
     const out = [];
 
-    // B) Formato POS de tu ticket: PRODUCTO / CODIGO / CANTIDAD PU IMPORTE
+    // A) Formato ideal: PRODUCTO / CODIGO / NUMS
+    const isNumericCodeLine = (s)=>/^\d{6,}$/.test(String(s||"").replace(/\s/g,""));
+
     for(let i=0;i<lines.length;i++){
       const productoLine = lines[i];
       const codeLine = lines[i+1] || "";
       const numsLine = lines[i+2] || "";
 
-      if(!isNumericCode(codeLine)) continue;
+      if(!isNumericCodeLine(codeLine)) continue;
 
       const mapped = mapToCatalogProduct(productoLine);
       if(!mapped){ i = i + 2; continue; }
 
-      const parts = numsLine.split(/\s+/).filter(Boolean);
-      const nums = parts.map(parseNum).filter(n=>Number.isFinite(n));
-      if(nums.length < 1){ i = i + 2; continue; }
+      const nums = extractNumbers(numsLine);
+      const cantidad = pickCantidadForProduct(mapped, nums);
+      if(!cantidad){ i = i + 2; continue; }
 
-      const cantidad = nums[0];
-      if(!Number.isFinite(cantidad) || cantidad <= 0){ i = i + 2; continue; }
-
-      if(isBoxProduct(mapped)){
-        if(cantidad > MAX_BOXES_ALLOWED){ i = i + 2; continue; }
-        out.push({ producto: mapped, kg: cantidad * KG_PER_BOX });
-      }else{
-        if(cantidad > MAX_KG_LINE){ i = i + 2; continue; }
-        out.push({ producto: mapped, kg: cantidad });
-      }
+      if(isBoxProduct(mapped)) out.push({ producto: mapped, kg: cantidad * KG_PER_BOX });
+      else out.push({ producto: mapped, kg: cantidad });
 
       i = i + 2;
     }
 
-    // A) Rescate si aparece “xx kg” en texto suelto
+    // B) OCR aplanado: PRODUCTO + CODIGO + CANTIDAD + PRECIOS en una sola línea
+    for(const line of lines){
+      const mapped = mapToCatalogProduct(line);
+      if(!mapped) continue;
+
+      const lineNoCodes = stripLongCodes(line);
+      const nums = extractNumbers(lineNoCodes);
+
+      const cantidad = pickCantidadForProduct(mapped, nums);
+      if(!cantidad) continue;
+
+      if(isBoxProduct(mapped)) out.push({ producto: mapped, kg: cantidad * KG_PER_BOX });
+      else out.push({ producto: mapped, kg: cantidad });
+    }
+
+    // C) Extra: “7.35 kg” etc
     const kgRegex = /(\d+(?:[.,]\d{1,3})?)\s*(kg|kgr|kilo|kilos)\b/i;
     for(const line of lines){
       const m = line.match(kgRegex);
@@ -374,8 +428,7 @@
       const kg = Number(String(m[1]).replace(",", "."));
       if(!Number.isFinite(kg) || kg <= 0 || kg > MAX_KG_LINE) continue;
 
-      const prodTxt = normalizeLine(line.replace(kgRegex, " "));
-      const mapped = mapToCatalogProduct(prodTxt);
+      const mapped = mapToCatalogProduct(line.replace(kgRegex, " "));
       if(!mapped) continue;
 
       out.push({ producto: mapped, kg });
@@ -467,6 +520,59 @@
     }
   }
 
+  /* ===== ✅ NUEVO: cargar teléfonos guardados y llenar datalist ===== */
+  async function cargarTelefonosGuardados(){
+    if(!sb) return;
+
+    const { data, error } = await sb
+      .from(T_CLIENTES)
+      .select("telefono,nombre")
+      .order("telefono", { ascending: true });
+
+    if(error){
+      console.error(error);
+      return;
+    }
+
+    const dl = $("telList");
+    dl.innerHTML = "";
+
+    (data || []).forEach(row=>{
+      const opt = document.createElement("option");
+      // value = teléfono (lo que se insertará al seleccionar)
+      opt.value = row.telefono || "";
+      // label visible en algunos navegadores
+      opt.label = (row.nombre ? `${row.telefono} — ${row.nombre}` : row.telefono);
+      dl.appendChild(opt);
+    });
+  }
+
+  // Si el usuario selecciona un teléfono existente, autollenamos el nombre y buscamos cliente
+  async function onTelefonoInputAutofill(){
+    const tel = cleanPhone($("tel").value);
+    if(tel.length !== 10) return;
+
+    // autocompleta nombre si existe
+    try{
+      const { data, error } = await sb
+        .from(T_CLIENTES)
+        .select("id,telefono,nombre,puntos,saldo_kg")
+        .eq("telefono", tel)
+        .maybeSingle();
+
+      if(error) throw error;
+      if(data){
+        $("nombre").value = data.nombre || "";
+        currentClient = data;
+        renderStatus();
+        await renderQR();
+        setMsg("ok", "Cliente encontrado ✅");
+      }
+    }catch(e){
+      console.error(e);
+    }
+  }
+
   /* ===== Acciones Cliente ===== */
   async function buscarClientePorTelefono(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
@@ -483,6 +589,8 @@
     if(error) throw error;
 
     currentClient = data || null;
+    if(data) $("nombre").value = data.nombre || ""; // ✅ llena nombre si existe
+
     renderStatus();
     await renderQR();
 
@@ -510,8 +618,10 @@
     currentClient = data;
     renderStatus();
     await renderQR();
-
     setMsg("ok", "Cliente creado/actualizado y QR generado.");
+
+    // ✅ refresca teléfonos para que aparezca el nuevo en la lista
+    await cargarTelefonosGuardados();
   }
 
   /* ===== Procesar ticket ===== */
@@ -663,17 +773,13 @@ Venta ID: ${venta.id}`
       .replace(/[ \t]+\n/g, "\n")
       .trim();
 
-    // 1) Guardar OCR completo (para parsear productos + kg)
     rawOcrText = cleaned;
 
-    // 2) Mostrar vista filtrada (solo números chicos)
     filteredOcrView = filterSmallNumbersOnly(cleaned);
     $("ticketText").value = filteredOcrView || cleaned;
 
-    setOcrUI("OCR terminado ✅ (vista filtrada: solo números chicos)", 1);
-    setLog("ok", "OCR listo. Ahora procesa el ticket (o se procesará automático).");
+    setOcrUI("OCR terminado ✅", 1);
 
-    // Auto-procesar al terminar OCR (opcional, aquí ya activado)
     try { procesarTicket(); } catch(e){ console.error(e); }
   }
 
@@ -784,6 +890,8 @@ Venta ID: ${venta.id}`
       return;
     }
     currentClient = data;
+    $("tel").value = data.telefono || "";
+    $("nombre").value = data.nombre || "";
     renderStatus();
     await renderQR();
     setMsg("ok", "Cliente cargado desde QR.");
@@ -852,6 +960,23 @@ Venta ID: ${venta.id}`
     }
   });
 
+  $("btnReloadPhones").addEventListener("click", async ()=>{
+    try{
+      setMsg("muted","Recargando teléfonos...");
+      await cargarTelefonosGuardados();
+      setMsg("ok","Teléfonos actualizados ✅");
+    }catch(err){
+      console.error(err);
+      setMsg("err", "No pude recargar: " + formatErr(err));
+    }
+  });
+
+  // ✅ al escribir o seleccionar teléfono, si existe lo carga automático
+  $("tel").addEventListener("input", ()=>{
+    // no bloquear UI; corre en microtask
+    Promise.resolve().then(()=>onTelefonoInputAutofill());
+  });
+
   window.addEventListener("beforeunload", stopCamera);
   document.addEventListener("visibilitychange", ()=>{
     if(document.hidden) stopCamera();
@@ -861,6 +986,9 @@ Venta ID: ${venta.id}`
   renderStatus();
   renderDetalleEditable();
   cargarClientePorQuery();
+
+  // ✅ carga teléfonos al iniciar (para que al picar el campo ya estén)
+  cargarTelefonosGuardados();
 </script>
 </body>
 </html>
