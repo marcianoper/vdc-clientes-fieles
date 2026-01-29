@@ -35,22 +35,20 @@
     .mini{font-size:12px;color:var(--muted)}
     .right{text-align:right}
 
-    /* Cámara / OCR */
     .camWrap{display:grid;gap:10px;margin-top:10px}
     video{width:100%;border-radius:12px;border:1px solid #e5e7eb;background:#000;max-height:360px}
     canvas{display:none}
     .progressBar{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
     .progressBar > div{height:100%;width:0%;background:var(--brand)}
-
-    /* Selector de teléfonos (datalist) */
     .hint{font-size:12px;color:var(--muted);margin-top:6px}
+
+    details{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-top:10px;background:#fff}
+    details summary{cursor:pointer;font-weight:900}
+    pre{white-space:pre-wrap;word-break:break-word;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px}
   </style>
 
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- QR -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <!-- OCR (Tesseract.js) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 
@@ -67,10 +65,8 @@
     <div class="grid">
       <div>
         <label>Teléfono (10 dígitos)</label>
-        <!-- ✅ AHORA con datalist: al picar el campo te muestra teléfonos guardados -->
         <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" list="telList" />
         <datalist id="telList"></datalist>
-
         <div class="hint">Tip: pica el campo y te mostrará teléfonos guardados. Puedes escribir y te filtra.</div>
       </div>
 
@@ -84,10 +80,6 @@
     <div class="row">
       <button id="btnBuscar">Buscar cliente</button>
       <button id="btnCrear" class="secondary">Crear / Actualizar</button>
-    </div>
-
-    <!-- ✅ Botón opcional (no rompe nada) para refrescar teléfonos -->
-    <div class="row">
       <button id="btnReloadPhones" class="ghost" type="button">↻ Recargar teléfonos</button>
     </div>
 
@@ -112,7 +104,7 @@
     <h2 style="margin:0 0 6px">3) Capturar compra por Ticket</h2>
     <p class="muted" style="margin-top:0">
       Puedes pegar el texto o <b>escanear aquí mismo</b> con cámara (OCR).
-      La caja mostrará una <b>vista filtrada</b> (solo números chicos), pero el sistema guardará el OCR completo para procesar productos.
+      La caja mostrará una <b>vista filtrada</b> (solo números chicos), pero el sistema procesa el OCR completo.
     </p>
 
     <div class="row">
@@ -135,12 +127,18 @@
     </div>
 
     <label>Texto del ticket (vista filtrada / pegado)</label>
-    <textarea id="ticketText" placeholder="Aquí aparecerán solo números chicos (ej. 55, 7.35, 4.45). El OCR completo se guarda en segundo plano."></textarea>
+    <textarea id="ticketText" placeholder="Aquí aparecerán solo números chicos. El OCR completo se guarda internamente."></textarea>
 
     <div class="row">
       <button id="btnProcesar" class="ghost">Procesar ticket</button>
       <button id="btnLimpiar" class="ghost">Limpiar</button>
+      <button id="btnVerOCR" class="ghost" type="button">Ver OCR completo</button>
     </div>
+
+    <details id="rawBox" style="display:none">
+      <summary>OCR completo detectado</summary>
+      <pre id="rawPre"></pre>
+    </details>
 
     <div class="grid" style="margin-top:10px">
       <div>
@@ -186,18 +184,17 @@
   /* ===== TABLAS ===== */
   const T_CLIENTES = "clientes";
   const T_VENTAS   = "ventas";
-  const T_ITEMS    = "ventas_items"; // tabla detalle (crear en Supabase)
+  const T_ITEMS    = "ventas_items";
 
   /* ===== Estado ===== */
   let currentClient = null;
-  let ticketItems = []; // [{producto, kg}]
+  let ticketItems = [];
   let camStream = null;
 
-  // OCR: guardamos el texto COMPLETO (para parsear) y una vista filtrada (para mostrar)
-  let rawOcrText = "";
-  let filteredOcrView = "";
+  let rawOcrText = "";         // ✅ OCR COMPLETO
+  let filteredOcrView = "";    // ✅ vista filtrada (números chicos)
 
-  /* ===== Catálogo de productos (tu lista) + alias ===== */
+  /* ===== Catálogo ===== */
   const PRODUCT_CATALOG = [
     { key: "Panza",         aliases: [/\bPANZA\b/i] },
     { key: "Higado",        aliases: [/\bHIGADO\b/i] },
@@ -208,15 +205,14 @@
     { key: "Cabeza",        aliases: [/\bCABEZA\b/i, /\bCABEZA\s+DE\s+RES\b/i, /\bCABEZA\s+DE\s+RASTRO\b/i, /\bCABEZA\s+RASTRO\b/i] },
     { key: "Pata Blanca",   aliases: [/\bPATA\s*BLANCA\b/i] },
     { key: "Pata Morena",   aliases: [/\bPATA\s*MORENA\b/i, /\bPATAS\s*MORENA\b/i] },
-
     { key: "Caja Washington",      aliases: [/\bWASHINGTON\b/i, /\bCAJA\s+WASHINGTON\b/i] },
     { key: "Caja Menudo National", aliases: [/\bNATIONAL\b/i, /\bCAJA\s+MENUDO\s+NATIONAL\b/i, /\bCAJA\s+NATIONAL\b/i, /\bCAJA\s+MENUDO\s+NACIONAL\b/i] },
     { key: "Caja Canadian",        aliases: [/\bCANADIAN\b/i, /\bCAJA\s+CANADIAN\b/i, /\bMENUDO\s+CANADIAN\b/i, /\bCAJA\s+CANADIAN\s+COMPLETA\b/i] },
   ];
 
   const KG_PER_BOX = 27.22;
-  const MAX_KG_LINE = 60.00;       // para líneas que son kg (bofe, panza, etc.)
-  const MAX_BOXES_ALLOWED = 500;   // seguridad para cajas
+  const MAX_KG_LINE = 60.00;
+  const MAX_BOXES_ALLOWED = 500;
 
   /* ===== Helpers ===== */
   const $ = (id)=>document.getElementById(id);
@@ -302,7 +298,7 @@
   function normalizeForMatch(s){
     return String(s||"")
       .toUpperCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")   // quita acentos
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
       .replace(/[^A-Z0-9\s]/g," ")
       .replace(/\s+/g," ")
       .trim();
@@ -322,7 +318,7 @@
     return /^Caja\b/i.test(productKey) || /Washington|National|Canadian/i.test(productKey);
   }
 
-  /* ===== VISTA FILTRADA (solo números chicos) ===== */
+  /* ✅ Vista filtrada: solo números con parte entera <= 2 dígitos */
   function filterSmallNumbersOnly(text){
     const tokens = String(text || "")
       .replace(/\r/g, "")
@@ -335,30 +331,28 @@
       const m = s.match(/^(\d{1,6})(?:\.(\d{1,6}))?$/);
       if(!m) continue;
       const intPart = m[1];
-      if(intPart.length > 2) continue; // ✅ solo 2 dígitos en parte entera
+      if(intPart.length > 2) continue;
       keep.push(s);
     }
     return keep.join("\n");
   }
 
+  /* ✅ SIEMPRE parsea con OCR COMPLETO si existe */
   function getTicketTextForParsing(){
     return (rawOcrText && rawOcrText.trim()) ? rawOcrText : ($("ticketText").value || "");
   }
 
-  /* ===== PARSER MEJORADO (detecta producto aunque OCR “aplane” líneas) ===== */
+  /* ===== PARSER (robusto) ===== */
   function parseTicketText(raw){
     const text = String(raw || "").replace(/\r/g, "");
     const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
 
-    // Quita números largos (códigos) de una línea para no confundirlos como cantidad
     const stripLongCodes = (s)=> String(s||"").replace(/\b\d{6,}\b/g, " ");
 
-    // Extrae números candidatos de una línea
     function extractNumbers(line){
       const cleaned = String(line||"")
         .replace(/,/g,"")
         .replace(/[^\d.\s]/g," ");
-
       return cleaned
         .split(/\s+/).filter(Boolean)
         .map(x=>Number(x))
@@ -367,7 +361,6 @@
 
     function pickCantidadForProduct(productKey, nums){
       if(!nums || !nums.length) return null;
-
       if(isBoxProduct(productKey)){
         const ints = nums.filter(n=>n <= MAX_BOXES_ALLOWED && Math.abs(n - Math.round(n)) < 1e-6);
         if(ints.length) return ints[0];
@@ -383,7 +376,6 @@
 
     // A) Formato ideal: PRODUCTO / CODIGO / NUMS
     const isNumericCodeLine = (s)=>/^\d{6,}$/.test(String(s||"").replace(/\s/g,""));
-
     for(let i=0;i<lines.length;i++){
       const productoLine = lines[i];
       const codeLine = lines[i+1] || "";
@@ -392,46 +384,30 @@
       if(!isNumericCodeLine(codeLine)) continue;
 
       const mapped = mapToCatalogProduct(productoLine);
-      if(!mapped){ i = i + 2; continue; }
+      if(!mapped){ i += 2; continue; }
 
       const nums = extractNumbers(numsLine);
       const cantidad = pickCantidadForProduct(mapped, nums);
-      if(!cantidad){ i = i + 2; continue; }
+      if(!cantidad){ i += 2; continue; }
 
       if(isBoxProduct(mapped)) out.push({ producto: mapped, kg: cantidad * KG_PER_BOX });
       else out.push({ producto: mapped, kg: cantidad });
 
-      i = i + 2;
+      i += 2;
     }
 
-    // B) OCR aplanado: PRODUCTO + CODIGO + CANTIDAD + PRECIOS en una sola línea
+    // B) OCR aplanado: PRODUCTO + ... + cantidad en la misma línea
     for(const line of lines){
       const mapped = mapToCatalogProduct(line);
       if(!mapped) continue;
 
       const lineNoCodes = stripLongCodes(line);
       const nums = extractNumbers(lineNoCodes);
-
       const cantidad = pickCantidadForProduct(mapped, nums);
       if(!cantidad) continue;
 
       if(isBoxProduct(mapped)) out.push({ producto: mapped, kg: cantidad * KG_PER_BOX });
       else out.push({ producto: mapped, kg: cantidad });
-    }
-
-    // C) Extra: “7.35 kg” etc
-    const kgRegex = /(\d+(?:[.,]\d{1,3})?)\s*(kg|kgr|kilo|kilos)\b/i;
-    for(const line of lines){
-      const m = line.match(kgRegex);
-      if(!m) continue;
-
-      const kg = Number(String(m[1]).replace(",", "."));
-      if(!Number.isFinite(kg) || kg <= 0 || kg > MAX_KG_LINE) continue;
-
-      const mapped = mapToCatalogProduct(line.replace(kgRegex, " "));
-      if(!mapped) continue;
-
-      out.push({ producto: mapped, kg });
     }
 
     // Agrupar por producto
@@ -476,9 +452,7 @@
     box.innerHTML = `
       <div class="mini">Puedes corregir nombres y kilos antes de guardar.</div>
       <table>
-        <thead>
-          <tr><th>Producto</th><th>Kg</th><th class="right">Del</th></tr>
-        </thead>
+        <thead><tr><th>Producto</th><th>Kg</th><th class="right">Del</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="row" style="margin-top:10px">
@@ -520,46 +494,31 @@
     }
   }
 
-  /* ===== ✅ NUEVO: cargar teléfonos guardados y llenar datalist ===== */
+  /* ===== Teléfonos guardados ===== */
   async function cargarTelefonosGuardados(){
     if(!sb) return;
-
-    const { data, error } = await sb
-      .from(T_CLIENTES)
-      .select("telefono,nombre")
-      .order("telefono", { ascending: true });
-
-    if(error){
-      console.error(error);
-      return;
-    }
+    const { data, error } = await sb.from(T_CLIENTES).select("telefono,nombre").order("telefono",{ascending:true});
+    if(error){ console.error(error); return; }
 
     const dl = $("telList");
     dl.innerHTML = "";
-
     (data || []).forEach(row=>{
       const opt = document.createElement("option");
-      // value = teléfono (lo que se insertará al seleccionar)
       opt.value = row.telefono || "";
-      // label visible en algunos navegadores
       opt.label = (row.nombre ? `${row.telefono} — ${row.nombre}` : row.telefono);
       dl.appendChild(opt);
     });
   }
 
-  // Si el usuario selecciona un teléfono existente, autollenamos el nombre y buscamos cliente
   async function onTelefonoInputAutofill(){
     const tel = cleanPhone($("tel").value);
     if(tel.length !== 10) return;
-
-    // autocompleta nombre si existe
     try{
       const { data, error } = await sb
         .from(T_CLIENTES)
         .select("id,telefono,nombre,puntos,saldo_kg")
         .eq("telefono", tel)
         .maybeSingle();
-
       if(error) throw error;
       if(data){
         $("nombre").value = data.nombre || "";
@@ -568,15 +527,11 @@
         await renderQR();
         setMsg("ok", "Cliente encontrado ✅");
       }
-    }catch(e){
-      console.error(e);
-    }
+    }catch(e){ console.error(e); }
   }
 
-  /* ===== Acciones Cliente ===== */
   async function buscarClientePorTelefono(){
     if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
-
     const tel = cleanPhone($("tel").value);
     if(tel.length !== 10) throw new Error("Teléfono inválido (deben ser 10 dígitos).");
 
@@ -589,8 +544,7 @@
     if(error) throw error;
 
     currentClient = data || null;
-    if(data) $("nombre").value = data.nombre || ""; // ✅ llena nombre si existe
-
+    if(data) $("nombre").value = data.nombre || "";
     renderStatus();
     await renderQR();
 
@@ -618,9 +572,8 @@
     currentClient = data;
     renderStatus();
     await renderQR();
-    setMsg("ok", "Cliente creado/actualizado y QR generado.");
 
-    // ✅ refresca teléfonos para que aparezca el nuevo en la lista
+    setMsg("ok", "Cliente creado/actualizado y QR generado.");
     await cargarTelefonosGuardados();
   }
 
@@ -636,7 +589,7 @@
     renderDetalleEditable();
 
     if(!items.length){
-      setLog("err", "No pude detectar productos. Tip: escanea con buena luz y que se vean las líneas del producto.");
+      setLog("err", "No pude detectar productos. Abre 'Ver OCR completo' y confirma si aparecen palabras como BOFE, LIBRO, PANZA...");
     }else{
       setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
     }
@@ -648,6 +601,8 @@
     ticketItems = [];
     rawOcrText = "";
     filteredOcrView = "";
+    $("rawPre").textContent = "";
+    $("rawBox").style.display = "none";
     renderDetalleEditable();
     setLog("muted","Listo.");
   }
@@ -685,16 +640,8 @@
     if(e1) throw e1;
 
     if(items.length){
-      const payloadItems = items.map(it=>({
-        venta_id: venta.id,
-        producto: it.producto,
-        kg: it.kg
-      }));
-
-      const { error: e2 } = await sb
-        .from(T_ITEMS)
-        .insert(payloadItems);
-
+      const payloadItems = items.map(it=>({ venta_id: venta.id, producto: it.producto, kg: it.kg }));
+      const { error: e2 } = await sb.from(T_ITEMS).insert(payloadItems);
       if(e2) throw e2;
     }
 
@@ -708,10 +655,7 @@
 
       const { data: cli2, error: e3 } = await sb
         .from(T_CLIENTES)
-        .update({
-          puntos: currentClient.puntos + puntosGanados,
-          saldo_kg: nuevoSaldo
-        })
+        .update({ puntos: currentClient.puntos + puntosGanados, saldo_kg: nuevoSaldo })
         .eq("id", currentClient.id)
         .select("id,telefono,nombre,puntos,saldo_kg")
         .single();
@@ -719,11 +663,7 @@
       if(e3) throw e3;
       currentClient = cli2;
 
-      const { error: e4 } = await sb
-        .from(T_VENTAS)
-        .update({ puntos_otorgados: puntosGanados })
-        .eq("id", venta.id);
-
+      const { error: e4 } = await sb.from(T_VENTAS).update({ puntos_otorgados: puntosGanados }).eq("id", venta.id);
       if(e4) throw e4;
     }
 
@@ -749,10 +689,34 @@ Venta ID: ${venta.id}`
     $("ocrBar").style.width = (p*100).toFixed(0) + "%";
   }
 
+  function preprocessCanvasForOCR(){
+    // mejora contraste para texto
+    const canvas = $("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const d = img.data;
+
+    // gris + threshold suave
+    for(let i=0;i<d.length;i+=4){
+      const r=d[i], g=d[i+1], b=d[i+2];
+      let v = (r*0.299 + g*0.587 + b*0.114);
+      // contraste
+      v = (v - 128) * 1.25 + 128;
+      // binariza suave
+      const t = v > 160 ? 255 : 0;
+      d[i]=d[i+1]=d[i+2]=t;
+    }
+    ctx.putImageData(img,0,0);
+  }
+
   async function runOCRFromCanvas(){
     if(typeof Tesseract === "undefined") throw new Error("OCR no cargó (Tesseract). Revisa internet/CDN.");
 
     setOcrUI("Leyendo ticket... (OCR)", 0.02);
+
+    // ✅ preprocesa para que agarre letras
+    preprocessCanvasForOCR();
+
     const canvas = $("canvas");
 
     const { data: { text } } = await Tesseract.recognize(
@@ -764,7 +728,10 @@ Venta ID: ${venta.id}`
             const prog = (typeof m.progress === "number") ? m.progress : 0;
             setOcrUI(`OCR: ${m.status} ${(prog*100).toFixed(0)}%`, prog);
           }
-        }
+        },
+        // ✅ configura para tickets
+        tessedit_pageseg_mode: 6,
+        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ0123456789.,:/-() "
       }
     );
 
@@ -773,12 +740,16 @@ Venta ID: ${venta.id}`
       .replace(/[ \t]+\n/g, "\n")
       .trim();
 
-    rawOcrText = cleaned;
+    rawOcrText = cleaned; // ✅ AQUÍ vive el texto completo
 
     filteredOcrView = filterSmallNumbersOnly(cleaned);
     $("ticketText").value = filteredOcrView || cleaned;
 
     setOcrUI("OCR terminado ✅", 1);
+
+    // muestra raw en debug
+    $("rawPre").textContent = rawOcrText || "(vacío)";
+    $("rawBox").style.display = rawOcrText ? "block" : "none";
 
     try { procesarTicket(); } catch(e){ console.error(e); }
   }
@@ -803,7 +774,7 @@ Venta ID: ${venta.id}`
     const canvas = $("canvas");
     const ctx = canvas.getContext("2d");
 
-    const maxW = 1400;
+    const maxW = 1600; // un poco más para letras
     const scale = Math.min(1, maxW / img.width);
     const w = Math.round(img.width * scale);
     const h = Math.round(img.height * scale);
@@ -831,12 +802,7 @@ Venta ID: ${venta.id}`
   }
 
   function stopCamera(){
-    try{
-      if(camStream){
-        camStream.getTracks().forEach(t=>t.stop());
-        camStream = null;
-      }
-    }catch(_){}
+    try{ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream = null; } }catch(_){}
     $("video").srcObject = null;
     $("camWrap").style.display = "none";
     $("btnStartCam").disabled = false;
@@ -852,14 +818,13 @@ Venta ID: ${venta.id}`
     const w = video.videoWidth || 1280;
     const h = video.videoHeight || 720;
 
-    const maxW = 1400;
+    const maxW = 1600;
     const scale = Math.min(1, maxW / w);
     canvas.width = Math.round(w * scale);
     canvas.height = Math.round(h * scale);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   }
 
-  /* ===== Arranque + Diagnóstico ===== */
   function diag(){
     const d = [];
     d.push("Supabase cargado: " + (!!sb));
@@ -915,9 +880,7 @@ Venta ID: ${venta.id}`
     catch(err){ console.error(err); setLog("err", formatErr(err)); }
   });
 
-  $("btnLimpiar").addEventListener("click", ()=>{
-    limpiarTicket();
-  });
+  $("btnLimpiar").addEventListener("click", ()=> limpiarTicket());
 
   $("btnGuardar").addEventListener("click", async ()=>{
     setLog("muted","Guardando venta...");
@@ -930,9 +893,7 @@ Venta ID: ${venta.id}`
     catch(err){ console.error(err); setLog("err", "No pude abrir cámara: " + formatErr(err)); stopCamera(); }
   });
 
-  $("btnStopCam").addEventListener("click", ()=>{
-    stopCamera();
-  });
+  $("btnStopCam").addEventListener("click", ()=> stopCamera());
 
   $("btnSnap").addEventListener("click", async ()=>{
     try{
@@ -971,23 +932,21 @@ Venta ID: ${venta.id}`
     }
   });
 
-  // ✅ al escribir o seleccionar teléfono, si existe lo carga automático
-  $("tel").addEventListener("input", ()=>{
-    // no bloquear UI; corre en microtask
-    Promise.resolve().then(()=>onTelefonoInputAutofill());
+  $("tel").addEventListener("input", ()=> Promise.resolve().then(()=>onTelefonoInputAutofill()));
+
+  $("btnVerOCR").addEventListener("click", ()=>{
+    $("rawPre").textContent = rawOcrText || "(vacío)";
+    $("rawBox").style.display = rawOcrText ? "block" : "block";
+    $("rawBox").open = true;
   });
 
   window.addEventListener("beforeunload", stopCamera);
-  document.addEventListener("visibilitychange", ()=>{
-    if(document.hidden) stopCamera();
-  });
+  document.addEventListener("visibilitychange", ()=>{ if(document.hidden) stopCamera(); });
 
   diag();
   renderStatus();
   renderDetalleEditable();
   cargarClientePorQuery();
-
-  // ✅ carga teléfonos al iniciar (para que al picar el campo ya estén)
   cargarTelefonosGuardados();
 </script>
 </body>
