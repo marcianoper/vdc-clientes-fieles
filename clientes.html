@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VDC360° — Mi Cuenta (Puntos y Compras)</title>
+
+  <style>
+    :root{--brand:#0a7a3b;--bg:#f6f7f8;--card:#fff;--ink:#111;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
+    header{background:var(--brand);color:#fff;padding:14px 18px}
+    header h1{margin:0;font-size:18px}
+    main{max-width:980px;margin:0 auto;padding:16px;display:grid;gap:16px}
+    .card{background:var(--card);border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:16px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:720px){.grid{grid-template-columns:1fr}}
+    label{display:block;font-weight:800;margin-top:10px}
+    input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #d1d5db;font-size:16px}
+    button{background:var(--brand);color:#fff;border:none;font-weight:900;cursor:pointer;margin-top:12px}
+    button.ghost{background:#fff;color:#111;border:1px solid #d1d5db}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{display:inline-block;background:#eef7ef;border:1px solid #cfe9d1;color:#1f6f26;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px}
+    .muted{color:var(--muted)}
+    .err{background:#fff1f2;border:1px solid #fecdd3;color:#b91c1c;padding:10px;border-radius:12px;white-space:pre-wrap}
+    .ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:10px;border-radius:12px;white-space:pre-wrap}
+
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;vertical-align:top}
+    th{background:#f9fafb}
+    .mini{font-size:12px;color:var(--muted)}
+    .right{text-align:right}
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+<header>
+  <h1>VDC360° — Mi Cuenta (Puntos y Compras)</h1>
+</header>
+
+<main>
+
+  <section class="card">
+    <h2 style="margin:0 0 6px">Mi información</h2>
+    <div class="row" style="margin-top:10px">
+      <span class="pill" id="stNombre">Cliente: —</span>
+      <span class="pill" id="stTel">Tel: —</span>
+      <span class="pill" id="stPuntos">Puntos: —</span>
+      <span class="pill" id="stSaldo">Saldo kg: —</span>
+    </div>
+    <div id="msg" class="muted" style="margin-top:10px">—</div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin:0 0 6px">Compras (rango de fechas)</h2>
+    <p class="muted" style="margin-top:0">Selecciona un rango para ver tus compras, kilos y puntos en ese periodo.</p>
+
+    <div class="grid">
+      <div>
+        <label>Desde</label>
+        <input id="from" type="date" />
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input id="to" type="date" />
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="btnVer" class="ghost" type="button">Ver compras</button>
+      <button id="btn7" class="ghost" type="button">Últimos 7 días</button>
+      <button id="btn30" class="ghost" type="button">Últimos 30 días</button>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="pill" id="stCompras">Compras: —</span>
+      <span class="pill" id="stKg">Kg en periodo: —</span>
+      <span class="pill" id="stPts">Puntos en periodo: —</span>
+    </div>
+
+    <div id="resumen" class="muted" style="margin-top:10px">—</div>
+    <div id="detalle" class="muted" style="margin-top:10px">—</div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin:0 0 6px">Diagnóstico</h2>
+    <div id="diag" class="muted">—</div>
+  </section>
+
+</main>
+
+<script>
+  /* ===== CONFIG (tus credenciales) ===== */
+  const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+
+  const sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  const T_CLIENTES = "clientes";
+  const T_VENTAS   = "ventas";
+  const T_ITEMS    = "ventas_items";
+
+  let client = null;
+  let cid = null;
+
+  const $ = (id)=>document.getElementById(id);
+
+  function setMsg(type, text){
+    const el = $("msg");
+    if(!el) return;
+    el.className = type === "err" ? "err" : (type==="ok" ? "ok" : "muted");
+    el.textContent = text;
+  }
+
+  function escapeHtml(s){
+    return String(s || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function normalizeLine(s){
+    return String(s||"").replace(/\s+/g," ").trim();
+  }
+
+  function fmtDate(iso){
+    try{
+      const d = new Date(iso);
+      return d.toLocaleString("es-MX", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+    }catch{
+      return iso;
+    }
+  }
+
+  function setQuickRange(days){
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - days);
+    $("to").value = to.toISOString().slice(0,10);
+    $("from").value = from.toISOString().slice(0,10);
+  }
+
+  function dateRangeToISO(fromDate, toDate){
+    // Usamos ISO Z para evitar broncas por zona horaria
+    const start = new Date(fromDate + "T00:00:00.000Z");
+    const end   = new Date(toDate   + "T23:59:59.999Z");
+    return { startISO: start.toISOString(), endISO: end.toISOString() };
+  }
+
+  function renderClient(){
+    $("stNombre").textContent = "Cliente: " + (client?.nombre || "—");
+    $("stTel").textContent    = "Tel: " + (client?.telefono || "—");
+    $("stPuntos").textContent = "Puntos: " + (client ? client.puntos : "—");
+    $("stSaldo").textContent  = "Saldo kg: " + (client ? Number(client.saldo_kg || 0).toFixed(3) : "—");
+  }
+
+  function renderResumen({count, totalKg, totalPts, byProduct}){
+    $("stCompras").textContent = `Compras: ${count}`;
+    $("stKg").textContent      = `Kg en periodo: ${totalKg.toFixed(2)}`;
+    $("stPts").textContent     = `Puntos en periodo: ${totalPts}`;
+
+    if(!count){
+      $("resumen").className = "muted";
+      $("resumen").textContent = "—";
+      return;
+    }
+
+    const rows = Object.entries(byProduct)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([prod,kg])=>`
+        <tr>
+          <td>${escapeHtml(prod)}</td>
+          <td class="right">${Number(kg).toFixed(3)}</td>
+        </tr>
+      `).join("");
+
+    $("resumen").className = "";
+    $("resumen").innerHTML = `
+      <div class="mini">Resumen por producto (kg):</div>
+      <table>
+        <thead><tr><th>Producto</th><th class="right">Kg</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="2" class="muted">Sin items</td></tr>`}</tbody>
+      </table>
+    `;
+  }
+
+  function renderDetalle(ventas){
+    const box = $("detalle");
+    if(!ventas?.length){
+      box.className = "muted";
+      box.textContent = "—";
+      return;
+    }
+
+    const rows = ventas.map(v=>{
+      const items = (v.items || []);
+      const itemTxt = items.length
+        ? items.map(it=>`${escapeHtml(it.producto)}: ${Number(it.kg||0).toFixed(3)} kg`).join("<br>")
+        : `<span class="mini muted">Sin detalle</span>`;
+
+      return `
+        <tr>
+          <td style="white-space:nowrap">${fmtDate(v.created_at)}</td>
+          <td>${escapeHtml(v.tipo || "")}</td>
+          <td class="right">${Number(v.total_kg||0).toFixed(2)}</td>
+          <td class="right">${Number(v.puntos_otorgados||0)}</td>
+          <td>${itemTxt}</td>
+        </tr>
+      `;
+    }).join("");
+
+    box.className = "";
+    box.innerHTML = `
+      <div class="mini">Detalle de compras:</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th class="right">Kg</th>
+            <th class="right">Pts</th>
+            <th>Items</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  async function loadClientFromQuery(){
+    if(!sb) throw new Error("Supabase no cargó.");
+    const u = new URL(window.location.href);
+    cid = u.searchParams.get("cid");
+
+    if(!cid){
+      setMsg("err","Este enlace no trae cid. Abre con el QR correcto.");
+      return;
+    }
+
+    const { data, error } = await sb
+      .from(T_CLIENTES)
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .eq("id", cid)
+      .maybeSingle();
+
+    if(error) throw error;
+    if(!data){
+      setMsg("err","No encontré el cliente (cid no existe).");
+      return;
+    }
+
+    client = data;
+    renderClient();
+    setMsg("ok","Cuenta cargada ✅");
+  }
+
+  async function fetchHistory(){
+    if(!sb) throw new Error("Supabase no cargó.");
+    if(!client) throw new Error("No hay cliente cargado.");
+
+    const from = $("from").value;
+    const to = $("to").value;
+    if(!from || !to) throw new Error("Selecciona Desde y Hasta.");
+
+    const { startISO, endISO } = dateRangeToISO(from, to);
+
+    // 1) Traemos ventas
+    const { data: ventas, error: e1 } = await sb
+      .from(T_VENTAS)
+      .select("id, created_at, tipo, total_kg, puntos_otorgados")
+      .eq("cliente_id", client.id)
+      .gte("created_at", startISO)
+      .lte("created_at", endISO)
+      .order("created_at", { ascending: false });
+
+    if(e1) throw e1;
+
+    const vs = ventas || [];
+    if(!vs.length){
+      renderResumen({count:0, totalKg:0, totalPts:0, byProduct:{}});
+      renderDetalle([]);
+      return;
+    }
+
+    // 2) Traemos items de esas ventas (en lote)
+    const ids = vs.map(v=>v.id);
+    const { data: items, error: e2 } = await sb
+      .from(T_ITEMS)
+      .select("venta_id, producto, kg")
+      .in("venta_id", ids);
+
+    if(e2) throw e2;
+
+    // 3) Pegamos items a cada venta
+    const byVenta = new Map();
+    for(const it of (items || [])){
+      const k = it.venta_id;
+      if(!byVenta.has(k)) byVenta.set(k, []);
+      byVenta.get(k).push({ producto: it.producto, kg: it.kg });
+    }
+
+    const merged = vs.map(v=>({
+      ...v,
+      items: byVenta.get(v.id) || []
+    }));
+
+    // 4) Resúmenes
+    let totalKg = 0;
+    let totalPts = 0;
+    const byProduct = {};
+
+    for(const v of merged){
+      totalKg += Number(v.total_kg || 0);
+      totalPts += Number(v.puntos_otorgados || 0);
+
+      for(const it of (v.items || [])){
+        const prod = normalizeLine(it.producto || "Producto");
+        const kg = Number(it.kg || 0);
+        byProduct[prod] = (byProduct[prod] || 0) + kg;
+      }
+    }
+
+    renderResumen({count: merged.length, totalKg, totalPts, byProduct});
+    renderDetalle(merged);
+  }
+
+  $("btnVer").addEventListener("click", async ()=>{
+    setMsg("muted","Cargando compras...");
+    try{
+      await fetchHistory();
+      setMsg("ok","Listo ✅");
+    }catch(err){
+      console.error(err);
+      setMsg("err", err?.message || String(err));
+    }
+  });
+
+  $("btn7").addEventListener("click", ()=>{
+    setQuickRange(7);
+    $("btnVer").click();
+  });
+
+  $("btn30").addEventListener("click", ()=>{
+    setQuickRange(30);
+    $("btnVer").click();
+  });
+
+  (function init(){
+    const d = [];
+    d.push("Supabase cargado: " + (!!sb));
+    d.push("Tip: este link requiere ?cid=...");
+    $("diag").textContent = d.join("\n");
+
+    setQuickRange(7);
+    loadClientFromQuery().then(()=>{
+      // auto-cargar compras al abrir
+      $("btnVer").click();
+    }).catch(err=>{
+      console.error(err);
+      setMsg("err", err?.message || String(err));
+    });
+  })();
+</script>
+</body>
+</html>
