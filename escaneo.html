@@ -64,9 +64,20 @@
   let cameras = [];
   let camIndex = 0;
 
-  let lastQr = "";
-  let lastTs = 0;
+  // =========================
+  // ✅ ANTI DOBLE LECTURA (Fuerte)
+  // =========================
   let busy = false;
+
+  let lastDecodedText = "";
+  let lastDecodedAt = 0;
+
+  let lastQrId = "";
+  let lastQrAt = 0;
+
+  const DEDUPE_TEXT_MS = 4500;   // ventana para repetir mismo texto
+  const DEDUPE_QRID_MS = 8000;   // ventana para repetir mismo qr_id
+  const BUSY_COOLDOWN_MS = 900;  // evita spam mientras procesa
 
   function log(txt, cls=""){
     out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
@@ -87,6 +98,7 @@
   }
 
   function normalizePayload(raw, decodedText){
+    // Caso 1: el QR es un array [{cantidad, producto}]
     if(Array.isArray(raw)){
       const items = raw.map(x => ({
         sku: String(x.producto || x.sku || "").trim(),
@@ -96,6 +108,7 @@
       return { qr_id: hashQr(decodedText), items };
     }
 
+    // Caso 2: el QR es objeto {items:[...]} o {productos:[...]}
     if(raw && typeof raw === "object"){
       let items = raw.items;
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
@@ -111,12 +124,33 @@
     return null;
   }
 
-  async function procesar(payload){
+  // ✅ filtro por texto y por qr_id
+  function shouldSkip(decodedText, payload){
     const now = Date.now();
-    const qrId = payload?.qr_id || "";
-    if(qrId && qrId === lastQr && (now-lastTs) < 2500) return;
-    lastQr = qrId; lastTs = now;
 
+    const txt = (decodedText || "").trim();
+    if(txt && txt === lastDecodedText && (now - lastDecodedAt) < DEDUPE_TEXT_MS){
+      return { skip:true, why:`Ignorado: mismo QR (texto) dentro de ${DEDUPE_TEXT_MS/1000}s` };
+    }
+
+    const qrId = (payload?.qr_id || "").trim();
+    if(qrId && qrId === lastQrId && (now - lastQrAt) < DEDUPE_QRID_MS){
+      return { skip:true, why:`Ignorado: mismo qr_id dentro de ${DEDUPE_QRID_MS/1000}s` };
+    }
+
+    // actualizar huellas
+    lastDecodedText = txt;
+    lastDecodedAt = now;
+
+    if(qrId){
+      lastQrId = qrId;
+      lastQrAt = now;
+    }
+
+    return { skip:false, why:"" };
+  }
+
+  async function procesar(payload){
     log("Procesando venta…");
 
     const { data, error } = await sb.rpc('procesar_venta_qr', { payload });
@@ -135,6 +169,7 @@
   async function handleDecoded(decodedText){
     if(busy) return;
     busy = true;
+
     try{
       const raw = safeParseJson(decodedText);
       const payload = normalizePayload(raw, decodedText);
@@ -143,11 +178,19 @@
         log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
         return;
       }
+
+      const chk = shouldSkip(decodedText, payload);
+      if(chk.skip){
+        log(chk.why, "muted");
+        return;
+      }
+
       await procesar(payload);
+
     }catch(e){
       log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
     }finally{
-      setTimeout(()=> busy = false, 700);
+      setTimeout(()=> busy = false, BUSY_COOLDOWN_MS);
     }
   }
 
@@ -178,7 +221,6 @@
         return { width: Math.floor(size), height: Math.floor(size) };
       },
       disableFlip: true,
-      // ✅ si el navegador lo soporta, mejora mucho
       experimentalFeatures: { useBarCodeDetectorIfSupported: true }
     };
 
@@ -221,7 +263,7 @@
     if(running){ await stop(); await start(); }
   }
 
-  // ✅ MODO FOTO: casi 100% si el QR es pesado
+  // ✅ MODO FOTO (muy confiable)
   filePick.addEventListener('change', async (e)=>{
     const file = e.target.files?.[0];
     if(!file) return;
