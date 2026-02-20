@@ -82,7 +82,7 @@
 
   // Realtime: escucha cambios en stock_mostrador
   function realtime(){
-    const ch = supabase.channel('rt-stock-mostrador')
+    const ch = Supabase.channel('rt-stock-mostrador')
       .on('postgres_changes',
         { event:'*', schema:'public', table:'stock_mostrador' },
         payload => {
