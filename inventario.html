@@ -37,31 +37,35 @@
   </div>
 
 <script>
-  // === Pega tus credenciales ===
-  const _URL = "https://eqynjddcosvdqjzztznn..co";
-  const _ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // === Credenciales (CORRECTAS) ===
+  const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
 
+  // ✅ Cliente único (evita redeclare si se vuelve a ejecutar)
+  const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   const tb = document.getElementById('tb');
   const q  = document.getElementById('q');
   const status = document.getElementById('status');
 
   let rows = [];
+  let rtChannel = null;
 
   function fmt(n){
     const x = Number(n||0);
-    return x.toFixed(2);
+    return Number.isFinite(x) ? x.toFixed(2) : "0.00";
   }
+
   function render(){
     const s = (q.value||"").trim().toUpperCase();
     const filtered = s ? rows.filter(r => (r.sku||"").toUpperCase().includes(s)) : rows;
+
     tb.innerHTML = filtered.map(r => `
       <tr>
-        <td><span class="pill">${r.sku}</span></td>
+        <td><span class="pill">${r.sku ?? ""}</span></td>
         <td>${fmt(r.kg)}</td>
         <td>${fmt(r.pzas)}</td>
-        <td class="muted">${new Date(r.updated_at).toLocaleString()}</td>
+        <td class="muted">${r.updated_at ? new Date(r.updated_at).toLocaleString() : ""}</td>
       </tr>
     `).join("") || `<tr><td colspan="4" class="muted">Sin datos</td></tr>`;
   }
@@ -75,33 +79,49 @@
       .select('sku,kg,pzas,updated_at')
       .order('sku', { ascending:true });
 
-    if(error){ status.textContent = "Error: " + error.message; return; }
+    if(error){
+      status.textContent = "Error: " + (error.message || "desconocido");
+      console.error(error);
+      return;
+    }
+
     rows = data || [];
     status.textContent = `OK • ${rows.length} productos`;
     render();
   }
 
   // Realtime: escucha cambios en stock_mostrador
-  function realtime(){
-    const ch = supabase.channel('rt-stock-mostrador')
+  async function realtime(){
+    // ✅ si ya había canal, lo quitamos
+    if(rtChannel){
+      try{ await sb.removeChannel(rtChannel); }catch(e){}
+      rtChannel = null;
+    }
+
+    rtChannel = sb
+      .channel('rt-stock-mostrador')
       .on('postgres_changes',
         { event:'*', schema:'public', table:'stock_mostrador' },
         payload => {
           const r = payload.new;
+          if(!r || !r.sku) return;
+
           const idx = rows.findIndex(x => x.sku === r.sku);
           if(idx >= 0) rows[idx] = r; else rows.push(r);
+
           status.textContent = "Actualizado en tiempo real ✓";
           render();
         }
       )
       .subscribe((s) => {
         if(s === 'SUBSCRIBED') status.textContent = "Conectado realtime ✓";
+        else if(s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') status.textContent = "Realtime error: " + s;
       });
   }
 
   (async ()=>{
     await load();
-    realtime();
+    await realtime();
   })();
 </script>
 </body>
