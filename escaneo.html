@@ -122,8 +122,65 @@
   let busy = false;
   const BUSY_COOLDOWN_MS = 900;
 
-  // ====== REGLA CAJAS ======
+  // =========================
+  // ✅ REGLAS CAJAS COMPLETAS
+  // =========================
   const BOX_FULL_KG = 27.22;
+
+  // =========================
+  // ✅ CANONIZADOR SKU (CORREGIDO)
+  // - PATA MORENA (con espacio) -> PATA_MORENA
+  // - CAJA AZUL -> CAJA_MENUDO_NATIONAL
+  // - CAJA CANADIAN -> MENUDO_CANADIAN
+  // =========================
+  function canonSku(productoOriginal){
+    let t = String(productoOriginal || "")
+      .trim()
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // PATA MORENA (espacio / guión / underscore)
+    if(/PATA[\s_-]*MORENA/.test(t)) return "PATA_MORENA";
+
+    // CAJA AZUL (National) (cualquier variante)
+    // ej: "CAJA AZUL COMPLETA", "CAJA AZUL X KG"
+    if(/^CAJA\s+AZUL\b/.test(t) || t.includes("CAJA AZUL")) return "CAJA_MENUDO_NATIONAL";
+
+    // CAJA CANADIAN
+    if(/^CAJA\s+CANADIAN\b/.test(t) || t.includes("CAJA CANADIAN")) return "MENUDO_CANADIAN";
+
+    // (por si algún día llega texto con NATIONAL explícito)
+    if(t.includes("NATIONAL")) return "CAJA_MENUDO_NATIONAL";
+
+    // Normaliza espacios -> underscore
+    return t.replace(/\s+/g, "_");
+  }
+
+  // si es caja completa (1.000) => inventario descuenta 27.22, total visual no la suma
+  function applyBoxRules(productoOriginal, qty){
+    const name = String(productoOriginal || "").toUpperCase();
+    const q = Number(qty);
+
+    const isCajaCompleta =
+      name.includes("CAJA") &&
+      name.includes("COMPLETA") &&
+      Number.isFinite(q) &&
+      Math.abs(q - 1) < 1e-9;
+
+    let kgForInv = Number.isFinite(q) ? q : 0;
+    let kgForTotal = kgForInv;
+
+    if(isCajaCompleta){
+      // Solo National/Canadian completa: el ticket trae 1.000
+      // (Washington NO entra aquí porque trae kg real)
+      if(name.includes("AZUL") || name.includes("CANADIAN") || name.includes("NATIONAL")){
+        kgForInv = BOX_FULL_KG;  // descuenta 27.22
+        kgForTotal = 0;          // ignora en total visual
+      }
+    }
+
+    return { kgForInv, kgForTotal };
+  }
 
   function log(txt, cls=""){
     out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
@@ -143,73 +200,22 @@
     return "QR_" + (h >>> 0).toString(16);
   }
 
-  function canonText(s){
-    return String(s || "")
-      .trim()
-      .toUpperCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // quita acentos
-  }
-
-  // ✅ SKU canon (incluye pata morena + normaliza cajas)
-  function canonSku(s){
-    let t = canonText(s).replace(/\s+/g, " "); // normaliza espacios
-
-    // pata morena con espacio => PATA_MORENA (y en general espacios a _)
-    // pero antes de eso, normalizamos nombres de cajas para que no creen SKUs nuevos:
-    // "CAJA AZUL COMPLETA"  -> "CAJA AZUL"
-    // "CAJA AZUL X KG"      -> "CAJA AZUL"
-    // "CAJA CANADIAN COMPLETA" -> "CAJA CANADIAN"
-    t = t.replace(/\s+COMPLETA\b/g, "");
-    t = t.replace(/\s+X\s*KG\b/g, "");
-
-    // espacios -> _
-    t = t.replace(/\s+/g, "_");
-
-    return t;
-  }
-
-  // ✅ detecta "caja completa" con cantidad=1 (1 caja) => 27.22 kg
-  // y además permite "caja x kg" (kg real)
-  function applyBoxRules(productoOriginal, qty){
-    const name = canonText(productoOriginal);
-
-    const isCaja = /\bCAJA\b/.test(name);
-    const isCompleta = /\bCOMPLETA\b/.test(name);
-    const isXkg = /\bX\s*KG\b/.test(name);
-
-    const q = Number(qty);
-
-    // default: el kg real es la cantidad
-    let kgForInv = Number.isFinite(q) ? q : 0;
-
-    // regla: si es CAJA + COMPLETA y el ticket trae 1 => es 1 caja (27.22)
-    const isFullBoxByOne = isCaja && isCompleta && Number.isFinite(q) && Math.abs(q - 1) < 1e-9;
-
-    if(isFullBoxByOne){
-      kgForInv = BOX_FULL_KG;
-    }
-
-    // total mostrado:
-    // - si es caja completa con 1 => NO lo sumamos (porque el "1" es simbólico)
-    // - en cualquier otro caso => sí sumamos el kg que realmente vamos a descontar
-    const kgForTotal = isFullBoxByOne ? 0 : kgForInv;
-
-    return { kgForInv, kgForTotal, isFullBoxByOne, isCaja, isXkg };
-  }
-
   function normalizePayload(raw, decodedText){
     // QR como array
     if(Array.isArray(raw)){
-      const items = raw.map(x => {
-        const producto = (x.producto || x.sku || "");
-        const qty = (x.cantidad ?? x.kg ?? 0);
-        const rule = applyBoxRules(producto, qty);
-        return {
-          sku: canonSku(producto),
-          kg: Number(rule.kgForInv) // ✅ esto es lo que mandamos a Supabase para descontar
-        };
+      const itemsUi = raw.map(x => {
+        const producto = String(x.producto || x.sku || "").trim();
+        const qty = Number(x.cantidad ?? x.kg ?? 0);
+
+        const sku = canonSku(producto);
+        const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
+
+        return { sku, kg: kgForInv, _kgTotal: kgForTotal };
       }).filter(it => it.sku && Number.isFinite(it.kg));
-      return { qr_id: hashQr(decodedText), items };
+
+      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
+
+      return { qr_id: hashQr(decodedText), items: itemsForRpc, _itemsUi: itemsUi };
     }
 
     // QR como objeto
@@ -217,38 +223,39 @@
       let items = raw.items;
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
 
-      items = (items || []).map(x => {
-        const producto = (x.sku || x.producto || "");
-        const qty = (x.kg ?? x.cantidad ?? 0);
-        const rule = applyBoxRules(producto, qty);
-        return {
-          sku: canonSku(producto),
-          kg: Number(rule.kgForInv)
-        };
+      const itemsUi = (items || []).map(x => {
+        const producto = String(x.sku || x.producto || "").trim();
+        const qty = Number(x.kg ?? x.cantidad ?? 0);
+
+        const sku = canonSku(producto);
+        const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
+
+        return { sku, kg: kgForInv, _kgTotal: kgForTotal };
       }).filter(it => it.sku && Number.isFinite(it.kg));
 
-      return { qr_id: String(raw.qr_id || hashQr(decodedText)), items };
+      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
+
+      return { qr_id: String(raw.qr_id || hashQr(decodedText)), items: itemsForRpc, _itemsUi: itemsUi };
     }
     return null;
   }
 
-  // ✅ total kg mostrado (usa reglas de cajas SIN falsear)
-  function calcTotalKgFromRawItems(rawItems){
+  // ✅ suma de kilos total (usa _kgTotal para ignorar cajas completas con 1.000)
+  function calcTotalKg(itemsUi){
     let sum = 0;
-    for(const x of (rawItems || [])){
-      const producto = (x.producto || x.sku || "");
-      const qty = (x.cantidad ?? x.kg ?? 0);
-      const rule = applyBoxRules(producto, qty);
-      const k = Number(rule.kgForTotal);
+    for(const it of (itemsUi||[])){
+      const k = Number(it._kgTotal ?? it.kg);
       if(Number.isFinite(k)) sum += k;
     }
     return sum;
   }
 
-  function updateTotalsUIFromRaw(rawItems, fingerprint){
-    const totalKg = calcTotalKgFromRawItems(rawItems);
+  function updateTotalsUI(payload, fingerprint){
+    const itemsUi = payload._itemsUi || payload.items || [];
+    const totalKg = calcTotalKg(itemsUi);
+
     totalKgEl.textContent = totalKg.toFixed(2);
-    countLinesEl.textContent = String((rawItems || []).length || 0);
+    countLinesEl.textContent = String((payload.items || []).length || 0);
     fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
   }
 
@@ -256,7 +263,7 @@
     log("Procesando venta…");
 
     const { data, error } = await sb.rpc('procesar_venta_qr', {
-      payload,
+      payload: { qr_id: payload.qr_id, items: payload.items },
       p_fingerprint: fingerprint
     });
 
@@ -284,16 +291,6 @@
 
     try{
       const raw = safeParseJson(decodedText);
-
-      // ✅ fingerprint estable
-      const fingerprint = hashQr(decodedText);
-
-      // ✅ UI total: usa el RAW (para poder ignorar caja completa=1)
-      // raw puede venir array u objeto; armamos rawItems para UI:
-      const rawItems = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : (Array.isArray(raw?.productos) ? raw.productos : []));
-      updateTotalsUIFromRaw(rawItems, fingerprint);
-
-      // ✅ payload para inventario: usa kg ajustado (caja completa=1 => 27.22)
       const payload = normalizePayload(raw, decodedText);
 
       if(!payload?.items?.length){
@@ -301,6 +298,12 @@
         return;
       }
 
+      const fingerprint = hashQr(decodedText);
+
+      // ✅ Mostrar total inmediatamente al escanear
+      updateTotalsUI(payload, fingerprint);
+
+      // ✅ Procesar venta
       await procesar(payload, fingerprint);
 
     }catch(e){
@@ -379,6 +382,7 @@
     if(running){ await stop(); await start(); }
   }
 
+  // ✅ MODO FOTO (muy confiable)
   filePick.addEventListener('change', async (e)=>{
     const file = e.target.files?.[0];
     if(!file) return;
