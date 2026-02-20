@@ -78,7 +78,6 @@
   // A) [{cantidad:"5.000", producto:"BOFE"}]
   // B) {qr_id:"...", items:[{sku:"BOFE", kg:5, pzas:0}]}
   function normalizePayload(raw, decodedText){
-    // Caso A: Array directo
     if(Array.isArray(raw)){
       const items = raw.map(x => ({
         sku: String(x.producto || x.sku || "").trim(),
@@ -86,20 +85,12 @@
         pzas: Number(x.pzas ?? 0)
       })).filter(it => it.sku && Number.isFinite(it.kg));
 
-      return {
-        qr_id: hashQr(decodedText),
-        items
-      };
+      return { qr_id: hashQr(decodedText), items };
     }
 
-    // Caso B: Objeto con items
     if(raw && typeof raw === "object"){
       let items = raw.items;
-
-      // si te llegara como "productos", lo soportamos
-      if(!Array.isArray(items) && Array.isArray(raw.productos)){
-        items = raw.productos;
-      }
+      if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
 
       items = (items || []).map(x => ({
         sku: String(x.sku || x.producto || "").trim(),
@@ -107,17 +98,13 @@
         pzas: Number(x.pzas ?? 0)
       })).filter(it => it.sku && Number.isFinite(it.kg));
 
-      return {
-        qr_id: String(raw.qr_id || hashQr(decodedText)),
-        items
-      };
+      return { qr_id: String(raw.qr_id || hashQr(decodedText)), items };
     }
 
     return null;
   }
 
   async function procesar(payload){
-    // anti doble lectura en milisegundos
     const now = Date.now();
     const qrId = payload?.qr_id || "";
     if(qrId && qrId === lastQr && (now-lastTs) < 2500) return;
@@ -132,14 +119,17 @@
       return;
     }
     if(!data?.ok){
-      log("NO OK: " + JSON.stringify(data, null, 2), "bad");
+      log("NO OK:\n" + JSON.stringify(data, null, 2), "bad");
       return;
     }
     const cls = (data.code === 'OK') ? "ok" : "";
     log(JSON.stringify(data, null, 2), cls);
   }
 
+  let busy = false;
   async function onScanSuccess(decodedText){
+    if(busy) return; // evita spam de callbacks
+    busy = true;
     try{
       const raw = safeParseJson(decodedText);
       const payload = normalizePayload(raw, decodedText);
@@ -149,13 +139,11 @@
         return;
       }
 
-      // opcional: ver qué va a mandar
-      // log("Payload OK:\n" + JSON.stringify(payload, null, 2));
-
       await procesar(payload);
-
     }catch(e){
       log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
+    }finally{
+      setTimeout(()=> busy = false, 700); // pequeño cooldown
     }
   }
 
@@ -164,7 +152,7 @@
     if(!Array.isArray(cameras)) cameras = [];
     switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
 
-    // intenta elegir trasera por nombre (cuando el browser lo permite)
+    // intenta elegir trasera por nombre
     const idxBack = cameras.findIndex(c =>
       /back|rear|environment|trasera/i.test(c.label || "")
     );
@@ -178,26 +166,45 @@
     running = true;
     toggleBtn.textContent = "Detener cámara";
 
-    const config = { fps: 12, qrbox: { width: 280, height: 280 } };
+    // ✅ CONFIG MEJORADA (iPhone-friendly)
+    const config = {
+      fps: 15,
+      // QRbox grande ayuda MUCHO en QR densos
+      qrbox: (vw, vh) => {
+        const size = Math.min(vw, vh) * 0.78; // 78% de la pantalla
+        return { width: Math.floor(size), height: Math.floor(size) };
+      },
+      disableFlip: true
+    };
+
+    // ✅ Constraints con mejor resolución
+    const constraints = cameras.length
+      ? { deviceId: { exact: cameras[camIndex].id } }
+      : {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        };
 
     try{
-      if(cameras.length){
-        const camId = cameras[camIndex]?.id;
-        await scanner.start({ deviceId: { exact: camId } }, config, onScanSuccess);
-      }else{
-        await scanner.start({ facingMode: "environment" }, config, onScanSuccess);
-      }
-      log("Cámara lista (preferencia: trasera). Escanea un ticket.");
+      await scanner.start(constraints, config, onScanSuccess);
+      log("Cámara lista (alta nitidez). Escanea un ticket.");
     }catch(err){
       console.error(err);
+
+      // Fallback: intentar trasera por facingMode si deviceId falla
       try{
-        await scanner.start({ facingMode: "environment" }, config, onScanSuccess);
+        await scanner.start(
+          { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } },
+          config,
+          onScanSuccess
+        );
         log("Cámara lista (fallback trasera). Escanea un ticket.");
       }catch(e2){
         console.error(e2);
         running = false;
         toggleBtn.textContent = "Iniciar cámara";
-        log("No pude iniciar cámara. Revisa permisos del navegador.", "bad");
+        log("No pude iniciar cámara. Revisa permisos del navegador (Safari) y que sea HTTPS.", "bad");
       }
     }
   }
