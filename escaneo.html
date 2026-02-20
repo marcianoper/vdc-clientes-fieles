@@ -13,122 +13,80 @@
     .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
     button,label.btn{width:100%;display:block;text-align:center;padding:12px 14px;border:0;border-radius:14px;font-weight:900;cursor:pointer}
     .btn2{background:#60a5fa;color:#071a2f;margin-top:10px}
-    .btn3{background:#f59e0b;color:#1f1300;margin-top:10px}
     .btn4{background:#22c55e;color:#052e16;margin-top:10px}
     .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
-    .ok{color:#22c55e} .bad{color:#fb7185} .muted{opacity:.8;font-size:12px}
+    .ok{color:#22c55e} .bad{color:#fb7185}
     input[type="file"]{display:none}
 
-    /* ✅ Totales bonitos */
-    .totals{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
-      margin-top:12px;
-    }
     .bigTotal{
-      background:rgba(34,197,94,.12);
-      border:1px solid rgba(34,197,94,.25);
+      margin-top:12px;
+      background:rgba(34,197,94,.15);
+      border:1px solid rgba(34,197,94,.3);
       border-radius:18px;
-      padding:14px;
+      padding:16px;
       text-align:center;
     }
-    .bigTotal .t1{opacity:.85;font-weight:900}
-    .bigTotal .t2{font-size:44px;line-height:1;margin-top:8px;font-weight:1000;color:#22c55e}
-    .bigTotal .t3{opacity:.85;font-weight:900;margin-top:6px}
-    .miniGrid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
+    .bigTotal h1{
+      margin:0;
+      font-size:42px;
+      color:#22c55e;
     }
-    @media (max-width:720px){ .miniGrid{grid-template-columns:1fr;} }
-    .miniCard{
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:16px;
-      padding:12px;
-    }
-    .miniCard b{display:block;font-size:12px;opacity:.85}
-    .miniCard .val{font-size:20px;font-weight:1000;margin-top:6px}
   </style>
 </head>
 <body>
-<header>VDC — Escanear QR (Mostrador)</header>
+<header>VDC — Escanear QR</header>
 <div class="wrap">
 
   <div class="card">
     <div id="reader" style="width:100%"></div>
-    <div class="muted" style="margin-top:10px">
-      Si el QR del ticket está pesado y no lo lee en vivo, usa <b>Subir foto</b> (modo seguro).
-    </div>
-
     <button class="btn2" id="toggle">Iniciar cámara</button>
-    <button class="btn3" id="switchCam" style="display:none">Cambiar cámara</button>
-
-    <label class="btn btn4" for="filePick">📸 Subir foto del QR (modo seguro)</label>
+    <label class="btn btn4" for="filePick">📸 Subir foto</label>
     <input id="filePick" type="file" accept="image/*" capture="environment">
 
-    <!-- ✅ Totales -->
-    <div class="totals">
-      <div class="bigTotal">
-        <div class="t1">TOTAL KG DEL TICKET</div>
-        <div class="t2" id="totalKg">0.00</div>
-        <div class="t3">kg</div>
-      </div>
-
-      <div class="miniGrid">
-        <div class="miniCard">
-          <b># Productos (líneas)</b>
-          <div class="val" id="countLines">0</div>
-        </div>
-        <div class="miniCard">
-          <b>Ticket (fingerprint)</b>
-          <div class="val" id="fpShort">—</div>
-        </div>
-      </div>
+    <div class="bigTotal">
+      TOTAL KG DEL TICKET
+      <h1 id="totalKg">0.00</h1>
     </div>
   </div>
 
   <div style="height:12px"></div>
 
   <div class="card">
-    <div class="muted">Resultado:</div>
     <div id="out" class="log">Listo.</div>
   </div>
 
 </div>
 
 <script>
-  // === Credenciales ===
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
-  const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const out = document.getElementById('out');
   const toggleBtn = document.getElementById('toggle');
-  const switchBtn = document.getElementById('switchCam');
   const filePick = document.getElementById('filePick');
-
   const totalKgEl = document.getElementById('totalKg');
-  const countLinesEl = document.getElementById('countLines');
-  const fpShortEl = document.getElementById('fpShort');
 
   let scanner = null;
   let running = false;
-  let cameras = [];
-  let camIndex = 0;
-
-  // anti spam (aunque tu backend ya está blindado)
   let busy = false;
-  const BUSY_COOLDOWN_MS = 900;
 
   function log(txt, cls=""){
-    out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
+    out.innerHTML = cls ? `<span class="${cls}">${txt}</span>` : txt;
   }
 
-  function safeParseJson(text){
-    const t = (text||"").trim();
-    return JSON.parse(t);
+  // 🔥 NORMALIZADOR CANÓNICO
+  function canonSku(s){
+    return String(s||"")
+      .trim()
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g, "_");
+  }
+
+  // 👀 Mostrar bonito
+  function prettySku(s){
+    return s.replace(/_/g," ");
   }
 
   function hashQr(str){
@@ -140,197 +98,104 @@
     return "QR_" + (h >>> 0).toString(16);
   }
 
+  function safeParse(text){
+    return JSON.parse((text||"").trim());
+  }
+
   function normalizePayload(raw, decodedText){
-    // QR como array
+    const items = [];
+
     if(Array.isArray(raw)){
-      const items = raw.map(x => ({
-        sku: String(x.producto || x.sku || "").trim(),
-        kg: Number(x.cantidad ?? x.kg ?? 0)
-      })).filter(it => it.sku && Number.isFinite(it.kg));
-      return { qr_id: hashQr(decodedText), items };
+      raw.forEach(x=>{
+        const sku = canonSku(x.producto || x.sku);
+        const kg  = Number(x.cantidad ?? x.kg ?? 0);
+        if(sku && kg>0){
+          items.push({ sku, kg });
+        }
+      });
     }
 
-    // QR como objeto
-    if(raw && typeof raw === "object"){
-      let items = raw.items;
-      if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
-
-      items = (items || []).map(x => ({
-        sku: String(x.sku || x.producto || "").trim(),
-        kg: Number(x.kg ?? x.cantidad ?? 0)
-      })).filter(it => it.sku && Number.isFinite(it.kg));
-
-      return { qr_id: String(raw.qr_id || hashQr(decodedText)), items };
-    }
-    return null;
+    return { qr_id: hashQr(decodedText), items };
   }
 
-  // ✅ suma de kilos total
-  function calcTotalKg(items){
-    let sum = 0;
-    for(const it of (items||[])){
-      const k = Number(it.kg);
-      if(Number.isFinite(k)) sum += k;
-    }
-    return sum;
+  function calcTotal(items){
+    return items.reduce((sum,i)=> sum + Number(i.kg||0), 0);
   }
 
-  function updateTotalsUI(payload, fingerprint){
-    const totalKg = calcTotalKg(payload.items);
-    totalKgEl.textContent = totalKg.toFixed(2);
-    countLinesEl.textContent = String(payload.items.length || 0);
-    fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
-  }
-
-  async function procesar(payload, fingerprint){
-    log("Procesando venta…");
-
-    // ✅ mandamos fingerprint para idempotencia server-side
-    const { data, error } = await sb.rpc('procesar_venta_qr', {
+  async function procesar(payload){
+    const { data, error } = await sb.rpc('procesar_venta_qr',{
       payload,
-      p_fingerprint: fingerprint
+      p_fingerprint: payload.qr_id
     });
 
     if(error){
-      log("ERROR RPC: " + error.message, "bad");
+      log("ERROR RPC: "+error.message,"bad");
       return;
     }
 
-    if(data?.code === 'DUPLICATE'){
-      log("Ticket ya procesado (DUPLICATE). No se descontó otra vez ✅", "ok");
+    if(data?.code==="DUPLICATE"){
+      log("Ticket duplicado ignorado ✅","ok");
       return;
     }
 
     if(!data?.ok){
-      log("NO OK:\n" + JSON.stringify(data, null, 2), "bad");
+      log(JSON.stringify(data,null,2),"bad");
       return;
     }
 
-    log("✅ Venta aplicada.\n\n" + JSON.stringify(data, null, 2), "ok");
+    log("Venta aplicada correctamente ✅","ok");
   }
 
   async function handleDecoded(decodedText){
     if(busy) return;
-    busy = true;
+    busy=true;
 
     try{
-      const raw = safeParseJson(decodedText);
+      const raw = safeParse(decodedText);
       const payload = normalizePayload(raw, decodedText);
 
-      if(!payload?.items?.length){
-        log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
+      if(!payload.items.length){
+        log("QR inválido","bad");
         return;
       }
 
-      // fingerprint estable (no depende del QR_id del ticket)
-      const fingerprint = hashQr(decodedText);
+      // 🔥 Mostrar total
+      const total = calcTotal(payload.items);
+      totalKgEl.textContent = total.toFixed(2);
 
-      // ✅ Mostrar total inmediatamente al escanear
-      updateTotalsUI(payload, fingerprint);
-
-      // ✅ Procesar venta
-      await procesar(payload, fingerprint);
+      await procesar(payload);
 
     }catch(e){
-      log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
-    }finally{
-      setTimeout(()=> busy = false, BUSY_COOLDOWN_MS);
+      log("Error leyendo QR: "+e.message,"bad");
     }
-  }
 
-  async function onScanSuccess(decodedText){
-    await handleDecoded(decodedText);
-  }
-
-  async function refreshCameras(){
-    cameras = await Html5Qrcode.getCameras();
-    if(!Array.isArray(cameras)) cameras = [];
-    switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
-
-    const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
-    if(idxBack >= 0) camIndex = idxBack;
-  }
-
-  async function startWithCurrentCamera(){
-    if(!scanner) scanner = new Html5Qrcode("reader");
-    if(!cameras.length) await refreshCameras();
-
-    running = true;
-    toggleBtn.textContent = "Detener cámara";
-
-    const config = {
-      fps: 15,
-      qrbox: (vw, vh) => {
-        const size = Math.min(vw, vh) * 0.78;
-        return { width: Math.floor(size), height: Math.floor(size) };
-      },
-      disableFlip: true,
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-    };
-
-    const constraints = cameras.length
-      ? { deviceId: { exact: cameras[camIndex].id } }
-      : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
-
-    try{
-      await scanner.start(constraints, config, onScanSuccess);
-      log("Cámara lista. Escanea un ticket. (Total KG se muestra arriba)");
-    }catch(e){
-      running = false;
-      toggleBtn.textContent = "Iniciar cámara";
-      log("No pude iniciar cámara. Revisa permisos y HTTPS.", "bad");
-    }
+    setTimeout(()=>busy=false,1000);
   }
 
   async function start(){
     if(running) return;
-    await refreshCameras();
-    await startWithCurrentCamera();
+    if(!scanner) scanner = new Html5Qrcode("reader");
+    running=true;
+    toggleBtn.textContent="Detener cámara";
+    await scanner.start({facingMode:"environment"}, {fps:10}, handleDecoded);
   }
 
   async function stop(){
     if(!running) return;
-    running = false;
-    toggleBtn.textContent = "Iniciar cámara";
-    try{ await scanner.stop(); }catch(e){}
-    log("Cámara detenida.");
+    running=false;
+    toggleBtn.textContent="Iniciar cámara";
+    await scanner.stop();
   }
 
-  async function switchCamera(){
-    if(cameras.length < 2){
-      log("Solo hay 1 cámara disponible.", "bad");
-      return;
-    }
-    camIndex = (camIndex + 1) % cameras.length;
-    const name = cameras[camIndex]?.label || `Cámara ${camIndex+1}`;
-    log("Cambiando a: " + name + "…");
-    if(running){ await stop(); await start(); }
-  }
+  toggleBtn.onclick=()=> running?stop():start();
 
-  // ✅ MODO FOTO (muy confiable)
-  filePick.addEventListener('change', async (e)=>{
+  filePick.addEventListener("change", async e=>{
     const file = e.target.files?.[0];
     if(!file) return;
-    try{
-      if(!scanner) scanner = new Html5Qrcode("reader");
-      log("Leyendo foto… (modo seguro)");
-      const decodedText = await scanner.scanFile(file, true);
-      await handleDecoded(decodedText);
-    }catch(err){
-      console.error(err);
-      log("No pude leer la foto. Tip: más cerca, sin reflejo y el QR grande.", "bad");
-    }finally{
-      filePick.value = "";
-    }
+    if(!scanner) scanner=new Html5Qrcode("reader");
+    const decoded = await scanner.scanFile(file,true);
+    await handleDecoded(decoded);
   });
-
-  toggleBtn.addEventListener('click', async ()=>{
-    if(!running) await start(); else await stop();
-  });
-
-  switchBtn.addEventListener('click', switchCamera);
-
-  refreshCameras();
 </script>
 </body>
 </html>
