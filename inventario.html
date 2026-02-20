@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VDC — Inventario Mostrador (Realtime)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;background:#f6f7f8;color:#0f172a}
+    header{padding:14px 16px;background:#0a7a3b;color:#fff;font-weight:800}
+    .wrap{max-width:900px;margin:0 auto;padding:14px 16px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input{padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;min-width:240px}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 24px rgba(2,6,23,.08)}
+    th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;text-align:left}
+    th{background:#f1f5f9;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+    .muted{color:#64748b;font-size:12px}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#ecfdf5;color:#065f46;font-weight:700;font-size:12px}
+  </style>
+</head>
+<body>
+  <header>VDC — Inventario Mostrador (Realtime)</header>
+  <div class="wrap">
+    <div class="row">
+      <input id="q" placeholder="Buscar SKU… (ej. HIGADO_RES)"/>
+      <span class="muted" id="status">Conectando…</span>
+    </div>
+    <div style="height:12px"></div>
+    <table>
+      <thead>
+        <tr><th>SKU</th><th>Kg</th><th>Pzas</th><th>Actualizado</th></tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+    <div style="height:10px"></div>
+    <div class="muted">Tip: esta pantalla se actualiza sola cuando bodega envía o cuando mostrador escanea QR.</div>
+  </div>
+
+<script>
+  // === Pega tus credenciales ===
+  const SUPABASE_URL = "TU_SUPABASE_URL";
+  const SUPABASE_ANON_KEY = "TU_SUPABASE_ANON_KEY";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const tb = document.getElementById('tb');
+  const q  = document.getElementById('q');
+  const status = document.getElementById('status');
+
+  let rows = [];
+
+  function fmt(n){
+    const x = Number(n||0);
+    return x.toFixed(2);
+  }
+  function render(){
+    const s = (q.value||"").trim().toUpperCase();
+    const filtered = s ? rows.filter(r => (r.sku||"").toUpperCase().includes(s)) : rows;
+    tb.innerHTML = filtered.map(r => `
+      <tr>
+        <td><span class="pill">${r.sku}</span></td>
+        <td>${fmt(r.kg)}</td>
+        <td>${fmt(r.pzas)}</td>
+        <td class="muted">${new Date(r.updated_at).toLocaleString()}</td>
+      </tr>
+    `).join("") || `<tr><td colspan="4" class="muted">Sin datos</td></tr>`;
+  }
+
+  q.addEventListener('input', render);
+
+  async function load(){
+    status.textContent = "Cargando stock…";
+    const { data, error } = await supabase
+      .from('stock_mostrador')
+      .select('sku,kg,pzas,updated_at')
+      .order('sku', { ascending:true });
+
+    if(error){ status.textContent = "Error: " + error.message; return; }
+    rows = data || [];
+    status.textContent = `OK • ${rows.length} productos`;
+    render();
+  }
+
+  // Realtime: escucha cambios en stock_mostrador
+  function realtime(){
+    const ch = supabase.channel('rt-stock-mostrador')
+      .on('postgres_changes',
+        { event:'*', schema:'public', table:'stock_mostrador' },
+        payload => {
+          const r = payload.new;
+          const idx = rows.findIndex(x => x.sku === r.sku);
+          if(idx >= 0) rows[idx] = r; else rows.push(r);
+          status.textContent = "Actualizado en tiempo real ✓";
+          render();
+        }
+      )
+      .subscribe((s) => {
+        if(s === 'SUBSCRIBED') status.textContent = "Conectado realtime ✓";
+      });
+  }
+
+  (async ()=>{
+    await load();
+    realtime();
+  })();
+</script>
+</body>
+</html>
