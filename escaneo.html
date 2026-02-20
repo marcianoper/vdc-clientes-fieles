@@ -15,7 +15,7 @@
     .btn2{background:#60a5fa;color:#071a2f;margin-top:10px}
     .btn3{background:#f59e0b;color:#1f1300;margin-top:10px}
     .btn4{background:#22c55e;color:#052e16;margin-top:10px}
-    .btn5{background:#a78bfa;color:#1e0b3a;margin-top:10px}
+    .btn5{background:#a78bfa;color:#1b1230;margin-top:10px}
     .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
     .ok{color:#22c55e} .bad{color:#fb7185} .muted{opacity:.8;font-size:12px}
     input[type="file"]{display:none}
@@ -28,16 +28,16 @@
   <div class="card">
     <div id="reader" style="width:100%"></div>
     <div class="muted" style="margin-top:10px">
-      Si el QR del ticket está muy pesado y no lo lee en vivo, usa <b>Subir foto</b> (casi 100%).
+      Tip: si el QR está pesado, <b>Subir foto</b> suele ser más confiable.
     </div>
 
     <button class="btn2" id="toggle">Iniciar cámara</button>
     <button class="btn3" id="switchCam" style="display:none">Cambiar cámara</button>
-    <button class="btn5" id="resume" style="display:none">Reanudar cámara (siguiente ticket)</button>
 
-    <!-- ✅ Modo Foto -->
-    <label class="btn btn4" for="filePick">📸 Subir foto del QR (modo seguro)</label>
+    <label class="btn btn4" for="filePick">📸 Subir foto del QR</label>
     <input id="filePick" type="file" accept="image/*" capture="environment">
+
+    <button class="btn5" id="resume" style="display:none">Escanear otro ticket</button>
   </div>
 
   <div style="height:12px"></div>
@@ -52,31 +52,23 @@
 <script>
   // === Credenciales ===
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+  const SUPABASE_ANON_KEY = "PEGA_TU_ANON_KEY_AQUI";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   const out = document.getElementById('out');
   const toggleBtn = document.getElementById('toggle');
   const switchBtn = document.getElementById('switchCam');
-  const resumeBtn = document.getElementById('resume');
   const filePick = document.getElementById('filePick');
+  const resumeBtn = document.getElementById('resume');
 
   let scanner = null;
   let running = false;
-
   let cameras = [];
   let camIndex = 0;
 
-  // =========================
-  // ✅ ANTI DOBLE LECTURA (MILITAR)
-  // =========================
-  let busy = false;              // lock de ejecución
-  let hardLock = false;          // lock fuerte: “ya leí, no me dispares otra vez”
-  let lastFp = "";               // fingerprint del último ticket procesado
-  let lastFpAt = 0;
-
-  const FP_DEDUPE_MS = 15000;    // 15s: si el mismo ticket se vuelve a leer, se ignora
-  const BUSY_COOLDOWN_MS = 1200; // ventana de enfriamiento
+  // Anti spam en UI (además del anti-duplicado real del servidor)
+  let busy = false;
+  const BUSY_MS = 1200;
 
   function log(txt, cls=""){
     out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
@@ -86,127 +78,111 @@
     return JSON.parse((text||"").trim());
   }
 
-  // Hash simple para fingerprint (FNV-1a)
-  function fnv1a(str){
-    let h = 2166136261;
-    for(let i=0;i<str.length;i++){
-      h ^= str.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return (h >>> 0).toString(16);
+  function normSku(s){
+    let t = String(s||"").trim().toUpperCase();
+    t = t.replace(/\s+/g, "_");          // espacios -> _
+    t = t.replace(/[^A-Z0-9_]/g, "");    // limpia raros
+    // alias extra por si llegan variantes
+    const alias = {
+      "PATA_MORENA": "PATA_MORENA",
+      "PATA_MORENA": "PATA_MORENA",
+      "PATA": "PATA_MORENA"
+    };
+    return alias[t] || t;
   }
 
-  // Normaliza sku + kg a 2 decimales y ordena items -> fingerprint estable
-  function makeFingerprint(items){
-    const canon = (items||[])
-      .map(it=>{
-        let sku = String(it.sku||it.producto||"").trim().toUpperCase();
-        sku = sku.replace(/\s+/g,'_').replace(/_+/g,'_').replace(/[^A-Z0-9_]/g,'');
-        let kg = Number(it.kg ?? it.cantidad ?? 0);
-        if(!Number.isFinite(kg)) kg = 0;
-        kg = Math.round(kg*100)/100; // 2 decimales
-        return { sku, kg };
-      })
-      .filter(x=>x.sku && x.kg>0)
-      .sort((a,b)=> (a.sku+b.kg).localeCompare(b.sku+a.kg));
-
-    return "FP_" + fnv1a(JSON.stringify(canon));
+  async function sha256Hex(str){
+    const buf = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest("SHA-256", buf);
+    return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
   }
 
   function normalizePayload(raw){
+    // QR como array: [{cantidad, producto}]
     if(Array.isArray(raw)){
-      const items = raw.map(x=>({
-        sku: String(x.producto || x.sku || "").trim(),
+      const items = raw.map(x => ({
+        sku: normSku(x.producto || x.sku || ""),
         kg: Number(x.cantidad ?? x.kg ?? 0)
-      }));
+      })).filter(it => it.sku && Number.isFinite(it.kg));
       return { items };
     }
+
+    // QR como objeto: {items:[...]} o {productos:[...]}
     if(raw && typeof raw === "object"){
       let items = raw.items;
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
-      items = (items||[]).map(x=>({
-        sku: String(x.sku || x.producto || "").trim(),
+
+      items = (items || []).map(x => ({
+        sku: normSku(x.sku || x.producto || ""),
         kg: Number(x.kg ?? x.cantidad ?? 0)
-      }));
+      })).filter(it => it.sku && Number.isFinite(it.kg));
+
       return { items };
     }
     return null;
   }
 
-  async function stopCameraHard(){
-    if(running && scanner){
-      try{ await scanner.stop(); }catch(e){}
+  async function procesar(decodedText){
+    const raw = safeParseJson(decodedText);
+    const base = normalizePayload(raw);
+
+    if(!base?.items?.length){
+      log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
+      return;
     }
-    running = false;
-    toggleBtn.textContent = "Iniciar cámara";
-    resumeBtn.style.display = "block";
-  }
 
-  function shouldSkipByFingerprint(fp){
-    const now = Date.now();
-    if(fp && fp === lastFp && (now-lastFpAt) < FP_DEDUPE_MS){
-      return true;
-    }
-    lastFp = fp;
-    lastFpAt = now;
-    return false;
-  }
+    const fingerprint = await sha256Hex(decodedText);
 
-  async function procesar(payload){
-    log("Procesando venta… (cámara detenida para evitar doble)", "muted");
-
-    const { data, error } = await sb.rpc('procesar_venta_qr', { payload });
+    log("Procesando venta…");
+    const { data, error } = await sb.rpc("procesar_venta_qr", {
+      payload: { items: base.items },
+      fingerprint
+    });
 
     if(error){
       log("ERROR RPC: " + error.message, "bad");
       return;
     }
+
+    // Si ya se procesó, el servidor regresa DUPLICATE_IGNORED (ok:true)
+    if(data?.code === "DUPLICATE_IGNORED"){
+      log("Ticket ya estaba aplicado (duplicado ignorado) ✅\n" + JSON.stringify(data, null, 2), "ok");
+      return;
+    }
+
     if(!data?.ok){
       log("NO OK:\n" + JSON.stringify(data, null, 2), "bad");
       return;
     }
-    log(JSON.stringify(data, null, 2), "ok");
+
+    log("OK ✅\n" + JSON.stringify(data, null, 2), "ok");
+
+    // ✅ Corta la cámara para evitar re-lecturas del mismo QR
+    await freezeAfterSuccess();
+  }
+
+  async function freezeAfterSuccess(){
+    resumeBtn.style.display = "block";
+    if(scanner){
+      try{ scanner.pause(true); }catch(e){}
+    }
+    // opcional: detener completamente
+    if(running){
+      try{ await scanner.stop(); }catch(e){}
+      running = false;
+      toggleBtn.textContent = "Iniciar cámara";
+    }
   }
 
   async function handleDecoded(decodedText){
-    // 1) Lock fuerte: si ya disparó una vez, ignorar todo hasta reanudar
-    if(hardLock) return;
-
-    // 2) Lock de ejecución
     if(busy) return;
     busy = true;
-
     try{
-      // ✅ detener cámara INMEDIATO en el primer hit
-      hardLock = true;
-      await stopCameraHard();
-
-      const raw = safeParseJson(decodedText);
-      const norm = normalizePayload(raw);
-
-      if(!norm?.items?.length){
-        log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
-        return;
-      }
-
-      // ✅ fingerprint estable por items (sin depender del texto exacto)
-      const fp = makeFingerprint(norm.items);
-
-      // si el mismo ticket se vuelve a intentar, ignorar
-      if(shouldSkipByFingerprint(fp)){
-        log(`Ignorado: mismo ticket (${fp}) dentro de ${FP_DEDUPE_MS/1000}s`, "muted");
-        return;
-      }
-
-      // mandamos payload con qr_id basado en fingerprint (para que RPC también lo use si quiere)
-      const payload = { qr_id: fp, items: norm.items };
-
-      await procesar(payload);
-
+      await procesar(decodedText);
     }catch(e){
-      log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
+      log("Error leyendo QR:\n" + e.message, "bad");
     }finally{
-      setTimeout(()=>{ busy = false; }, BUSY_COOLDOWN_MS);
+      setTimeout(()=> busy = false, BUSY_MS);
     }
   }
 
@@ -227,9 +203,9 @@
     if(!scanner) scanner = new Html5Qrcode("reader");
     if(!cameras.length) await refreshCameras();
 
+    resumeBtn.style.display = "none";
     running = true;
     toggleBtn.textContent = "Detener cámara";
-    resumeBtn.style.display = "none";
 
     const config = {
       fps: 15,
@@ -245,21 +221,20 @@
       ? { deviceId: { exact: cameras[camIndex].id } }
       : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
 
-    try{
-      hardLock = false; // ✅ reactivar lectura
-      await scanner.start(constraints, config, onScanSuccess);
-      log("Cámara lista. Al detectar 1 vez, se detiene sola ✅");
-    }catch(e){
-      running = false;
-      toggleBtn.textContent = "Iniciar cámara";
-      log("No pude iniciar cámara. Revisa permisos y HTTPS.", "bad");
-    }
+    await scanner.start(constraints, config, onScanSuccess);
+    log("Cámara lista. Escanea un ticket.");
   }
 
   async function start(){
     if(running) return;
     await refreshCameras();
-    await startWithCurrentCamera();
+    try{
+      await startWithCurrentCamera();
+    }catch(e){
+      running = false;
+      toggleBtn.textContent = "Iniciar cámara";
+      log("No pude iniciar cámara. Revisa permisos y HTTPS.", "bad");
+    }
   }
 
   async function stop(){
@@ -281,19 +256,18 @@
     if(running){ await stop(); await start(); }
   }
 
-  // ✅ MODO FOTO (muy confiable)
+  // Modo foto (confiable)
   filePick.addEventListener('change', async (e)=>{
     const file = e.target.files?.[0];
     if(!file) return;
 
     try{
       if(!scanner) scanner = new Html5Qrcode("reader");
-      log("Leyendo foto… (modo seguro)");
+      log("Leyendo foto…");
       const decodedText = await scanner.scanFile(file, true);
       await handleDecoded(decodedText);
     }catch(err){
-      console.error(err);
-      log("No pude leer la foto. Tip: toma la foto más cerca, sin reflejo, y que el QR ocupe casi toda la imagen.", "bad");
+      log("No pude leer la foto. Acércate más y evita reflejos.", "bad");
     }finally{
       filePick.value = "";
     }
@@ -302,13 +276,13 @@
   toggleBtn.addEventListener('click', async ()=>{
     if(!running) await start(); else await stop();
   });
+  switchBtn.addEventListener('click', switchCamera);
 
+  // Reanudar para otro ticket
   resumeBtn.addEventListener('click', async ()=>{
-    // ✅ listo para el siguiente ticket
+    resumeBtn.style.display = "none";
     await start();
   });
-
-  switchBtn.addEventListener('click', switchCamera);
 
   refreshCameras();
 </script>
