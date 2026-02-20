@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VDC — Escanear QR (Mostrador)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;background:#0b1220;color:#e5e7eb}
+    header{padding:14px 16px;background:#111827;border-bottom:1px solid rgba(255,255,255,.08);font-weight:900}
+    .wrap{max-width:920px;margin:0 auto;padding:14px 16px}
+    .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+    button{width:100%;padding:12px 14px;border:0;border-radius:14px;font-weight:900;cursor:pointer}
+    .btn{background:#22c55e;color:#052e16}
+    .btn2{background:#60a5fa;color:#071a2f;margin-top:10px}
+    .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
+    .ok{color:#22c55e} .bad{color:#fb7185} .muted{opacity:.8;font-size:12px}
+  </style>
+</head>
+<body>
+<header>VDC — Escanear QR (Mostrador)</header>
+<div class="wrap">
+  <div class="card">
+    <div id="reader" style="width:100%"></div>
+    <div class="muted" style="margin-top:10px">Apunta al QR del ticket. Se aplicará la venta automáticamente.</div>
+    <button class="btn2" id="toggle">Iniciar cámara</button>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="muted">Resultado:</div>
+    <div id="out" class="log">Listo.</div>
+  </div>
+</div>
+
+<script>
+  // === Pega tus credenciales ===
+  const SUPABASE_URL = "TU_SUPABASE_URL";
+  const SUPABASE_ANON_KEY = "TU_SUPABASE_ANON_KEY";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const out = document.getElementById('out');
+  const toggleBtn = document.getElementById('toggle');
+
+  let scanner = null;
+  let running = false;
+  let lastQr = "";
+  let lastTs = 0;
+
+  function log(txt, cls=""){
+    out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
+  }
+
+  function safeParseJson(text){
+    // Algunos QR lectores meten espacios o saltos
+    const t = (text||"").trim();
+    return JSON.parse(t);
+  }
+
+  async function procesar(payload){
+    // anti doble lectura en milisegundos
+    const now = Date.now();
+    const qrId = payload?.qr_id || "";
+    if(qrId && qrId === lastQr && (now-lastTs) < 2500) return;
+    lastQr = qrId; lastTs = now;
+
+    log("Procesando venta…");
+    const { data, error } = await supabase.rpc('procesar_venta_qr', { payload });
+
+    if(error){
+      log("ERROR RPC: " + error.message, "bad");
+      return;
+    }
+    if(!data?.ok){
+      log("NO OK: " + JSON.stringify(data, null, 2), "bad");
+      return;
+    }
+    const cls = (data.code === 'OK') ? "ok" : "";
+    log(JSON.stringify(data, null, 2), cls);
+  }
+
+  async function onScanSuccess(decodedText){
+    try{
+      const payload = safeParseJson(decodedText);
+      if(!payload?.items || !payload?.qr_id){
+        log("QR inválido: falta qr_id o items\n\n" + decodedText, "bad");
+        return;
+      }
+      await procesar(payload);
+    }catch(e){
+      log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
+    }
+  }
+
+  async function start(){
+    if(running) return;
+    if(!scanner) scanner = new Html5Qrcode("reader");
+    const cams = await Html5Qrcode.getCameras();
+    const camId = cams?.[0]?.id;
+    if(!camId){ log("No encontré cámara disponible.", "bad"); return; }
+
+    running = true;
+    toggleBtn.textContent = "Detener cámara";
+    await scanner.start(
+      { deviceId: { exact: camId } },
+      { fps: 12, qrbox: { width: 280, height: 280 } },
+      onScanSuccess
+    );
+    log("Cámara lista. Escanea un ticket.");
+  }
+
+  async function stop(){
+    if(!running) return;
+    running = false;
+    toggleBtn.textContent = "Iniciar cámara";
+    try{ await scanner.stop(); }catch(e){}
+    log("Cámara detenida.");
+  }
+
+  toggleBtn.addEventListener('click', async ()=>{
+    if(!running) await start(); else await stop();
+  });
+</script>
+</body>
+</html>
