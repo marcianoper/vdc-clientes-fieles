@@ -38,9 +38,9 @@
 
 <script>
   // === Pega tus credenciales ===
-  const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const _URL = "https://eqynjddcosvdqjzztznn..co";
+  const _ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+  const sb = window..createClient(_URL, _ANON_KEY);
 
   const tb = document.getElementById('tb');
   const q  = document.getElementById('q');
@@ -82,7 +82,7 @@
 
   // Realtime: escucha cambios en stock_mostrador
   function realtime(){
-    const ch = supabase.channel('rt-stock-mostrador')
+    const ch = sb.channel('rt-stock-mostrador')
       .on('postgres_changes',
         { event:'*', schema:'public', table:'stock_mostrador' },
         payload => {
