@@ -15,6 +15,7 @@
     .btn2{background:#60a5fa;color:#071a2f;margin-top:10px}
     .btn3{background:#f59e0b;color:#1f1300;margin-top:10px}
     .btn4{background:#22c55e;color:#052e16;margin-top:10px}
+    .btn5{background:#a78bfa;color:#1e0b3a;margin-top:10px}
     .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
     .ok{color:#22c55e} .bad{color:#fb7185} .muted{opacity:.8;font-size:12px}
     input[type="file"]{display:none}
@@ -32,6 +33,7 @@
 
     <button class="btn2" id="toggle">Iniciar cámara</button>
     <button class="btn3" id="switchCam" style="display:none">Cambiar cámara</button>
+    <button class="btn5" id="resume" style="display:none">Reanudar cámara (siguiente ticket)</button>
 
     <!-- ✅ Modo Foto -->
     <label class="btn btn4" for="filePick">📸 Subir foto del QR (modo seguro)</label>
@@ -56,6 +58,7 @@
   const out = document.getElementById('out');
   const toggleBtn = document.getElementById('toggle');
   const switchBtn = document.getElementById('switchCam');
+  const resumeBtn = document.getElementById('resume');
   const filePick = document.getElementById('filePick');
 
   let scanner = null;
@@ -65,93 +68,92 @@
   let camIndex = 0;
 
   // =========================
-  // ✅ ANTI DOBLE LECTURA (Fuerte)
+  // ✅ ANTI DOBLE LECTURA (MILITAR)
   // =========================
-  let busy = false;
+  let busy = false;              // lock de ejecución
+  let hardLock = false;          // lock fuerte: “ya leí, no me dispares otra vez”
+  let lastFp = "";               // fingerprint del último ticket procesado
+  let lastFpAt = 0;
 
-  let lastDecodedText = "";
-  let lastDecodedAt = 0;
-
-  let lastQrId = "";
-  let lastQrAt = 0;
-
-  const DEDUPE_TEXT_MS = 4500;   // ventana para repetir mismo texto
-  const DEDUPE_QRID_MS = 8000;   // ventana para repetir mismo qr_id
-  const BUSY_COOLDOWN_MS = 900;  // evita spam mientras procesa
+  const FP_DEDUPE_MS = 15000;    // 15s: si el mismo ticket se vuelve a leer, se ignora
+  const BUSY_COOLDOWN_MS = 1200; // ventana de enfriamiento
 
   function log(txt, cls=""){
     out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
   }
 
   function safeParseJson(text){
-    const t = (text||"").trim();
-    return JSON.parse(t);
+    return JSON.parse((text||"").trim());
   }
 
-  function hashQr(str){
+  // Hash simple para fingerprint (FNV-1a)
+  function fnv1a(str){
     let h = 2166136261;
     for(let i=0;i<str.length;i++){
       h ^= str.charCodeAt(i);
       h = Math.imul(h, 16777619);
     }
-    return "QR_" + (h >>> 0).toString(16);
+    return (h >>> 0).toString(16);
   }
 
-  function normalizePayload(raw, decodedText){
-    // Caso 1: el QR es un array [{cantidad, producto}]
-    if(Array.isArray(raw)){
-      const items = raw.map(x => ({
-        sku: String(x.producto || x.sku || "").trim(),
-        kg: Number(x.cantidad ?? x.kg ?? 0),
-        pzas: Number(x.pzas ?? 0)
-      })).filter(it => it.sku && Number.isFinite(it.kg));
-      return { qr_id: hashQr(decodedText), items };
-    }
+  // Normaliza sku + kg a 2 decimales y ordena items -> fingerprint estable
+  function makeFingerprint(items){
+    const canon = (items||[])
+      .map(it=>{
+        let sku = String(it.sku||it.producto||"").trim().toUpperCase();
+        sku = sku.replace(/\s+/g,'_').replace(/_+/g,'_').replace(/[^A-Z0-9_]/g,'');
+        let kg = Number(it.kg ?? it.cantidad ?? 0);
+        if(!Number.isFinite(kg)) kg = 0;
+        kg = Math.round(kg*100)/100; // 2 decimales
+        return { sku, kg };
+      })
+      .filter(x=>x.sku && x.kg>0)
+      .sort((a,b)=> (a.sku+b.kg).localeCompare(b.sku+a.kg));
 
-    // Caso 2: el QR es objeto {items:[...]} o {productos:[...]}
+    return "FP_" + fnv1a(JSON.stringify(canon));
+  }
+
+  function normalizePayload(raw){
+    if(Array.isArray(raw)){
+      const items = raw.map(x=>({
+        sku: String(x.producto || x.sku || "").trim(),
+        kg: Number(x.cantidad ?? x.kg ?? 0)
+      }));
+      return { items };
+    }
     if(raw && typeof raw === "object"){
       let items = raw.items;
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
-
-      items = (items || []).map(x => ({
+      items = (items||[]).map(x=>({
         sku: String(x.sku || x.producto || "").trim(),
-        kg: Number(x.kg ?? x.cantidad ?? 0),
-        pzas: Number(x.pzas ?? 0)
-      })).filter(it => it.sku && Number.isFinite(it.kg));
-
-      return { qr_id: String(raw.qr_id || hashQr(decodedText)), items };
+        kg: Number(x.kg ?? x.cantidad ?? 0)
+      }));
+      return { items };
     }
     return null;
   }
 
-  // ✅ filtro por texto y por qr_id
-  function shouldSkip(decodedText, payload){
+  async function stopCameraHard(){
+    if(running && scanner){
+      try{ await scanner.stop(); }catch(e){}
+    }
+    running = false;
+    toggleBtn.textContent = "Iniciar cámara";
+    resumeBtn.style.display = "block";
+  }
+
+  function shouldSkipByFingerprint(fp){
     const now = Date.now();
-
-    const txt = (decodedText || "").trim();
-    if(txt && txt === lastDecodedText && (now - lastDecodedAt) < DEDUPE_TEXT_MS){
-      return { skip:true, why:`Ignorado: mismo QR (texto) dentro de ${DEDUPE_TEXT_MS/1000}s` };
+    if(fp && fp === lastFp && (now-lastFpAt) < FP_DEDUPE_MS){
+      return true;
     }
-
-    const qrId = (payload?.qr_id || "").trim();
-    if(qrId && qrId === lastQrId && (now - lastQrAt) < DEDUPE_QRID_MS){
-      return { skip:true, why:`Ignorado: mismo qr_id dentro de ${DEDUPE_QRID_MS/1000}s` };
-    }
-
-    // actualizar huellas
-    lastDecodedText = txt;
-    lastDecodedAt = now;
-
-    if(qrId){
-      lastQrId = qrId;
-      lastQrAt = now;
-    }
-
-    return { skip:false, why:"" };
+    lastFp = fp;
+    lastFpAt = now;
+    return false;
   }
 
   async function procesar(payload){
-    log("Procesando venta…");
+    log("Procesando venta… (cámara detenida para evitar doble)", "muted");
 
     const { data, error } = await sb.rpc('procesar_venta_qr', { payload });
 
@@ -167,30 +169,44 @@
   }
 
   async function handleDecoded(decodedText){
+    // 1) Lock fuerte: si ya disparó una vez, ignorar todo hasta reanudar
+    if(hardLock) return;
+
+    // 2) Lock de ejecución
     if(busy) return;
     busy = true;
 
     try{
-      const raw = safeParseJson(decodedText);
-      const payload = normalizePayload(raw, decodedText);
+      // ✅ detener cámara INMEDIATO en el primer hit
+      hardLock = true;
+      await stopCameraHard();
 
-      if(!payload?.items?.length){
+      const raw = safeParseJson(decodedText);
+      const norm = normalizePayload(raw);
+
+      if(!norm?.items?.length){
         log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
         return;
       }
 
-      const chk = shouldSkip(decodedText, payload);
-      if(chk.skip){
-        log(chk.why, "muted");
+      // ✅ fingerprint estable por items (sin depender del texto exacto)
+      const fp = makeFingerprint(norm.items);
+
+      // si el mismo ticket se vuelve a intentar, ignorar
+      if(shouldSkipByFingerprint(fp)){
+        log(`Ignorado: mismo ticket (${fp}) dentro de ${FP_DEDUPE_MS/1000}s`, "muted");
         return;
       }
+
+      // mandamos payload con qr_id basado en fingerprint (para que RPC también lo use si quiere)
+      const payload = { qr_id: fp, items: norm.items };
 
       await procesar(payload);
 
     }catch(e){
       log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
     }finally{
-      setTimeout(()=> busy = false, BUSY_COOLDOWN_MS);
+      setTimeout(()=>{ busy = false; }, BUSY_COOLDOWN_MS);
     }
   }
 
@@ -213,6 +229,7 @@
 
     running = true;
     toggleBtn.textContent = "Detener cámara";
+    resumeBtn.style.display = "none";
 
     const config = {
       fps: 15,
@@ -229,8 +246,9 @@
       : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
 
     try{
+      hardLock = false; // ✅ reactivar lectura
       await scanner.start(constraints, config, onScanSuccess);
-      log("Cámara lista. Si batalla, usa: Subir foto del QR ✅");
+      log("Cámara lista. Al detectar 1 vez, se detiene sola ✅");
     }catch(e){
       running = false;
       toggleBtn.textContent = "Iniciar cámara";
@@ -270,7 +288,6 @@
 
     try{
       if(!scanner) scanner = new Html5Qrcode("reader");
-
       log("Leyendo foto… (modo seguro)");
       const decodedText = await scanner.scanFile(file, true);
       await handleDecoded(decodedText);
@@ -284,6 +301,11 @@
 
   toggleBtn.addEventListener('click', async ()=>{
     if(!running) await start(); else await stop();
+  });
+
+  resumeBtn.addEventListener('click', async ()=>{
+    // ✅ listo para el siguiente ticket
+    await start();
   });
 
   switchBtn.addEventListener('click', switchCamera);
