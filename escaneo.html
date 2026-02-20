@@ -11,21 +11,31 @@
     header{padding:14px 16px;background:#111827;border-bottom:1px solid rgba(255,255,255,.08);font-weight:900}
     .wrap{max-width:920px;margin:0 auto;padding:14px 16px}
     .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
-    button{width:100%;padding:12px 14px;border:0;border-radius:14px;font-weight:900;cursor:pointer}
+    button,label.btn{width:100%;display:block;text-align:center;padding:12px 14px;border:0;border-radius:14px;font-weight:900;cursor:pointer}
     .btn2{background:#60a5fa;color:#071a2f;margin-top:10px}
     .btn3{background:#f59e0b;color:#1f1300;margin-top:10px}
+    .btn4{background:#22c55e;color:#052e16;margin-top:10px}
     .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
     .ok{color:#22c55e} .bad{color:#fb7185} .muted{opacity:.8;font-size:12px}
+    input[type="file"]{display:none}
   </style>
 </head>
 <body>
 <header>VDC — Escanear QR (Mostrador)</header>
 <div class="wrap">
+
   <div class="card">
     <div id="reader" style="width:100%"></div>
-    <div class="muted" style="margin-top:10px">Apunta al QR del ticket. Se aplicará la venta automáticamente.</div>
+    <div class="muted" style="margin-top:10px">
+      Si el QR del ticket está muy pesado y no lo lee en vivo, usa <b>Subir foto</b> (casi 100%).
+    </div>
+
     <button class="btn2" id="toggle">Iniciar cámara</button>
     <button class="btn3" id="switchCam" style="display:none">Cambiar cámara</button>
+
+    <!-- ✅ Modo Foto -->
+    <label class="btn btn4" for="filePick">📸 Subir foto del QR (modo seguro)</label>
+    <input id="filePick" type="file" accept="image/*" capture="environment">
   </div>
 
   <div style="height:12px"></div>
@@ -34,6 +44,7 @@
     <div class="muted">Resultado:</div>
     <div id="out" class="log">Listo.</div>
   </div>
+
 </div>
 
 <script>
@@ -45,6 +56,7 @@
   const out = document.getElementById('out');
   const toggleBtn = document.getElementById('toggle');
   const switchBtn = document.getElementById('switchCam');
+  const filePick = document.getElementById('filePick');
 
   let scanner = null;
   let running = false;
@@ -54,6 +66,7 @@
 
   let lastQr = "";
   let lastTs = 0;
+  let busy = false;
 
   function log(txt, cls=""){
     out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
@@ -64,7 +77,6 @@
     return JSON.parse(t);
   }
 
-  // ===== ID estable para evitar doble lectura del mismo QR =====
   function hashQr(str){
     let h = 2166136261;
     for(let i=0;i<str.length;i++){
@@ -74,9 +86,6 @@
     return "QR_" + (h >>> 0).toString(16);
   }
 
-  // ✅ Acepta:
-  // A) [{cantidad:"5.000", producto:"BOFE"}]
-  // B) {qr_id:"...", items:[{sku:"BOFE", kg:5, pzas:0}]}
   function normalizePayload(raw, decodedText){
     if(Array.isArray(raw)){
       const items = raw.map(x => ({
@@ -84,7 +93,6 @@
         kg: Number(x.cantidad ?? x.kg ?? 0),
         pzas: Number(x.pzas ?? 0)
       })).filter(it => it.sku && Number.isFinite(it.kg));
-
       return { qr_id: hashQr(decodedText), items };
     }
 
@@ -100,7 +108,6 @@
 
       return { qr_id: String(raw.qr_id || hashQr(decodedText)), items };
     }
-
     return null;
   }
 
@@ -122,13 +129,11 @@
       log("NO OK:\n" + JSON.stringify(data, null, 2), "bad");
       return;
     }
-    const cls = (data.code === 'OK') ? "ok" : "";
-    log(JSON.stringify(data, null, 2), cls);
+    log(JSON.stringify(data, null, 2), "ok");
   }
 
-  let busy = false;
-  async function onScanSuccess(decodedText){
-    if(busy) return; // evita spam de callbacks
+  async function handleDecoded(decodedText){
+    if(busy) return;
     busy = true;
     try{
       const raw = safeParseJson(decodedText);
@@ -138,13 +143,16 @@
         log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
         return;
       }
-
       await procesar(payload);
     }catch(e){
       log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
     }finally{
-      setTimeout(()=> busy = false, 700); // pequeño cooldown
+      setTimeout(()=> busy = false, 700);
     }
+  }
+
+  async function onScanSuccess(decodedText){
+    await handleDecoded(decodedText);
   }
 
   async function refreshCameras(){
@@ -152,10 +160,7 @@
     if(!Array.isArray(cameras)) cameras = [];
     switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
 
-    // intenta elegir trasera por nombre
-    const idxBack = cameras.findIndex(c =>
-      /back|rear|environment|trasera/i.test(c.label || "")
-    );
+    const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
     if(idxBack >= 0) camIndex = idxBack;
   }
 
@@ -166,46 +171,28 @@
     running = true;
     toggleBtn.textContent = "Detener cámara";
 
-    // ✅ CONFIG MEJORADA (iPhone-friendly)
     const config = {
       fps: 15,
-      // QRbox grande ayuda MUCHO en QR densos
       qrbox: (vw, vh) => {
-        const size = Math.min(vw, vh) * 0.78; // 78% de la pantalla
+        const size = Math.min(vw, vh) * 0.78;
         return { width: Math.floor(size), height: Math.floor(size) };
       },
-      disableFlip: true
+      disableFlip: true,
+      // ✅ si el navegador lo soporta, mejora mucho
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
     };
 
-    // ✅ Constraints con mejor resolución
     const constraints = cameras.length
       ? { deviceId: { exact: cameras[camIndex].id } }
-      : {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        };
+      : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
 
     try{
       await scanner.start(constraints, config, onScanSuccess);
-      log("Cámara lista (alta nitidez). Escanea un ticket.");
-    }catch(err){
-      console.error(err);
-
-      // Fallback: intentar trasera por facingMode si deviceId falla
-      try{
-        await scanner.start(
-          { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } },
-          config,
-          onScanSuccess
-        );
-        log("Cámara lista (fallback trasera). Escanea un ticket.");
-      }catch(e2){
-        console.error(e2);
-        running = false;
-        toggleBtn.textContent = "Iniciar cámara";
-        log("No pude iniciar cámara. Revisa permisos del navegador (Safari) y que sea HTTPS.", "bad");
-      }
+      log("Cámara lista. Si batalla, usa: Subir foto del QR ✅");
+    }catch(e){
+      running = false;
+      toggleBtn.textContent = "Iniciar cámara";
+      log("No pude iniciar cámara. Revisa permisos y HTTPS.", "bad");
     }
   }
 
@@ -229,15 +216,29 @@
       return;
     }
     camIndex = (camIndex + 1) % cameras.length;
-
     const name = cameras[camIndex]?.label || `Cámara ${camIndex+1}`;
     log("Cambiando a: " + name + "…");
-
-    if(running){
-      await stop();
-      await start();
-    }
+    if(running){ await stop(); await start(); }
   }
+
+  // ✅ MODO FOTO: casi 100% si el QR es pesado
+  filePick.addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+
+    try{
+      if(!scanner) scanner = new Html5Qrcode("reader");
+
+      log("Leyendo foto… (modo seguro)");
+      const decodedText = await scanner.scanFile(file, true);
+      await handleDecoded(decodedText);
+    }catch(err){
+      console.error(err);
+      log("No pude leer la foto. Tip: toma la foto más cerca, sin reflejo, y que el QR ocupe casi toda la imagen.", "bad");
+    }finally{
+      filePick.value = "";
+    }
+  });
 
   toggleBtn.addEventListener('click', async ()=>{
     if(!running) await start(); else await stop();
