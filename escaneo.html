@@ -64,7 +64,60 @@
     return JSON.parse(t);
   }
 
+  // ===== ID estable para evitar doble lectura del mismo QR =====
+  function hashQr(str){
+    let h = 2166136261;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return "QR_" + (h >>> 0).toString(16);
+  }
+
+  // ✅ Acepta:
+  // A) [{cantidad:"5.000", producto:"BOFE"}]
+  // B) {qr_id:"...", items:[{sku:"BOFE", kg:5, pzas:0}]}
+  function normalizePayload(raw, decodedText){
+    // Caso A: Array directo
+    if(Array.isArray(raw)){
+      const items = raw.map(x => ({
+        sku: String(x.producto || x.sku || "").trim(),
+        kg: Number(x.cantidad ?? x.kg ?? 0),
+        pzas: Number(x.pzas ?? 0)
+      })).filter(it => it.sku && Number.isFinite(it.kg));
+
+      return {
+        qr_id: hashQr(decodedText),
+        items
+      };
+    }
+
+    // Caso B: Objeto con items
+    if(raw && typeof raw === "object"){
+      let items = raw.items;
+
+      // si te llegara como "productos", lo soportamos
+      if(!Array.isArray(items) && Array.isArray(raw.productos)){
+        items = raw.productos;
+      }
+
+      items = (items || []).map(x => ({
+        sku: String(x.sku || x.producto || "").trim(),
+        kg: Number(x.kg ?? x.cantidad ?? 0),
+        pzas: Number(x.pzas ?? 0)
+      })).filter(it => it.sku && Number.isFinite(it.kg));
+
+      return {
+        qr_id: String(raw.qr_id || hashQr(decodedText)),
+        items
+      };
+    }
+
+    return null;
+  }
+
   async function procesar(payload){
+    // anti doble lectura en milisegundos
     const now = Date.now();
     const qrId = payload?.qr_id || "";
     if(qrId && qrId === lastQr && (now-lastTs) < 2500) return;
@@ -72,7 +125,6 @@
 
     log("Procesando venta…");
 
-    // ✅ OJO: tu cliente es sb (no "supabase")
     const { data, error } = await sb.rpc('procesar_venta_qr', { payload });
 
     if(error){
@@ -89,12 +141,19 @@
 
   async function onScanSuccess(decodedText){
     try{
-      const payload = safeParseJson(decodedText);
-      if(!payload?.items || !payload?.qr_id){
-        log("QR inválido: falta qr_id o items\n\n" + decodedText, "bad");
+      const raw = safeParseJson(decodedText);
+      const payload = normalizePayload(raw, decodedText);
+
+      if(!payload?.items?.length){
+        log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
         return;
       }
+
+      // opcional: ver qué va a mandar
+      // log("Payload OK:\n" + JSON.stringify(payload, null, 2));
+
       await procesar(payload);
+
     }catch(e){
       log("No pude leer JSON del QR.\n\n" + e.message + "\n\nContenido:\n" + decodedText, "bad");
     }
@@ -103,7 +162,6 @@
   async function refreshCameras(){
     cameras = await Html5Qrcode.getCameras();
     if(!Array.isArray(cameras)) cameras = [];
-    // mostrar botón de cambiar si hay 2+
     switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
 
     // intenta elegir trasera por nombre (cuando el browser lo permite)
@@ -120,9 +178,6 @@
     running = true;
     toggleBtn.textContent = "Detener cámara";
 
-    // ✅ Preferir trasera:
-    // 1) si hay lista de cámaras y tenemos id -> deviceId exact
-    // 2) si no hay labels/ids, intentamos facingMode environment
     const config = { fps: 12, qrbox: { width: 280, height: 280 } };
 
     try{
@@ -135,7 +190,6 @@
       log("Cámara lista (preferencia: trasera). Escanea un ticket.");
     }catch(err){
       console.error(err);
-      // fallback: si falló deviceId, intenta environment
       try{
         await scanner.start({ facingMode: "environment" }, config, onScanSuccess);
         log("Cámara lista (fallback trasera). Escanea un ticket.");
@@ -184,7 +238,6 @@
 
   switchBtn.addEventListener('click', switchCamera);
 
-  // prepara lista de cámaras desde el inicio
   refreshCameras();
 </script>
 </body>
