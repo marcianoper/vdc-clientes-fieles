@@ -15,7 +15,6 @@
     .btn2{background:#60a5fa;color:#071a2f;margin-top:10px}
     .btn3{background:#f59e0b;color:#1f1300;margin-top:10px}
     .btn4{background:#22c55e;color:#052e16;margin-top:10px}
-    .btn5{background:#a78bfa;color:#1b1230;margin-top:10px}
     .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
     .ok{color:#22c55e} .bad{color:#fb7185} .muted{opacity:.8;font-size:12px}
     input[type="file"]{display:none}
@@ -28,16 +27,14 @@
   <div class="card">
     <div id="reader" style="width:100%"></div>
     <div class="muted" style="margin-top:10px">
-      Tip: si el QR está pesado, <b>Subir foto</b> suele ser más confiable.
+      Si el QR del ticket está pesado, usa <b>Subir foto</b> (más confiable).
     </div>
 
     <button class="btn2" id="toggle">Iniciar cámara</button>
     <button class="btn3" id="switchCam" style="display:none">Cambiar cámara</button>
 
-    <label class="btn btn4" for="filePick">📸 Subir foto del QR</label>
+    <label class="btn btn4" for="filePick">📸 Subir foto del QR (modo seguro)</label>
     <input id="filePick" type="file" accept="image/*" capture="environment">
-
-    <button class="btn5" id="resume" style="display:none">Escanear otro ticket</button>
   </div>
 
   <div style="height:12px"></div>
@@ -52,23 +49,22 @@
 <script>
   // === Credenciales ===
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+  const SUPABASE_ANON_KEY = "PEGA_TU_ANON_KEY_AQUI";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   const out = document.getElementById('out');
   const toggleBtn = document.getElementById('toggle');
   const switchBtn = document.getElementById('switchCam');
   const filePick = document.getElementById('filePick');
-  const resumeBtn = document.getElementById('resume');
 
   let scanner = null;
   let running = false;
+
   let cameras = [];
   let camIndex = 0;
 
-  // Anti spam en UI (además del anti-duplicado real del servidor)
-  let busy = false;
-  const BUSY_MS = 1200;
+  // 🔒 Candado duro: mientras procesa, ignora todo
+  let inFlight = false;
 
   function log(txt, cls=""){
     out.innerHTML = (cls ? `<span class="${cls}">${txt}</span>` : txt);
@@ -78,111 +74,121 @@
     return JSON.parse((text||"").trim());
   }
 
-  function normSku(s){
-    let t = String(s||"").trim().toUpperCase();
-    t = t.replace(/\s+/g, "_");          // espacios -> _
-    t = t.replace(/[^A-Z0-9_]/g, "");    // limpia raros
-    // alias extra por si llegan variantes
-    const alias = {
-      "PATA_MORENA": "PATA_MORENA",
-      "PATA_MORENA": "PATA_MORENA",
-      "PATA": "PATA_MORENA"
-    };
-    return alias[t] || t;
+  function cleanSku(s){
+    s = String(s||"").trim().toUpperCase();
+    s = s.replace(/\s+/g, "_");
+    s = s.replace(/[^A-Z0-9_]/g, "");
+    return s;
   }
 
-  async function sha256Hex(str){
-    const buf = new TextEncoder().encode(str);
-    const hash = await crypto.subtle.digest("SHA-256", buf);
-    return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  function roundKg(x){
+    const n = Number(x||0);
+    // redondeo 2 decimales para que sea estable
+    return Math.round(n * 100) / 100;
+  }
+
+  // ✅ Fingerprint ESTABLE: depende SOLO de items (no del decodedText)
+  function stableFingerprintFromItems(items){
+    const normalized = (items||[])
+      .map(it => ({
+        sku: cleanSku(it.sku || it.producto),
+        kg: roundKg(it.kg ?? it.cantidad ?? 0),
+      }))
+      .filter(x => x.sku && Number.isFinite(x.kg))
+      .sort((a,b)=> a.sku.localeCompare(b.sku));
+
+    const base = JSON.stringify(normalized);
+
+    // hash simple estable (FNV-1a)
+    let h = 2166136261;
+    for(let i=0;i<base.length;i++){
+      h ^= base.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return "FP_" + (h >>> 0).toString(16);
   }
 
   function normalizePayload(raw){
-    // QR como array: [{cantidad, producto}]
+    // Caso QR = array [{cantidad, producto}]
     if(Array.isArray(raw)){
       const items = raw.map(x => ({
-        sku: normSku(x.producto || x.sku || ""),
-        kg: Number(x.cantidad ?? x.kg ?? 0)
+        sku: cleanSku(x.producto || x.sku),
+        kg: roundKg(x.cantidad ?? x.kg ?? 0),
+        pzas: 0
       })).filter(it => it.sku && Number.isFinite(it.kg));
       return { items };
     }
 
-    // QR como objeto: {items:[...]} o {productos:[...]}
+    // Caso QR = objeto {items:[...]} o {productos:[...]}
     if(raw && typeof raw === "object"){
       let items = raw.items;
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
 
-      items = (items || []).map(x => ({
-        sku: normSku(x.sku || x.producto || ""),
-        kg: Number(x.kg ?? x.cantidad ?? 0)
+      items = (items||[]).map(x => ({
+        sku: cleanSku(x.sku || x.producto),
+        kg: roundKg(x.kg ?? x.cantidad ?? 0),
+        pzas: 0
       })).filter(it => it.sku && Number.isFinite(it.kg));
 
       return { items };
     }
+
     return null;
   }
 
-  async function procesar(decodedText){
-    const raw = safeParseJson(decodedText);
-    const base = normalizePayload(raw);
-
-    if(!base?.items?.length){
-      log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
-      return;
-    }
-
-    const fingerprint = await sha256Hex(decodedText);
-
+  async function procesarVenta(payload, fingerprint){
     log("Procesando venta…");
-    const { data, error } = await sb.rpc("procesar_venta_qr", {
-      payload: { items: base.items },
-      fingerprint
+
+    // 👇 Tu función: procesar_venta_qr(payload jsonb, p_fingerprint text)
+    const { data, error } = await sb.rpc('procesar_venta_qr', {
+      payload,
+      p_fingerprint: fingerprint
     });
 
     if(error){
       log("ERROR RPC: " + error.message, "bad");
-      return;
+      return { ok:false, error };
     }
-
-    // Si ya se procesó, el servidor regresa DUPLICATE_IGNORED (ok:true)
-    if(data?.code === "DUPLICATE_IGNORED"){
-      log("Ticket ya estaba aplicado (duplicado ignorado) ✅\n" + JSON.stringify(data, null, 2), "ok");
-      return;
-    }
-
     if(!data?.ok){
       log("NO OK:\n" + JSON.stringify(data, null, 2), "bad");
-      return;
+      return { ok:false, data };
     }
 
-    log("OK ✅\n" + JSON.stringify(data, null, 2), "ok");
-
-    // ✅ Corta la cámara para evitar re-lecturas del mismo QR
-    await freezeAfterSuccess();
-  }
-
-  async function freezeAfterSuccess(){
-    resumeBtn.style.display = "block";
-    if(scanner){
-      try{ scanner.pause(true); }catch(e){}
-    }
-    // opcional: detener completamente
-    if(running){
-      try{ await scanner.stop(); }catch(e){}
-      running = false;
-      toggleBtn.textContent = "Iniciar cámara";
-    }
+    log(JSON.stringify(data, null, 2), "ok");
+    return { ok:true, data };
   }
 
   async function handleDecoded(decodedText){
-    if(busy) return;
-    busy = true;
+    if(inFlight) return;
+    inFlight = true;
+
     try{
-      await procesar(decodedText);
+      const raw = safeParseJson(decodedText);
+      const p = normalizePayload(raw);
+      if(!p?.items?.length){
+        log("QR inválido: no pude formar items\n\n" + decodedText, "bad");
+        return;
+      }
+
+      const fingerprint = stableFingerprintFromItems(p.items);
+      const payload = { items: p.items };
+
+      const res = await procesarVenta(payload, fingerprint);
+
+      // ✅ CLAVE: si fue OK o DUPLICATE_IGNORED, apaga la cámara para evitar repetición
+      if(res.ok || res.data?.code === "DUPLICATE_IGNORED"){
+        if(running){
+          try{ await scanner.stop(); }catch(e){}
+          running = false;
+          toggleBtn.textContent = "Iniciar cámara";
+        }
+      }
+
     }catch(e){
-      log("Error leyendo QR:\n" + e.message, "bad");
+      log("No pude leer JSON del QR.\n\n" + e.message, "bad");
     }finally{
-      setTimeout(()=> busy = false, BUSY_MS);
+      // cooldown para que no dispare 2 veces pegado
+      setTimeout(()=> inFlight = false, 1500);
     }
   }
 
@@ -199,16 +205,13 @@
     if(idxBack >= 0) camIndex = idxBack;
   }
 
-  async function startWithCurrentCamera(){
+  async function start(){
+    if(running) return;
     if(!scanner) scanner = new Html5Qrcode("reader");
-    if(!cameras.length) await refreshCameras();
-
-    resumeBtn.style.display = "none";
-    running = true;
-    toggleBtn.textContent = "Detener cámara";
+    await refreshCameras();
 
     const config = {
-      fps: 15,
+      fps: 12,
       qrbox: (vw, vh) => {
         const size = Math.min(vw, vh) * 0.78;
         return { width: Math.floor(size), height: Math.floor(size) };
@@ -221,15 +224,12 @@
       ? { deviceId: { exact: cameras[camIndex].id } }
       : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
 
-    await scanner.start(constraints, config, onScanSuccess);
-    log("Cámara lista. Escanea un ticket.");
-  }
+    running = true;
+    toggleBtn.textContent = "Detener cámara";
 
-  async function start(){
-    if(running) return;
-    await refreshCameras();
     try{
-      await startWithCurrentCamera();
+      await scanner.start(constraints, config, onScanSuccess);
+      log("Cámara lista. Escanea un ticket.");
     }catch(e){
       running = false;
       toggleBtn.textContent = "Iniciar cámara";
@@ -256,7 +256,6 @@
     if(running){ await stop(); await start(); }
   }
 
-  // Modo foto (confiable)
   filePick.addEventListener('change', async (e)=>{
     const file = e.target.files?.[0];
     if(!file) return;
@@ -267,7 +266,8 @@
       const decodedText = await scanner.scanFile(file, true);
       await handleDecoded(decodedText);
     }catch(err){
-      log("No pude leer la foto. Acércate más y evita reflejos.", "bad");
+      console.error(err);
+      log("No pude leer la foto. Tip: sin reflejo y QR grande en la imagen.", "bad");
     }finally{
       filePick.value = "";
     }
@@ -276,13 +276,8 @@
   toggleBtn.addEventListener('click', async ()=>{
     if(!running) await start(); else await stop();
   });
-  switchBtn.addEventListener('click', switchCamera);
 
-  // Reanudar para otro ticket
-  resumeBtn.addEventListener('click', async ()=>{
-    resumeBtn.style.display = "none";
-    await start();
-  });
+  switchBtn.addEventListener('click', switchCamera);
 
   refreshCameras();
 </script>
