@@ -12,8 +12,8 @@
     .wrap{max-width:920px;margin:0 auto;padding:14px 16px}
     .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
     button{width:100%;padding:12px 14px;border:0;border-radius:14px;font-weight:900;cursor:pointer}
-    .btn{background:#22c55e;color:#052e16}
     .btn2{background:#60a5fa;color:#071a2f;margin-top:10px}
+    .btn3{background:#f59e0b;color:#1f1300;margin-top:10px}
     .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
     .ok{color:#22c55e} .bad{color:#fb7185} .muted{opacity:.8;font-size:12px}
   </style>
@@ -25,6 +25,7 @@
     <div id="reader" style="width:100%"></div>
     <div class="muted" style="margin-top:10px">Apunta al QR del ticket. Se aplicará la venta automáticamente.</div>
     <button class="btn2" id="toggle">Iniciar cámara</button>
+    <button class="btn3" id="switchCam" style="display:none">Cambiar cámara</button>
   </div>
 
   <div style="height:12px"></div>
@@ -36,19 +37,21 @@
 </div>
 
 <script>
-   // === Credenciales (CORRECTAS) ===
+  // === Credenciales ===
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
-
-  // ✅ Cliente único (evita redeclare si se vuelve a ejecutar)
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
-
 
   const out = document.getElementById('out');
   const toggleBtn = document.getElementById('toggle');
+  const switchBtn = document.getElementById('switchCam');
 
   let scanner = null;
   let running = false;
+
+  let cameras = [];
+  let camIndex = 0;
+
   let lastQr = "";
   let lastTs = 0;
 
@@ -57,20 +60,20 @@
   }
 
   function safeParseJson(text){
-    // Algunos QR lectores meten espacios o saltos
     const t = (text||"").trim();
     return JSON.parse(t);
   }
 
   async function procesar(payload){
-    // anti doble lectura en milisegundos
     const now = Date.now();
     const qrId = payload?.qr_id || "";
     if(qrId && qrId === lastQr && (now-lastTs) < 2500) return;
     lastQr = qrId; lastTs = now;
 
     log("Procesando venta…");
-    const { data, error } = await supabase.rpc('procesar_venta_qr', { payload });
+
+    // ✅ OJO: tu cliente es sb (no "supabase")
+    const { data, error } = await sb.rpc('procesar_venta_qr', { payload });
 
     if(error){
       log("ERROR RPC: " + error.message, "bad");
@@ -97,21 +100,58 @@
     }
   }
 
-  async function start(){
-    if(running) return;
+  async function refreshCameras(){
+    cameras = await Html5Qrcode.getCameras();
+    if(!Array.isArray(cameras)) cameras = [];
+    // mostrar botón de cambiar si hay 2+
+    switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
+
+    // intenta elegir trasera por nombre (cuando el browser lo permite)
+    const idxBack = cameras.findIndex(c =>
+      /back|rear|environment|trasera/i.test(c.label || "")
+    );
+    if(idxBack >= 0) camIndex = idxBack;
+  }
+
+  async function startWithCurrentCamera(){
     if(!scanner) scanner = new Html5Qrcode("reader");
-    const cams = await Html5Qrcode.getCameras();
-    const camId = cams?.[0]?.id;
-    if(!camId){ log("No encontré cámara disponible.", "bad"); return; }
+    if(!cameras.length) await refreshCameras();
 
     running = true;
     toggleBtn.textContent = "Detener cámara";
-    await scanner.start(
-      { deviceId: { exact: camId } },
-      { fps: 12, qrbox: { width: 280, height: 280 } },
-      onScanSuccess
-    );
-    log("Cámara lista. Escanea un ticket.");
+
+    // ✅ Preferir trasera:
+    // 1) si hay lista de cámaras y tenemos id -> deviceId exact
+    // 2) si no hay labels/ids, intentamos facingMode environment
+    const config = { fps: 12, qrbox: { width: 280, height: 280 } };
+
+    try{
+      if(cameras.length){
+        const camId = cameras[camIndex]?.id;
+        await scanner.start({ deviceId: { exact: camId } }, config, onScanSuccess);
+      }else{
+        await scanner.start({ facingMode: "environment" }, config, onScanSuccess);
+      }
+      log("Cámara lista (preferencia: trasera). Escanea un ticket.");
+    }catch(err){
+      console.error(err);
+      // fallback: si falló deviceId, intenta environment
+      try{
+        await scanner.start({ facingMode: "environment" }, config, onScanSuccess);
+        log("Cámara lista (fallback trasera). Escanea un ticket.");
+      }catch(e2){
+        console.error(e2);
+        running = false;
+        toggleBtn.textContent = "Iniciar cámara";
+        log("No pude iniciar cámara. Revisa permisos del navegador.", "bad");
+      }
+    }
+  }
+
+  async function start(){
+    if(running) return;
+    await refreshCameras();
+    await startWithCurrentCamera();
   }
 
   async function stop(){
@@ -122,9 +162,30 @@
     log("Cámara detenida.");
   }
 
+  async function switchCamera(){
+    if(cameras.length < 2){
+      log("Solo hay 1 cámara disponible.", "bad");
+      return;
+    }
+    camIndex = (camIndex + 1) % cameras.length;
+
+    const name = cameras[camIndex]?.label || `Cámara ${camIndex+1}`;
+    log("Cambiando a: " + name + "…");
+
+    if(running){
+      await stop();
+      await start();
+    }
+  }
+
   toggleBtn.addEventListener('click', async ()=>{
     if(!running) await start(); else await stop();
   });
+
+  switchBtn.addEventListener('click', switchCamera);
+
+  // prepara lista de cámaras desde el inicio
+  refreshCameras();
 </script>
 </body>
 </html>
