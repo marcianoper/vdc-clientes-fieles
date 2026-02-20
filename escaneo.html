@@ -140,11 +140,20 @@
     return "QR_" + (h >>> 0).toString(16);
   }
 
+  // ✅ NUEVO: normaliza SKU (pata morena -> PATA_MORENA)
+  function canonSku(s){
+    return String(s || "")
+      .trim()
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")   // quita acentos
+      .replace(/\s+/g, "_");                              // espacios -> _
+  }
+
   function normalizePayload(raw, decodedText){
     // QR como array
     if(Array.isArray(raw)){
       const items = raw.map(x => ({
-        sku: String(x.producto || x.sku || "").trim(),
+        sku: canonSku(x.producto || x.sku || ""),
         kg: Number(x.cantidad ?? x.kg ?? 0)
       })).filter(it => it.sku && Number.isFinite(it.kg));
       return { qr_id: hashQr(decodedText), items };
@@ -156,7 +165,7 @@
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
 
       items = (items || []).map(x => ({
-        sku: String(x.sku || x.producto || "").trim(),
+        sku: canonSku(x.sku || x.producto || ""),
         kg: Number(x.kg ?? x.cantidad ?? 0)
       })).filter(it => it.sku && Number.isFinite(it.kg));
 
@@ -185,7 +194,6 @@
   async function procesar(payload, fingerprint){
     log("Procesando venta…");
 
-    // ✅ mandamos fingerprint para idempotencia server-side
     const { data, error } = await sb.rpc('procesar_venta_qr', {
       payload,
       p_fingerprint: fingerprint
@@ -222,13 +230,9 @@
         return;
       }
 
-      // fingerprint estable (no depende del QR_id del ticket)
       const fingerprint = hashQr(decodedText);
 
-      // ✅ Mostrar total inmediatamente al escanear
       updateTotalsUI(payload, fingerprint);
-
-      // ✅ Procesar venta
       await procesar(payload, fingerprint);
 
     }catch(e){
@@ -307,7 +311,6 @@
     if(running){ await stop(); await start(); }
   }
 
-  // ✅ MODO FOTO (muy confiable)
   filePick.addEventListener('change', async (e)=>{
     const file = e.target.files?.[0];
     if(!file) return;
