@@ -69,7 +69,7 @@
 
   async function load(){
     status.textContent = "Cargando stock…";
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('stock_mostrador')
       .select('sku,kg,pzas,updated_at')
       .order('sku', { ascending:true });
