@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -11,93 +10,240 @@
 
   <style>
     :root{
-      --brand:#22c55e;
-      --bg:#0b1220;
-      --card:rgba(255,255,255,.06);
-      --line:rgba(255,255,255,.10);
-      --ink:#e5e7eb;
-      --muted:rgba(229,231,235,.75);
+      /* ✅ Tema amigable (claro) */
+      --bg:#f6f7f8;
+      --paper:#ffffff;
+      --paper2:#f9fafb;
+      --line:#e5e7eb;
+
+      --ink:#0f172a;
+      --muted:#64748b;
+
+      --brand:#16a34a;
+      --brand2:#22c55e;
       --warn:#f59e0b;
-      --bad:#fb7185;
-      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --bad:#ef4444;
+
+      --shadow: 0 14px 36px rgba(2,6,23,.10);
       --r:18px;
     }
+
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
-    header{padding:14px 16px;background:#111827;border-bottom:1px solid rgba(255,255,255,.08);font-weight:1100}
-    .wrap{max-width:1000px;margin:0 auto;padding:14px 16px;display:grid;gap:12px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background: radial-gradient(1200px 520px at 10% -10%, rgba(34,197,94,.12), transparent 60%),
+                  radial-gradient(1000px 520px at 90% 10%, rgba(245,158,11,.10), transparent 60%),
+                  var(--bg);
+      color:var(--ink);
+    }
+
+    header{
+      background:linear-gradient(90deg, rgba(22,163,74,.95), rgba(34,197,94,.95));
+      color:#fff;
+      padding:14px 16px;
+      border-bottom:1px solid rgba(255,255,255,.18);
+      position:sticky; top:0; z-index:5;
+    }
+    .headRow{max-width:1040px;margin:0 auto;display:flex;gap:10px;align-items:center;justify-content:space-between}
+    header b{font-weight:1000}
+    header .chip{
+      background:rgba(255,255,255,.16);
+      border:1px solid rgba(255,255,255,.22);
+      padding:6px 10px;border-radius:999px;
+      font-weight:900;font-size:12px;
+    }
+
+    .wrap{max-width:1040px;margin:0 auto;padding:14px 16px;display:grid;gap:12px}
+
+    .card{
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:var(--r);
+      padding:14px;
+      box-shadow:var(--shadow);
+    }
+
+    .titleRow{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    h3{margin:0}
+    .sub{color:var(--muted);font-size:12px;margin-top:4px}
+
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     @media(max-width:820px){.grid{grid-template-columns:1fr}}
+
     label{display:block;font-weight:900;margin-top:10px}
-    input,select,textarea,button{width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:var(--ink);font-size:16px}
-    textarea{min-height:120px;resize:vertical}
-    button{border:0;background:#60a5fa;color:#071a2f;font-weight:1100;cursor:pointer}
-    button.secondary{background:#111;color:#fff;border:1px solid rgba(255,255,255,.12)}
-    button.warn{background:var(--warn);color:#1f1300}
-    button.ok{background:var(--brand);color:#052e16}
+    input,select,textarea,button{
+      width:100%;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:var(--paper2);
+      color:var(--ink);
+      font-size:16px;
+      outline:none;
+    }
+    textarea{min-height:110px;resize:vertical}
+    input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(34,197,94,.14);border-color:rgba(34,197,94,.55)}
+
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .row > *{flex:1}
+
+    button{
+      border:0;
+      background:var(--brand);
+      color:#052e16;
+      font-weight:1000;
+      cursor:pointer;
+      box-shadow:0 10px 22px rgba(22,163,74,.18);
+    }
+    button.secondary{
+      background:#0f172a;
+      color:#fff;
+      box-shadow:none;
+    }
+    button.ghost{
+      background:transparent;
+      color:var(--ink);
+      border:1px solid var(--line);
+      box-shadow:none;
+    }
+    button.warn{background:var(--warn);color:#1f1300;box-shadow:none}
+    button:disabled{opacity:.5;cursor:not-allowed}
+
     .muted{color:var(--muted);font-size:12px}
-    .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
-    .okTxt{color:var(--brand)} .badTxt{color:var(--bad)} .warnTxt{color:var(--warn)}
-    .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);font-weight:1100;font-size:12px}
     .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .pill{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:var(--paper2);
+      font-weight:900;
+      font-size:12px;
+      color:var(--ink);
+    }
 
     /* QR cliente */
     #qrClienteBox{
       display:grid;place-items:center;
-      border:1px dashed rgba(255,255,255,.18);
+      border:1px dashed #cbd5e1;
       border-radius:16px;
       min-height:240px;
       margin-top:10px;
       padding:12px;
+      background:linear-gradient(180deg, rgba(34,197,94,.06), transparent);
     }
     #qrClienteBox img{width:220px;height:220px;border-radius:12px;background:#fff}
-    code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+    code{background:rgba(2,6,23,.06);padding:2px 6px;border-radius:10px;border:1px solid rgba(2,6,23,.08)}
 
-    /* Totales bonitos */
+    /* Totales */
     .totals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
     .bigTotal{
-      background:rgba(34,197,94,.12);
-      border:1px solid rgba(34,197,94,.25);
+      background:rgba(34,197,94,.10);
+      border:1px solid rgba(34,197,94,.22);
       border-radius:18px;
       padding:14px;
       text-align:center;
     }
-    .bigTotal .t1{opacity:.85;font-weight:1100}
-    .bigTotal .t2{font-size:44px;line-height:1;margin-top:8px;font-weight:1200;color:var(--brand)}
-    .bigTotal .t3{opacity:.85;font-weight:1100;margin-top:6px}
+    .bigTotal .t1{opacity:.85;font-weight:1000}
+    .bigTotal .t2{font-size:44px;line-height:1;margin-top:8px;font-weight:1100;color:var(--brand)}
+    .bigTotal .t3{opacity:.85;font-weight:1000;margin-top:6px}
     .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     @media (max-width:720px){ .miniGrid{grid-template-columns:1fr;} }
     .miniCard{
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
+      background:var(--paper2);
+      border:1px solid var(--line);
       border-radius:16px;
       padding:12px;
     }
-    .miniCard b{display:block;font-size:12px;opacity:.85}
-    .miniCard .val{font-size:20px;font-weight:1200;margin-top:6px}
+    .miniCard b{display:block;font-size:12px;color:var(--muted)}
+    .miniCard .val{font-size:18px;font-weight:1100;margin-top:6px}
 
     table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{border:1px solid rgba(255,255,255,.10);padding:8px;text-align:left;vertical-align:top}
-    th{background:rgba(255,255,255,.06)}
+    th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+    th{background:var(--paper2)}
     .right{text-align:right}
 
     input[type="file"]{display:none}
+
+    /* Resultado operador (simple) */
+    .toast{
+      display:none;
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:#fff;
+      box-shadow:var(--shadow);
+    }
+    .toast.ok{border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.08)}
+    .toast.bad{border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.06)}
+    .toast .t{font-weight:1100}
+    .toast .d{margin-top:6px;color:var(--muted);font-size:12px;white-space:pre-wrap}
+
+    /* Ocultables por rol */
+    .adminOnly{display:block}
+    .opOnly{display:none}
+
+    /* Modal login */
+    .modalBg{
+      position:fixed; inset:0;
+      background:rgba(2,6,23,.55);
+      display:none;
+      place-items:center;
+      z-index:50;
+      padding:16px;
+    }
+    .modal{
+      width:min(520px,100%);
+      background:#fff;
+      border-radius:22px;
+      border:1px solid var(--line);
+      box-shadow:0 30px 80px rgba(0,0,0,.25);
+      padding:16px;
+    }
+    .modal h4{margin:0 0 6px}
+    .modal .sub{margin:0 0 10px}
+    .seg{
+      display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+    }
+    .seg button{flex:1; min-width:140px}
   </style>
 </head>
 
 <body>
-<header>VDC360° — QR Cliente + QR Ticket (Guardar compra + Inventario)</header>
+<header>
+  <div class="headRow">
+    <div>
+      <b>VDC360° — QR Cliente + QR Ticket</b>
+      <div class="muted" style="color:rgba(255,255,255,.85)">Guardar compra + descontar inventario</div>
+    </div>
+    <div class="row" style="max-width:520px;align-items:center">
+      <span class="chip" id="roleChip">Modo: —</span>
+      <button class="ghost" id="btnCambiarUsuario" type="button" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;box-shadow:none">
+        Cambiar usuario
+      </button>
+    </div>
+  </div>
+</header>
 
 <div class="wrap">
 
   <!-- 1) Cliente -->
   <section class="card">
-    <h3 style="margin:0 0 6px">1) Cliente (QR único por cliente)</h3>
+    <div class="titleRow">
+      <div>
+        <h3>1) Cliente</h3>
+        <div class="sub">Cada cliente tiene su QR único para cargarlo automático.</div>
+      </div>
+      <div class="pills">
+        <span class="pill" id="stCliente">Cliente: —</span>
+        <span class="pill" id="stPuntos">Puntos: —</span>
+        <span class="pill" id="stSaldo">Saldo kg: —</span>
+      </div>
+    </div>
 
-    <div class="grid">
+    <div class="grid" style="margin-top:10px">
       <div>
         <label>Nombre</label>
         <input id="nombre" placeholder="Ej. Taquería Don Chuy" list="nombreList" />
@@ -112,46 +258,60 @@
     </div>
 
     <div class="row" style="margin-top:10px">
-      <button id="btnBuscar">Buscar</button>
-      <button id="btnCrear" class="secondary">Crear / Actualizar</button>
-      <button id="btnReloadNames" class="secondary" type="button">↻ Recargar</button>
-    </div>
-
-    <div class="pills">
-      <span class="pill" id="stCliente">Cliente: —</span>
-      <span class="pill" id="stPuntos">Puntos: —</span>
-      <span class="pill" id="stSaldo">Saldo kg: —</span>
+      <button id="btnBuscar" type="button">Buscar</button>
+      <button id="btnCrear" class="secondary" type="button">Crear / Actualizar</button>
+      <button id="btnReloadNames" class="ghost" type="button">↻ Recargar</button>
     </div>
 
     <div id="msg" class="muted" style="margin-top:10px">—</div>
 
-    <!-- ✅ QR DEL CLIENTE -->
+    <!-- QR Cliente -->
     <div class="grid" style="margin-top:12px">
       <div>
-        <div class="muted">Este QR es único por cliente: abre esta página con <code>?cid=</code> y lo carga automático.</div>
-        <div id="qrClienteBox"><span class="muted">Selecciona un cliente para generar el QR</span></div>
-        <div class="muted" id="qrClienteText" style="margin-top:10px"></div>
-      </div>
-      <div>
-        <div class="muted">
-          Uso recomendado:
-          <ul>
-            <li>Imprímelo y pégalo en la libreta del cliente</li>
-            <li>O guárdalo en WhatsApp del cliente como “Mi QR VDC”</li>
-          </ul>
+        <div id="qrClienteBox"><span class="muted">Selecciona un cliente para generar su QR</span></div>
+
+        <!-- ✅ ADMIN ONLY: muestra URL -->
+        <div class="adminOnly">
+          <div class="muted" id="qrClienteText" style="margin-top:10px"></div>
+          <div class="row" style="margin-top:10px">
+            <button id="btnCopiarUrl" class="ghost" type="button">Copiar URL del QR</button>
+            <button id="btnAbrirUrl" class="ghost" type="button">Abrir URL</button>
+          </div>
         </div>
-        <div class="row">
-          <button id="btnCopiarUrl" class="secondary" type="button">Copiar URL del QR</button>
-          <button id="btnAbrirUrl" class="secondary" type="button">Abrir URL</button>
+
+        <!-- ✅ OP ONLY: mensaje simple -->
+        <div class="opOnly">
+          <div class="muted" style="margin-top:10px">
+            QR listo para imprimir o guardar. (Operador no ve URL)
+          </div>
+        </div>
+      </div>
+
+      <div class="muted">
+        Uso recomendado:
+        <ul>
+          <li>Imprímelo y pégalo en la libreta del cliente</li>
+          <li>O guárdalo en WhatsApp del cliente como “Mi QR VDC”</li>
+        </ul>
+        <div class="muted">
+          Tip: para cargar cliente rápido, abre esta misma página con el QR del cliente.
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 2) Escáner QR Ticket -->
+  <!-- 2) QR Ticket -->
   <section class="card">
-    <h3 style="margin:0 0 6px">2) Escanear QR del Ticket (productos/kg)</h3>
-    <div class="muted">Requisito: selecciona un cliente antes de escanear.</div>
+    <div class="titleRow">
+      <div>
+        <h3>2) Escanear QR del Ticket</h3>
+        <div class="sub">Primero selecciona cliente. Luego escanea el QR del ticket para aplicar inventario y guardar compra.</div>
+      </div>
+      <div class="row" style="min-width:260px;max-width:420px">
+        <button class="ghost" id="toggle" type="button">Iniciar cámara</button>
+        <button class="warn" id="switchCam" type="button" style="display:none">Cambiar cámara</button>
+      </div>
+    </div>
 
     <div id="reader" style="width:100%;margin-top:10px"></div>
 
@@ -159,18 +319,20 @@
       Si el QR está pesado y no lo lee en vivo, usa <b>Subir foto</b> (modo seguro).
     </div>
 
-    <div class="row" style="margin-top:10px">
-      <button class="secondary" id="toggle">Iniciar cámara</button>
-      <button class="warn" id="switchCam" style="display:none">Cambiar cámara</button>
-    </div>
-
-    <label class="ok" for="filePick" style="margin-top:10px;display:block;text-align:center;cursor:pointer">
+    <label class="ghost" for="filePick" style="margin-top:10px;display:block;text-align:center;cursor:pointer">
       📸 Subir foto del QR (modo seguro)
+      <input id="filePick" type="file" accept="image/*" capture="environment">
     </label>
-    <input id="filePick" type="file" accept="image/*" capture="environment">
 
-    <label style="margin-top:10px">Contenido del QR (debug)</label>
-    <textarea id="qrPayload" placeholder='Aquí se pega / aparecerá lo escaneado...'></textarea>
+    <!-- ✅ ADMIN ONLY: debug payload -->
+    <div class="adminOnly" style="margin-top:10px">
+      <label>Contenido del QR (debug)</label>
+      <textarea id="qrPayload" placeholder='Aquí se pega / aparecerá lo escaneado...'></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="btnProcesarPegado" class="warn" type="button">Procesar QR pegado</button>
+        <button id="btnLimpiar" class="ghost" type="button">Limpiar</button>
+      </div>
+    </div>
 
     <!-- Totales -->
     <div class="totals">
@@ -180,7 +342,8 @@
         <div class="t3">kg</div>
       </div>
 
-      <div class="miniGrid">
+      <!-- ✅ ADMIN ONLY: fingerprint y líneas -->
+      <div class="miniGrid adminOnly">
         <div class="miniCard">
           <b># Productos (líneas)</b>
           <div class="val" id="countLines">0</div>
@@ -199,29 +362,65 @@
           <option value="mostrador">mostrador (SÍ puntos)</option>
           <option value="credito">crédito (NO puntos)</option>
         </select>
-        <div class="muted">Para puntos: solo mostrador.</div>
+        <div class="muted">Puntos solo en mostrador.</div>
       </div>
-      <div>
+
+      <!-- ✅ ADMIN ONLY: editable kg -->
+      <div class="adminOnly">
         <label>Total kg (editable)</label>
         <input id="kgAuto" inputmode="decimal" placeholder="0.00" />
-        <div class="muted">Se llena automático; puedes corregir.</div>
+        <div class="muted">Admin puede corregir kilos antes de guardar.</div>
+      </div>
+
+      <!-- ✅ OP ONLY: kg fijo (solo lectura) -->
+      <div class="opOnly">
+        <label>Total kg</label>
+        <input id="kgAutoOp" disabled />
+        <div class="muted">Operador no puede editar.</div>
       </div>
     </div>
 
-    <div id="detalleBox" class="muted" style="margin-top:10px">—</div>
+    <!-- ✅ ADMIN ONLY: detalle editable -->
+    <div id="detalleBox" class="adminOnly muted" style="margin-top:10px">—</div>
 
-    <div class="row" style="margin-top:10px">
-      <button id="btnProcesarPegado" class="warn" type="button">Procesar QR pegado</button>
-      <button id="btnLimpiar" class="secondary" type="button">Limpiar</button>
-    </div>
+    <!-- ✅ Operador: respuesta simple -->
+    <div id="opToast" class="toast" aria-live="polite"></div>
   </section>
 
-  <!-- 3) Log -->
-  <section class="card">
-    <div class="muted">Resultado:</div>
+  <!-- 3) Log (admin) -->
+  <section class="card adminOnly">
+    <div class="muted">Resultado (técnico):</div>
     <div id="out" class="log">Listo.</div>
   </section>
 
+</div>
+
+<!-- Modal cambiar usuario -->
+<div class="modalBg" id="modalBg">
+  <div class="modal">
+    <h4>Cambiar usuario</h4>
+    <p class="sub muted">Operador = solo OK. Admin = todo el detalle.</p>
+
+    <div class="seg">
+      <button id="btnSetOp" class="ghost" type="button">Soy Operador</button>
+      <button id="btnSetAdmin" class="secondary" type="button">Soy Admin</button>
+    </div>
+
+    <div id="pinBox" style="display:none;margin-top:12px">
+      <label>PIN Admin</label>
+      <input id="adminPin" inputmode="numeric" placeholder="••••" />
+      <div class="muted">Tip: este PIN solo es UI (no es seguridad real). Luego lo blindamos con Auth/Roles.</div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnOkPin" class="secondary" type="button">Entrar como Admin</button>
+        <button id="btnCancelPin" class="ghost" type="button">Cancelar</button>
+      </div>
+      <div id="pinMsg" class="muted" style="margin-top:10px"></div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button id="btnCloseModal" class="ghost" type="button">Cerrar</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -236,15 +435,32 @@
   // === Tablas clientes/ventas ===
   // =========================
   const T_CLIENTES = "clientes";
-  const T_VENTAS   = "ventas";
-  const T_ITEMS    = "ventas_items";
+
+  // =========================
+  // === Roles UI ===
+  // =========================
+  const ADMIN_PIN = "1234"; // 🔒 cámbialo
+  const ROLE_KEY = "vdc_role_ui"; // "admin" | "op"
+  let role = localStorage.getItem(ROLE_KEY) || "op";
 
   // =========================
   // === UI refs ===
   // =========================
   const $ = (id)=>document.getElementById(id);
 
-  const out = $("out");
+  const roleChip = $("roleChip");
+  const btnCambiarUsuario = $("btnCambiarUsuario");
+
+  const modalBg = $("modalBg");
+  const btnSetOp = $("btnSetOp");
+  const btnSetAdmin = $("btnSetAdmin");
+  const pinBox = $("pinBox");
+  const adminPin = $("adminPin");
+  const pinMsg = $("pinMsg");
+  const btnOkPin = $("btnOkPin");
+  const btnCancelPin = $("btnCancelPin");
+  const btnCloseModal = $("btnCloseModal");
+
   const toggleBtn = $("toggle");
   const switchBtn = $("switchCam");
   const filePick = $("filePick");
@@ -252,6 +468,10 @@
   const totalKgEl = $("totalKg");
   const countLinesEl = $("countLines");
   const fpShortEl = $("fpShort");
+
+  const opToast = $("opToast");
+
+  const out = $("out"); // admin only
 
   // =========================
   // === Estado ===
@@ -289,12 +509,28 @@
       .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
       .replaceAll('"',"&quot;").replaceAll("'","&#039;");
   }
-  function log(txt, cls=""){ out.innerHTML = cls ? `<span class="${cls}">${txt}</span>` : txt; }
+
+  function logAdmin(txt, cls=""){
+    if(!out) return;
+    out.innerHTML = cls ? `<span class="${cls}">${txt}</span>` : txt;
+  }
+
+  function showOpToast(type, title, details){
+    opToast.style.display = "block";
+    opToast.className = "toast " + (type === "ok" ? "ok" : "bad");
+    opToast.innerHTML = `
+      <div class="t">${escapeHtml(title || "")}</div>
+      <div class="d">${escapeHtml(details || "")}</div>
+    `;
+    setTimeout(()=>{ opToast.style.display = "none"; }, 4500);
+  }
+
   function setMsg(type, text){
     const el = $("msg");
-    el.className = type === "badTxt" ? "badTxt" : (type==="okTxt" ? "okTxt" : "muted");
+    el.className = "muted";
     el.textContent = text;
   }
+
   function renderStatus(){
     $("stCliente").textContent = "Cliente: " + (currentClient ? (currentClient.nombre || currentClient.telefono) : "—");
     $("stPuntos").textContent  = "Puntos: " + (currentClient ? currentClient.puntos : "—");
@@ -302,11 +538,74 @@
   }
 
   // =========================
+  // ✅ Aplicar rol (mostrar/ocultar secciones)
+  // =========================
+  function applyRoleUI(){
+    roleChip.textContent = "Modo: " + (role === "admin" ? "Admin" : "Operador");
+
+    document.querySelectorAll(".adminOnly").forEach(el=>{
+      el.style.display = (role === "admin") ? "" : "none";
+    });
+    document.querySelectorAll(".opOnly").forEach(el=>{
+      el.style.display = (role === "admin") ? "none" : "";
+    });
+
+    // En operador, el input kgAutoOp refleja kgAuto
+    if(role !== "admin"){
+      const opKg = $("kgAutoOp");
+      const adminKg = $("kgAuto");
+      if(opKg){
+        opKg.value = adminKg ? (adminKg.value || "") : "";
+      }
+    }
+  }
+
+  // Modal handlers
+  function openModal(){ modalBg.style.display = "grid"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
+  function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
+
+  btnCambiarUsuario.addEventListener("click", openModal);
+  btnCloseModal.addEventListener("click", closeModal);
+
+  btnSetOp.addEventListener("click", ()=>{
+    role = "op";
+    localStorage.setItem(ROLE_KEY, role);
+    applyRoleUI();
+    closeModal();
+  });
+
+  btnSetAdmin.addEventListener("click", ()=>{
+    pinBox.style.display = "block";
+    adminPin.focus();
+  });
+
+  btnCancelPin.addEventListener("click", ()=>{
+    pinBox.style.display = "none";
+    pinMsg.textContent = "";
+    adminPin.value = "";
+  });
+
+  btnOkPin.addEventListener("click", ()=>{
+    if(String(adminPin.value||"").trim() === ADMIN_PIN){
+      role = "admin";
+      localStorage.setItem(ROLE_KEY, role);
+      applyRoleUI();
+      closeModal();
+    }else{
+      pinMsg.style.color = "#ef4444";
+      pinMsg.textContent = "PIN incorrecto.";
+    }
+  });
+
+  modalBg.addEventListener("click", (e)=>{
+    if(e.target === modalBg) closeModal();
+  });
+
+  // =========================
   // ✅ URL base (para QR cliente)
   // =========================
   function siteBaseUrl(){
     const u = new URL(window.location.href);
-    // deja el mismo archivo, solo quitamos query/hash
     return u.origin + u.pathname;
   }
 
@@ -314,10 +613,10 @@
     const box = $("qrClienteBox");
     const txt = $("qrClienteText");
     box.innerHTML = "";
-    txt.textContent = "";
+    if(txt) txt.textContent = "";
 
     if(!currentClient?.id){
-      box.innerHTML = `<span class="muted">Selecciona un cliente para generar el QR</span>`;
+      box.innerHTML = `<span class="muted">Selecciona un cliente para generar su QR</span>`;
       lastClientQrUrl = "";
       return;
     }
@@ -330,23 +629,30 @@
     img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`;
     box.appendChild(img);
 
-    txt.innerHTML = `URL en QR: <code>${url}</code>`;
+    if(txt) txt.innerHTML = `URL en QR: <code>${url}</code>`;
   }
 
-  $("btnCopiarUrl").addEventListener("click", async ()=>{
-    if(!lastClientQrUrl) return setMsg("badTxt","No hay URL. Selecciona cliente primero.");
-    try{
-      await navigator.clipboard.writeText(lastClientQrUrl);
-      setMsg("okTxt","URL copiada ✅");
-    }catch{
-      setMsg("badTxt","No pude copiar (permiso del navegador).");
-    }
-  });
+  const btnCopiarUrl = $("btnCopiarUrl");
+  const btnAbrirUrl = $("btnAbrirUrl");
 
-  $("btnAbrirUrl").addEventListener("click", ()=>{
-    if(!lastClientQrUrl) return setMsg("badTxt","No hay URL. Selecciona cliente primero.");
-    window.open(lastClientQrUrl, "_blank");
-  });
+  if(btnCopiarUrl){
+    btnCopiarUrl.addEventListener("click", async ()=>{
+      if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
+      try{
+        await navigator.clipboard.writeText(lastClientQrUrl);
+        setMsg("ok","URL copiada ✅");
+      }catch{
+        setMsg("bad","No pude copiar (permiso del navegador).");
+      }
+    });
+  }
+
+  if(btnAbrirUrl){
+    btnAbrirUrl.addEventListener("click", ()=>{
+      if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
+      window.open(lastClientQrUrl, "_blank");
+    });
+  }
 
   // =========================
   // ✅ CANONIZADOR SKU (tu versión)
@@ -361,7 +667,6 @@
     if(/^CAJA\s+AZUL\b/.test(t) || t.includes("CAJA AZUL")) return "CAJA_MENUDO_NATIONAL";
     if(/^CAJA\s+CANADIAN\b/.test(t) || t.includes("CAJA CANADIAN")) return "MENUDO_CANADIAN";
     if(t.includes("NATIONAL")) return "CAJA_MENUDO_NATIONAL";
-
     return t.replace(/\s+/g, "_");
   }
 
@@ -396,9 +701,7 @@
     return "QR_" + (h >>> 0).toString(16);
   }
 
-  function safeParseJson(text){
-    return JSON.parse((text||"").trim());
-  }
+  function safeParseJson(text){ return JSON.parse((text||"").trim()); }
 
   function normalizePayload(raw, decodedText){
     if(Array.isArray(raw)){
@@ -444,19 +747,31 @@
   function updateTotalsUI(payload, fingerprint){
     const itemsUi = payload._itemsUi || [];
     const totalKg = calcTotalKgVisual(itemsUi);
+
     totalKgEl.textContent = totalKg.toFixed(2);
-    countLinesEl.textContent = String((payload.items || []).length || 0);
-    fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
-    $("kgAuto").value = totalKg.toFixed(2);
+
+    if(countLinesEl) countLinesEl.textContent = String((payload.items || []).length || 0);
+    if(fpShortEl) fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
+
+    // Admin: editable
+    const kgAdmin = $("kgAuto");
+    if(kgAdmin) kgAdmin.value = totalKg.toFixed(2);
+
+    // Operador: solo lectura
+    const kgOp = $("kgAutoOp");
+    if(kgOp) kgOp.value = totalKg.toFixed(2);
   }
 
   function renderDetalleEditable(){
     const box = $("detalleBox");
+    if(!box) return;
+
     if(!ticketItemsUi.length){
       box.className = "muted";
       box.textContent = "—";
       return;
     }
+
     const rows = ticketItemsUi.map((it, idx)=>`
       <tr>
         <td style="width:55%">
@@ -468,14 +783,14 @@
           <div class="muted">total: ${Number(it._kgTotal ?? it.kg).toFixed(3)}</div>
         </td>
         <td class="right" style="width:20%">
-          <button class="secondary" data-del="${idx}" style="margin:0;padding:10px;border-radius:12px">X</button>
+          <button class="ghost" data-del="${idx}" style="margin:0;padding:10px;border-radius:12px">X</button>
         </td>
       </tr>
     `).join("");
 
     box.className = "";
     box.innerHTML = `
-      <div class="muted">Puedes corregir antes de guardar (afecta venta + inventario).</div>
+      <div class="muted">Admin puede corregir antes de guardar (afecta venta + inventario).</div>
       <table>
         <thead><tr><th>Producto</th><th>Kg</th><th class="right">Del</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -501,9 +816,13 @@
           .filter(it=>it.sku && Number.isFinite(it.kg) && it.kg>0);
 
         const total = calcTotalKgVisual(ticketItemsUi);
-        $("kgAuto").value = total.toFixed(2);
+        const kgAdmin = $("kgAuto");
+        if(kgAdmin) kgAdmin.value = total.toFixed(2);
+        const kgOp = $("kgAutoOp");
+        if(kgOp) kgOp.value = total.toFixed(2);
+
         totalKgEl.textContent = total.toFixed(2);
-        countLinesEl.textContent = String(ticketItemsInv.length);
+        if(countLinesEl) countLinesEl.textContent = String(ticketItemsInv.length);
       });
     });
 
@@ -516,9 +835,13 @@
           .filter(it=>it.sku && Number.isFinite(it.kg) && it.kg>0);
 
         const total = calcTotalKgVisual(ticketItemsUi);
-        $("kgAuto").value = total.toFixed(2);
+        const kgAdmin = $("kgAuto");
+        if(kgAdmin) kgAdmin.value = total.toFixed(2);
+        const kgOp = $("kgAutoOp");
+        if(kgOp) kgOp.value = total.toFixed(2);
+
         totalKgEl.textContent = total.toFixed(2);
-        countLinesEl.textContent = String(ticketItemsInv.length);
+        if(countLinesEl) countLinesEl.textContent = String(ticketItemsInv.length);
 
         renderDetalleEditable();
       });
@@ -540,56 +863,59 @@
   }
 
   // =========================
-  // ✅ 2) Guardar venta + puntos (clientes/ventas/ventas_items)
+  // ✅ 2) Guardar venta + puntos: RPC guardar_venta_cliente_qr
   // =========================
- async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
-  if(!currentClient) throw new Error("Primero selecciona un cliente.");
+  async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
+    if(!currentClient) throw new Error("Primero selecciona un cliente.");
 
-  const tipo = $("tipo").value;
-  const kg = toNum($("kgAuto").value);
-  if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
+    const tipo = $("tipo").value;
 
-  // items para ventas_items: [{sku, kg}, ...]
-  const items = (ticketItemsInv || [])
-    .map(it => ({ sku: String(it.sku||"").trim(), kg: Number(it.kg)||0 }))
-    .filter(it => it.sku && Number.isFinite(it.kg) && it.kg > 0);
+    const kgAdmin = $("kgAuto");
+    const kgOp = $("kgAutoOp");
+    const kg = toNum( (kgAdmin && role==="admin") ? kgAdmin.value : (kgOp ? kgOp.value : "") );
 
-  const { data, error } = await sb.rpc("guardar_venta_cliente_qr", {
-    p_cliente_id: currentClient.id,
-    p_tipo: tipo,
-    p_total_kg: kg,
-    p_items: items,
-    p_fingerprint: fingerprint,
-    p_raw: decodedText
-  });
+    if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
-  if(error) throw new Error("RPC guardar_venta_cliente_qr: " + error.message);
+    const items = (ticketItemsInv || [])
+      .map(it => ({ sku: String(it.sku||"").trim(), kg: Number(it.kg)||0 }))
+      .filter(it => it.sku && Number.isFinite(it.kg) && it.kg > 0);
 
-  if(data?.code === "DUPLICATE"){
-    return { duplicate:true, venta_id: data.venta_id, puntosGanados: 0, itemsCount: items.length };
+    const { data, error } = await sb.rpc("guardar_venta_cliente_qr", {
+      p_cliente_id: currentClient.id,
+      p_tipo: tipo,
+      p_total_kg: kg,
+      p_items: items,
+      p_fingerprint: fingerprint,
+      p_raw: decodedText
+    });
+
+    if(error) throw new Error("RPC guardar_venta_cliente_qr: " + error.message);
+
+    if(data?.code === "DUPLICATE"){
+      return { duplicate:true, venta_id: data.venta_id, puntosGanados: 0, itemsCount: items.length };
+    }
+    if(!data?.ok){
+      throw new Error("NO OK: " + JSON.stringify(data, null, 2));
+    }
+
+    // refresca cliente
+    const { data: cli2 } = await sb
+      .from(T_CLIENTES)
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .eq("id", currentClient.id)
+      .single();
+
+    if(cli2) currentClient = cli2;
+
+    renderStatus();
+    await renderClientQR();
+
+    return {
+      venta_id: data.venta_id,
+      puntosGanados: Number(data.puntos_ganados||0),
+      itemsCount: items.length
+    };
   }
-
-  if(!data?.ok){
-    throw new Error("NO OK: " + JSON.stringify(data, null, 2));
-  }
-
-  // refresca cliente (para ver puntos/saldo actualizado)
-  const { data: cli2, error: e2 } = await sb
-    .from(T_CLIENTES)
-    .select("id,telefono,nombre,puntos,saldo_kg")
-    .eq("id", currentClient.id)
-    .single();
-  if(!e2 && cli2) currentClient = cli2;
-
-  renderStatus();
-  await renderClientQR();
-
-  return {
-    venta_id: data.venta_id,
-    puntosGanados: Number(data.puntos_ganados||0),
-    itemsCount: items.length
-  };
-}
 
   // =========================
   // ✅ Pipeline unido
@@ -600,17 +926,27 @@
 
     try{
       if(!currentClient){
-        log("Selecciona un cliente primero (o abre con ?cid=).", "warnTxt");
+        if(role === "admin"){
+          logAdmin("Selecciona un cliente primero (o abre con ?cid=).", "warnTxt");
+        }else{
+          showOpToast("bad", "Falta cliente", "Selecciona cliente primero.");
+        }
         return;
       }
 
-      $("qrPayload").value = decodedText;
+      // Admin debug payload
+      const payloadBox = $("qrPayload");
+      if(payloadBox) payloadBox.value = decodedText;
 
       const raw = safeParseJson(decodedText);
       const payload = normalizePayload(raw, decodedText);
 
       if(!payload?.items?.length){
-        log("QR inválido: no pude formar items\n\n" + decodedText, "badTxt");
+        if(role === "admin"){
+          logAdmin("QR inválido: no pude formar items\n\n" + decodedText, "badTxt");
+        }else{
+          showOpToast("bad", "QR inválido", "No pude leer los productos.");
+        }
         return;
       }
 
@@ -619,37 +955,61 @@
       updateTotalsUI(payload, fingerprint);
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
-      renderDetalleEditable();
 
-      log("1) Descontando inventario…");
+      if(role === "admin"){
+        renderDetalleEditable();
+        logAdmin("1) Descontando inventario…", "muted");
+      }else{
+        showOpToast("ok", "Procesando…", "Aplicando inventario y guardando compra.");
+      }
 
       const invRes = await descontarInventarioConRPC(payload, fingerprint);
 
       if(invRes.duplicate){
-        log("Ticket ya procesado (DUPLICATE). No se descontó otra vez ✅\n(No se guardó venta cliente para evitar duplicado)", "okTxt");
-        return;
-      }
-      if(!invRes.ok){
-        log("ERROR INVENTARIO:\n" + (invRes.error || "—"), "badTxt");
+        if(role === "admin"){
+          logAdmin("Ticket ya procesado (DUPLICATE). No se descontó otra vez ✅\n(No se guardó venta cliente para evitar duplicado)", "okTxt");
+        }else{
+          showOpToast("ok", "Ya procesado", "Este ticket ya estaba aplicado ✅");
+        }
         return;
       }
 
-      log("2) Guardando venta del cliente…");
+      if(!invRes.ok){
+        if(role === "admin"){
+          logAdmin("ERROR INVENTARIO:\n" + (invRes.error || "—"), "badTxt");
+        }else{
+          showOpToast("bad", "Error", "No se pudo descontar inventario.");
+        }
+        return;
+      }
+
+      if(role === "admin"){
+        logAdmin("2) Guardando venta del cliente…", "muted");
+      }
 
       const saveRes = await guardarVentaClienteDesdeQR(decodedText, fingerprint);
 
-      log(
-        "✅ LISTO\n" +
-        "Inventario: descontado ✅\n" +
-        `Venta guardada ✅ (ID: ${saveRes.venta_id})\n` +
-        `Items: ${saveRes.itemsCount}\n` +
-        `Puntos ganados: ${saveRes.puntosGanados}\n\n` +
-        "Respuesta inventario:\n" + JSON.stringify(invRes.data, null, 2),
-        "okTxt"
-      );
+      if(role === "admin"){
+        logAdmin(
+          "✅ LISTO\n" +
+          "Inventario: descontado ✅\n" +
+          `Venta guardada ✅ (ID: ${saveRes.venta_id})\n` +
+          `Items: ${saveRes.itemsCount}\n` +
+          `Puntos ganados: ${saveRes.puntosGanados}\n\n` +
+          "Respuesta inventario:\n" + JSON.stringify(invRes.data, null, 2),
+          "okTxt"
+        );
+      }else{
+        const kg = $("kgAutoOp")?.value || "";
+        showOpToast("ok", "✅ OK — Venta aplicada", `Cliente: ${currentClient?.nombre || "—"}\nTotal: ${kg} kg`);
+      }
 
     }catch(e){
-      log("ERROR:\n" + (e?.message || String(e)) + "\n\nContenido:\n" + decodedText, "badTxt");
+      if(role === "admin"){
+        logAdmin("ERROR:\n" + (e?.message || String(e)) + "\n\nContenido:\n" + decodedText, "badTxt");
+      }else{
+        showOpToast("bad", "Error", "No se pudo procesar el ticket.");
+      }
     }finally{
       setTimeout(()=> busy = false, BUSY_COOLDOWN_MS);
     }
@@ -691,11 +1051,13 @@
 
     try{
       await scanner.start(constraints, config, onScanSuccess);
-      log("Cámara lista. Escanea un ticket (y el cliente ya seleccionado).", "muted");
+      if(role === "admin") logAdmin("Cámara lista. Escanea un ticket (cliente seleccionado).", "muted");
+      else showOpToast("ok", "Cámara lista", "Escanea el QR del ticket.");
     }catch(e){
       running = false;
       toggleBtn.textContent = "Iniciar cámara";
-      log("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
+      if(role === "admin") logAdmin("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
+      else showOpToast("bad", "Cámara", "No pude abrir la cámara.");
     }
   }
 
@@ -705,13 +1067,15 @@
     running = false;
     toggleBtn.textContent = "Iniciar cámara";
     try{ await scanner.stop(); }catch(e){}
-    log("Cámara detenida.", "muted");
+    if(role === "admin") logAdmin("Cámara detenida.", "muted");
   }
   async function switchCamera(){
-    if(cameras.length < 2){ log("Solo hay 1 cámara disponible.", "badTxt"); return; }
+    if(cameras.length < 2){
+      if(role === "admin") logAdmin("Solo hay 1 cámara disponible.", "badTxt");
+      else showOpToast("bad", "Cámara", "Solo hay 1 cámara.");
+      return;
+    }
     camIndex = (camIndex + 1) % cameras.length;
-    const name = cameras[camIndex]?.label || `Cámara ${camIndex+1}`;
-    log("Cambiando a: " + name + "…", "muted");
     if(running){ await stop(); await start(); }
   }
 
@@ -720,12 +1084,14 @@
     if(!file) return;
     try{
       if(!scanner) scanner = new Html5Qrcode("reader");
-      log("Leyendo foto… (modo seguro)", "muted");
+      if(role === "admin") logAdmin("Leyendo foto… (modo seguro)", "muted");
+      else showOpToast("ok", "Leyendo foto…", "Procesando QR.");
       const decodedText = await scanner.scanFile(file, true);
       await handleDecoded(decodedText);
     }catch(err){
       console.error(err);
-      log("No pude leer la foto. Tip: QR grande, sin reflejo, más cerca.", "badTxt");
+      if(role === "admin") logAdmin("No pude leer la foto. Tip: QR grande, sin reflejo, más cerca.", "badTxt");
+      else showOpToast("bad", "No se pudo", "Toma la foto más cerca y sin reflejo.");
     }finally{
       filePick.value = "";
     }
@@ -768,8 +1134,8 @@
       $("tel").value = c.telefono || "";
       currentClient = c;
       renderStatus();
-      await renderClientQR(); // ✅ QR cliente al cargar
-      setMsg("okTxt", "Cliente cargado ✅");
+      await renderClientQR();
+      setMsg("ok","Cliente cargado ✅");
     }
   });
 
@@ -784,7 +1150,7 @@
       $("tel").value = cached.telefono || tel;
       renderStatus();
       await renderClientQR();
-      setMsg("okTxt","Cliente encontrado ✅");
+      setMsg("ok","Cliente encontrado ✅");
       return;
     }
 
@@ -801,7 +1167,7 @@
     renderStatus();
     await renderClientQR();
 
-    setMsg(data ? "okTxt" : "muted", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
+    setMsg("ok", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
   }
 
   async function crearOActualizarCliente(){
@@ -828,46 +1194,56 @@
     currentClient = res.data;
     renderStatus();
     await renderClientQR();
-    setMsg("okTxt", "Cliente creado/actualizado ✅");
+    setMsg("ok", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
   }
 
   $("btnBuscar").addEventListener("click", async ()=>{
     setMsg("muted","Buscando...");
     try{ await buscarClientePorNombreOTel(); }
-    catch(e){ console.error(e); setMsg("badTxt", e.message || String(e)); }
+    catch(e){ console.error(e); setMsg("bad", e.message || String(e)); }
   });
 
   $("btnCrear").addEventListener("click", async ()=>{
     setMsg("muted","Guardando...");
     try{ await crearOActualizarCliente(); }
-    catch(e){ console.error(e); setMsg("badTxt", e.message || String(e)); }
+    catch(e){ console.error(e); setMsg("bad", e.message || String(e)); }
   });
 
   $("btnReloadNames").addEventListener("click", async ()=>{
     setMsg("muted","Recargando...");
     await loadNameDatalist();
-    setMsg("okTxt","Listo ✅");
+    setMsg("ok","Listo ✅");
   });
 
-  $("btnProcesarPegado").addEventListener("click", async ()=>{
-    const txt = $("qrPayload").value.trim();
-    if(!txt) return log("Pega el contenido del QR primero.", "warnTxt");
-    await handleDecoded(txt);
-  });
-
-  function limpiar(){
-    $("qrPayload").value = "";
-    totalKgEl.textContent = "0.00";
-    countLinesEl.textContent = "0";
-    fpShortEl.textContent = "—";
-    $("kgAuto").value = "";
-    ticketItemsUi = [];
-    ticketItemsInv = [];
-    renderDetalleEditable();
-    log("Listo.", "muted");
+  // admin-only processing pasted QR
+  const btnProcesarPegado = $("btnProcesarPegado");
+  const btnLimpiar = $("btnLimpiar");
+  if(btnProcesarPegado){
+    btnProcesarPegado.addEventListener("click", async ()=>{
+      const txt = ($("qrPayload")?.value || "").trim();
+      if(!txt) return logAdmin("Pega el contenido del QR primero.", "warnTxt");
+      await handleDecoded(txt);
+    });
   }
-  $("btnLimpiar").addEventListener("click", limpiar);
+  if(btnLimpiar){
+    btnLimpiar.addEventListener("click", ()=>{
+      const payloadBox = $("qrPayload");
+      if(payloadBox) payloadBox.value = "";
+      totalKgEl.textContent = "0.00";
+      if(countLinesEl) countLinesEl.textContent = "0";
+      if(fpShortEl) fpShortEl.textContent = "—";
+      const kgAdmin = $("kgAuto");
+      if(kgAdmin) kgAdmin.value = "";
+      const kgOp = $("kgAutoOp");
+      if(kgOp) kgOp.value = "";
+
+      ticketItemsUi = [];
+      ticketItemsInv = [];
+      renderDetalleEditable();
+      logAdmin("Listo.", "muted");
+    });
+  }
 
   async function cargarClientePorQuery(){
     const u = new URL(window.location.href);
@@ -880,25 +1256,31 @@
       .eq("id", cid)
       .maybeSingle();
 
-    if(error){ console.error(error); setMsg("badTxt", "Error cargando cid: " + error.message); return; }
-    if(!data){ setMsg("badTxt", "Este cid no existe."); return; }
+    if(error){ console.error(error); setMsg("bad", "Error cargando cid: " + error.message); return; }
+    if(!data){ setMsg("bad", "Este cid no existe."); return; }
 
     currentClient = data;
     $("nombre").value = data.nombre || "";
     $("tel").value = data.telefono || "";
     renderStatus();
     await renderClientQR();
-    setMsg("okTxt", "Cliente cargado desde ?cid= ✅");
+    setMsg("ok", "Cliente cargado desde QR ✅");
   }
 
   // init
   (async function init(){
+    applyRoleUI();
     renderStatus();
     renderDetalleEditable();
     await loadNameDatalist();
     await cargarClientePorQuery();
     await refreshCameras();
-    log("Listo. Selecciona cliente y escanea QR del ticket.", "muted");
+
+    if(role === "admin"){
+      logAdmin("Listo. Selecciona cliente y escanea QR del ticket.", "muted");
+    }else{
+      showOpToast("ok", "Listo", "Selecciona cliente y escanea el QR del ticket.");
+    }
   })();
 </script>
 
