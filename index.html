@@ -542,79 +542,54 @@
   // =========================
   // ✅ 2) Guardar venta + puntos (clientes/ventas/ventas_items)
   // =========================
-  async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
-    if(!currentClient) throw new Error("Primero selecciona un cliente.");
+ async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
+  if(!currentClient) throw new Error("Primero selecciona un cliente.");
 
-    const tipo = $("tipo").value;
-    const kg = toNum($("kgAuto").value);
-    if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
+  const tipo = $("tipo").value;
+  const kg = toNum($("kgAuto").value);
+  if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
-    const items = ticketItemsInv
-      .map(it=>({ producto: it.sku, kg: Number(it.kg) }))
-      .filter(it=>it.producto && Number.isFinite(it.kg) && it.kg>0);
+  // items para ventas_items: [{sku, kg}, ...]
+  const items = (ticketItemsInv || [])
+    .map(it => ({ sku: String(it.sku||"").trim(), kg: Number(it.kg)||0 }))
+    .filter(it => it.sku && Number.isFinite(it.kg) && it.kg > 0);
 
-    const ventaInsert = {
-      tipo,
-      cliente_id: currentClient.id,
-      total_kg: kg,
-      puntos_otorgados: 0,
-      raw_ticket: decodedText || null,
-      captura: "ticket_qr_mostrador",
-      fingerprint: fingerprint // si no existe en tabla, hará fallback
-    };
+  const { data, error } = await sb.rpc("guardar_venta_cliente_qr", {
+    p_cliente_id: currentClient.id,
+    p_tipo: tipo,
+    p_total_kg: kg,
+    p_items: items,
+    p_fingerprint: fingerprint,
+    p_raw: decodedText
+  });
 
-    let venta;
-    {
-      const { data, error } = await sb
-        .from(T_VENTAS)
-        .insert(ventaInsert)
-        .select("id,tipo,total_kg,puntos_otorgados,created_at")
-        .single();
+  if(error) throw new Error("RPC guardar_venta_cliente_qr: " + error.message);
 
-      if(error){
-        if((error.message||"").toLowerCase().includes("fingerprint")){
-          delete ventaInsert.fingerprint;
-          const r2 = await sb.from(T_VENTAS).insert(ventaInsert).select("id,tipo,total_kg,puntos_otorgados,created_at").single();
-          if(r2.error) throw r2.error;
-          venta = r2.data;
-        }else{
-          throw error;
-        }
-      }else{
-        venta = data;
-      }
-    }
-
-    if(items.length){
-      const payloadItems = items.map(it=>({ venta_id: venta.id, producto: it.producto, kg: it.kg }));
-      const { error: e2 } = await sb.from(T_ITEMS).insert(payloadItems);
-      if(e2) throw e2;
-    }
-
-    // puntos/saldo (solo mostrador)
-    let puntosGanados = 0;
-    if(tipo === "mostrador"){
-      const acumulado = Number(currentClient.saldo_kg || 0) + kg;
-      puntosGanados = Math.floor(acumulado / 100);
-      const nuevoSaldo = acumulado % 100;
-
-      const { data: cli2, error: e3 } = await sb
-        .from(T_CLIENTES)
-        .update({ puntos: Number(currentClient.puntos||0) + puntosGanados, saldo_kg: nuevoSaldo })
-        .eq("id", currentClient.id)
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .single();
-      if(e3) throw e3;
-      currentClient = cli2;
-
-      const { error: e4 } = await sb.from(T_VENTAS).update({ puntos_otorgados: puntosGanados }).eq("id", venta.id);
-      if(e4) throw e4;
-    }
-
-    renderStatus();
-    await renderClientQR();
-    return { venta_id: venta.id, puntosGanados, itemsCount: items.length };
+  if(data?.code === "DUPLICATE"){
+    return { duplicate:true, venta_id: data.venta_id, puntosGanados: 0, itemsCount: items.length };
   }
+
+  if(!data?.ok){
+    throw new Error("NO OK: " + JSON.stringify(data, null, 2));
+  }
+
+  // refresca cliente (para ver puntos/saldo actualizado)
+  const { data: cli2, error: e2 } = await sb
+    .from(T_CLIENTES)
+    .select("id,telefono,nombre,puntos,saldo_kg")
+    .eq("id", currentClient.id)
+    .single();
+  if(!e2 && cli2) currentClient = cli2;
+
+  renderStatus();
+  await renderClientQR();
+
+  return {
+    venta_id: data.venta_id,
+    puntosGanados: Number(data.puntos_ganados||0),
+    itemsCount: items.length
+  };
+}
 
   // =========================
   // ✅ Pipeline unido
