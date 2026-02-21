@@ -1,596 +1,764 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VDC360° — Clientes Fieles (QR + Puntos + Tickets)</title>
-
-  <style>
-    :root{--brand:#0a7a3b;--bg:#f6f7f8;--card:#fff;--ink:#111;--muted:#6b7280}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
-    header{background:var(--brand);color:#fff;padding:14px 18px}
-    header h1{margin:0;font-size:18px}
-    main{max-width:980px;margin:0 auto;padding:16px;display:grid;gap:16px}
-    .card{background:var(--card);border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:16px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width:720px){.grid{grid-template-columns:1fr}}
-    label{display:block;font-weight:800;margin-top:10px}
-    input,select,button,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #d1d5db;font-size:16px}
-    textarea{min-height:140px;resize:vertical}
-    button{background:var(--brand);color:#fff;border:none;font-weight:900;cursor:pointer;margin-top:12px}
-    button.secondary{background:#111}
-    button.ghost{background:#fff;color:#111;border:1px solid #d1d5db}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .pill{display:inline-block;background:#eef7ef;border:1px solid #cfe9d1;color:#1f6f26;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px}
-    .muted{color:var(--muted)}
-    #qrBox{display:grid;place-items:center;padding:12px;border:1px dashed #d1d5db;border-radius:12px;min-height:240px}
-    code{background:#f1f5f9;padding:2px 6px;border-radius:8px}
-    .err{background:#fff1f2;border:1px solid #fecdd3;color:#b91c1c;padding:10px;border-radius:12px;white-space:pre-wrap}
-    .ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:10px;border-radius:12px;white-space:pre-wrap}
-
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;vertical-align:top}
-    th{background:#f9fafb}
-    .mini{font-size:12px;color:var(--muted)}
-    .right{text-align:right}
-
-    .camWrap{display:grid;gap:10px;margin-top:10px}
-    video{width:100%;border-radius:12px;border:1px solid #e5e7eb;background:#000;max-height:360px}
-    canvas{display:none}
-    .progressBar{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
-    .progressBar > div{height:100%;width:0%;background:var(--brand)}
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VDC360° — Cliente + QR Ticket (Guarda + Descuenta Inventario)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    :root{
+      --brand:#22c55e;
+      --bg:#0b1220;
+      --card:rgba(255,255,255,.06);
+      --line:rgba(255,255,255,.10);
+      --ink:#e5e7eb;
+      --muted:rgba(229,231,235,.75);
+      --warn:#f59e0b;
+      --bad:#fb7185;
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
+    header{padding:14px 16px;background:#111827;border-bottom:1px solid rgba(255,255,255,.08);font-weight:1000}
+    .wrap{max-width:980px;margin:0 auto;padding:14px 16px;display:grid;gap:12px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:820px){.grid{grid-template-columns:1fr}}
+    label{display:block;font-weight:900;margin-top:10px}
+    input,select,textarea,button{width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:var(--ink);font-size:16px}
+    textarea{min-height:120px;resize:vertical}
+    button{border:0;background:#60a5fa;color:#071a2f;font-weight:1000;cursor:pointer}
+    button.secondary{background:#111;color:#fff;border:1px solid rgba(255,255,255,.12)}
+    button.warn{background:var(--warn);color:#1f1300}
+    button.ok{background:var(--brand);color:#052e16}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1}
+    .muted{color:var(--muted);font-size:12px}
+    .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
+    .okTxt{color:var(--brand)} .badTxt{color:var(--bad)} .warnTxt{color:var(--warn)}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);font-weight:1000;font-size:12px}
+    .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+    /* Totales bonitos */
+    .totals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+    .bigTotal{
+      background:rgba(34,197,94,.12);
+      border:1px solid rgba(34,197,94,.25);
+      border-radius:18px;
+      padding:14px;
+      text-align:center;
+    }
+    .bigTotal .t1{opacity:.85;font-weight:1000}
+    .bigTotal .t2{font-size:44px;line-height:1;margin-top:8px;font-weight:1100;color:var(--brand)}
+    .bigTotal .t3{opacity:.85;font-weight:1000;margin-top:6px}
+    .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:720px){ .miniGrid{grid-template-columns:1fr;} }
+    .miniCard{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px;
+      padding:12px;
+    }
+    .miniCard b{display:block;font-size:12px;opacity:.85}
+    .miniCard .val{font-size:20px;font-weight:1100;margin-top:6px}
+
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border:1px solid rgba(255,255,255,.10);padding:8px;text-align:left;vertical-align:top}
+    th{background:rgba(255,255,255,.06)}
+    .right{text-align:right}
+
+    input[type="file"]{display:none}
+  </style>
 </head>
 
 <body>
-<header>
-  <h1>VDC360° — Clientes Fieles (QR + Puntos + Tickets)</h1>
-</header>
+<header>VDC360° — Cliente + QR Ticket (Guardar + Descontar Inventario)</header>
 
-<main>
+<div class="wrap">
 
+  <!-- 1) Cliente -->
   <section class="card">
-    <h2 style="margin:0 0 6px">1) Buscar / Crear cliente</h2>
-
+    <h3 style="margin:0 0 6px">1) Cliente</h3>
     <div class="grid">
       <div>
-        <label>Nombre (obligatorio)</label>
+        <label>Nombre</label>
         <input id="nombre" placeholder="Ej. Taquería Don Chuy" list="nombreList" />
         <datalist id="nombreList"></datalist>
-        <div class="muted" style="margin-top:6px">
-          Tip: pica el campo y te mostrará nombres guardados. Puedes escribir y te filtra.
-        </div>
+        <div class="muted">Tip: escribe y selecciona del autocompletado.</div>
       </div>
-
       <div>
-        <label>Teléfono (10 dígitos)</label>
-        <input id="tel" inputmode="numeric" placeholder="Ej. 4621234567" />
-        <div class="mini">Se llena automático si seleccionas un nombre existente.</div>
+        <label>Teléfono</label>
+        <input id="tel" inputmode="numeric" placeholder="4621234567" />
+        <div class="muted">Se autocompleta si eliges cliente existente.</div>
       </div>
     </div>
-
-    <div class="row">
-      <button id="btnBuscar">Buscar cliente</button>
-      <button id="btnCrear" class="secondary">Crear / Actualizar</button>
-      <button id="btnReloadNames" class="ghost" type="button">↻ Recargar nombres</button>
-    </div>
-
-    <div id="msg" class="muted" style="margin-top:10px"></div>
-  </section>
-
-  <section class="card">
-    <h2 style="margin:0 0 6px">2) QR del cliente</h2>
-    <p class="muted" style="margin-top:0">El QR contiene una URL del sitio con <code>?cid=</code> para cargar al cliente automáticamente.</p>
-
-    <div id="qrBox"><span class="muted">Aquí aparecerá el QR</span></div>
-    <div class="muted" id="qrText" style="margin-top:10px"></div>
 
     <div class="row" style="margin-top:10px">
+      <button id="btnBuscar">Buscar</button>
+      <button id="btnCrear" class="secondary">Crear / Actualizar</button>
+      <button id="btnReloadNames" class="secondary" type="button">↻ Recargar</button>
+    </div>
+
+    <div class="pills">
       <span class="pill" id="stCliente">Cliente: —</span>
       <span class="pill" id="stPuntos">Puntos: —</span>
       <span class="pill" id="stSaldo">Saldo kg: —</span>
     </div>
+
+    <div id="msg" class="muted" style="margin-top:10px">—</div>
   </section>
 
+  <!-- 2) Escáner QR -->
   <section class="card">
-    <h2 style="margin:0 0 6px">3) Capturar compra por Ticket</h2>
-    <p class="muted" style="margin-top:0">
-      Puedes pegar el texto o <b>escanear aquí mismo</b> con cámara (OCR).
-      La caja mostrará una <b>vista filtrada</b> (solo números chicos), pero el sistema guardará el OCR completo para procesar productos.
-    </p>
+    <h3 style="margin:0 0 6px">2) Escanear QR del Ticket (Mostrador)</h3>
+    <div id="reader" style="width:100%"></div>
 
-    <div class="row">
-      <button id="btnStartCam" class="ghost">Escanear con cámara (OCR)</button>
-      <button id="btnStopCam" class="ghost" disabled>Apagar cámara</button>
-      <label class="ghost" style="display:block;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #d1d5db;cursor:pointer">
-        Subir foto (alternativa)
-        <input id="fileTicket" type="file" accept="image/*" capture="environment" style="display:none" />
-      </label>
+    <div class="muted" style="margin-top:10px">
+      Si el QR está pesado y no lo lee en vivo, usa <b>Subir foto</b> (modo seguro).
     </div>
 
-    <div class="camWrap" id="camWrap" style="display:none">
-      <video id="video" playsinline></video>
-      <canvas id="canvas"></canvas>
-      <div class="row">
-        <button id="btnSnap" class="ghost">Tomar foto y leer</button>
+    <div class="row" style="margin-top:10px">
+      <button class="secondary" id="toggle">Iniciar cámara</button>
+      <button class="warn" id="switchCam" style="display:none">Cambiar cámara</button>
+    </div>
+
+    <label class="ok" for="filePick" style="margin-top:10px;display:block;text-align:center;cursor:pointer">
+      📸 Subir foto del QR (modo seguro)
+    </label>
+    <input id="filePick" type="file" accept="image/*" capture="environment">
+
+    <label style="margin-top:10px">Contenido del QR (debug)</label>
+    <textarea id="qrPayload" placeholder='Aquí se pega / aparecerá lo escaneado...'></textarea>
+
+    <!-- Totales -->
+    <div class="totals">
+      <div class="bigTotal">
+        <div class="t1">TOTAL KG DEL TICKET</div>
+        <div class="t2" id="totalKg">0.00</div>
+        <div class="t3">kg</div>
       </div>
-      <div class="mini" id="ocrStatus">—</div>
-      <div class="progressBar"><div id="ocrBar"></div></div>
-    </div>
 
-    <label>Texto del ticket (vista filtrada / pegado)</label>
-    <textarea id="ticketText" placeholder="Aquí aparecerán solo números chicos. El OCR completo se guarda en segundo plano."></textarea>
-
-    <div class="row">
-      <button id="btnProcesar" class="ghost">Procesar ticket</button>
-      <button id="btnLimpiar" class="ghost">Limpiar</button>
+      <div class="miniGrid">
+        <div class="miniCard">
+          <b># Productos (líneas)</b>
+          <div class="val" id="countLines">0</div>
+        </div>
+        <div class="miniCard">
+          <b>Ticket (fingerprint)</b>
+          <div class="val" id="fpShort">—</div>
+        </div>
+      </div>
     </div>
 
     <div class="grid" style="margin-top:10px">
-      <div>
-        <label>Total kg detectado</label>
-        <input id="kgAuto" inputmode="decimal" placeholder="0.00" />
-        <div class="mini">Se llena automático; puedes editar si hace falta.</div>
-      </div>
       <div>
         <label>Tipo de venta</label>
         <select id="tipo">
           <option value="mostrador">mostrador (SÍ puntos)</option>
           <option value="credito">crédito (NO puntos)</option>
         </select>
-        <div class="mini">Para puntos: solo mostrador.</div>
+        <div class="muted">Para puntos: solo mostrador.</div>
+      </div>
+      <div>
+        <label>Total kg (editable)</label>
+        <input id="kgAuto" inputmode="decimal" placeholder="0.00" />
+        <div class="muted">Se llena automático; puedes corregir.</div>
       </div>
     </div>
 
     <div id="detalleBox" class="muted" style="margin-top:10px">—</div>
-  </section>
-
-  <section class="card">
-    <h2 style="margin:0 0 6px">4) Guardar venta (guarda encabezado + detalle)</h2>
-    <button id="btnGuardar">Guardar venta desde ticket</button>
-    <div id="log" class="muted" style="margin-top:10px"></div>
-  </section>
-
-  <section class="card">
-    <h2 style="margin:0 0 6px">5) Historial del cliente (rango de fechas)</h2>
-    <p class="muted" style="margin-top:0">
-      Selecciona un rango y te muestro: compras, kg totales, puntos en el periodo y resumen por producto.
-    </p>
-
-    <div class="grid">
-      <div>
-        <label>Desde</label>
-        <input id="histFrom" type="date" />
-      </div>
-      <div>
-        <label>Hasta</label>
-        <input id="histTo" type="date" />
-      </div>
-    </div>
-
-    <div class="row">
-      <button id="btnHist" class="ghost" type="button">Ver historial</button>
-      <button id="btnHist7" class="ghost" type="button">Últimos 7 días</button>
-      <button id="btnHist30" class="ghost" type="button">Últimos 30 días</button>
-    </div>
 
     <div class="row" style="margin-top:10px">
-      <span class="pill" id="stHistCompras">Compras: —</span>
-      <span class="pill" id="stHistKg">Kg en periodo: —</span>
-      <span class="pill" id="stHistPts">Puntos en periodo: —</span>
+      <button id="btnProcesarPegado" class="warn" type="button">Procesar QR pegado</button>
+      <button id="btnLimpiar" class="secondary" type="button">Limpiar</button>
     </div>
-
-    <div id="histResumen" class="muted" style="margin-top:10px">—</div>
-    <div id="histDetalle" class="muted" style="margin-top:10px">—</div>
   </section>
 
+  <!-- 3) Log -->
   <section class="card">
-    <h2 style="margin:0 0 6px">Diagnóstico</h2>
-    <div id="diag" class="muted">—</div>
+    <div class="muted">Resultado:</div>
+    <div id="out" class="log">Listo.</div>
   </section>
 
-</main>
+</div>
 
 <script>
-  /* ===== CONFIG ===== */
+  // =========================
+  // === Credenciales ===
+  // =========================
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+  const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
-  const sb = (window.supabase && window.supabase.createClient)
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
-
-  /* ===== TABLAS ===== */
+  // =========================
+  // === Tablas clientes/ventas ===
+  // =========================
   const T_CLIENTES = "clientes";
   const T_VENTAS   = "ventas";
   const T_ITEMS    = "ventas_items";
 
-  /* ===== Estado ===== */
-  let currentClient = null;
-  let ticketItems = [];
-  let camStream = null;
-
-  let rawOcrText = "";
-  let filteredOcrView = "";
-
-  /* =========================================================
-     ✅ CAJAS: pesos fijos para convertir “cantidad de cajas” → kg
-     (ajusta si alguna caja pesa distinto)
-  ========================================================= */
-  const BOX_WEIGHT_KG = {
-    "Caja Washington": 27.22,
-    "Caja Menudo National": 27.22,
-    "Caja Menudo Swift": 27.22,
-    "Caja Excel": 27.22,
-    "Caja menudo vísceras": 27.22,
-    "Caja de tripa": 27.22
-  };
-
-  /* ===== Catálogo (INCLUYE CAJAS AHORA) ===== */
-  const PRODUCT_CATALOG = [
-    // NO CAJAS
-    { key: "Cabeza Congelada",    aliases: [/^CABEZA\s+CONGELAD/i, /^CABEZA\s+CONGELADA\b/i] },
-    { key: "Cabeza de Rastro",    aliases: [/^CABEZA\s+DE\s+RASTRO\b/i, /^CABEZA\s+RASTRO\b/i] },
-    { key: "Cabeza sin lengua",   aliases: [/^CABEZA\s+SIN\s+LENGUA\b/i, /^CABEZA\s+S\/\s*LENGUA\b/i] },
-    { key: "Cabeza de res",       aliases: [/^CABEZA\s+DE\s+RES\b/i, /^CABEZA\b/i, /^CABEZ[AÃ]\b/i] },
-    { key: "Corazon",             aliases: [/^CORAZON\b/i, /^CORAZ[OÓ]N\b/i] },
-    { key: "Higado",              aliases: [/^HIGADO\b/i, /^H[IÍ]GADO\b/i] },
-    { key: "Lengua",              aliases: [/^LENGUA\b/i] },
-    { key: "Libro",               aliases: [/^LIBRO\b/i] },
-    { key: "Menudo Canadian",     aliases: [/^MENUDO\s+CANADIAN\b/i, /^CANADIAN\b/i] },
-    { key: "Nana",                aliases: [/^NANA\b/i] },
-    { key: "Panza",               aliases: [/^PANZA\b/i] },
-    { key: "Pata Blanca",         aliases: [/^PATA\s*BLANCA\b/i] },
-    { key: "Pata Morena",         aliases: [/^PATA\s*MORENA\b/i, /^PATAS\s*MORENA\b/i] },
-    { key: "Cuajo",               aliases: [/^CUAJO\b/i] },
-    { key: "SEBO",                aliases: [/^SEBO\b/i] },
-    { key: "Teleco",              aliases: [/^TELECO\b/i] },
-    { key: "Tripa",               aliases: [/^TRIPA\b/i] },
-    { key: "Tripa de rastro",     aliases: [/^TRIPA\s+DE\s+RASTRO\b/i, /^TRIPA\s+RASTRO\b/i] },
-    { key: "Tripa Gorda",         aliases: [/^TRIPA\s+GORDA\b/i] },
-    { key: "Producto Libre",      aliases: [/^PRODUCTO\s+LIBRE\b/i] },
-    { key: "Bofe",                aliases: [/^BOFE\b/i] },
-
-    // ✅ CAJAS (según tu lista)
-    { key: "Caja Washington",       aliases: [/^CAJA\s+WASHINGTON\b/i, /^CAJA\s+WASHINGT0N\b/i] },
-    { key: "Caja Menudo National",  aliases: [/^CAJA\s+MENUDO\s+NATIONAL\b/i, /^CAJA\s+NATIONAL\b/i] },
-    { key: "Caja Menudo Swift",     aliases: [/^CAJA\s+MENUDO\s+SWIFT\b/i, /^CAJA\s+SWIFT\b/i] },
-    { key: "Caja Excel",            aliases: [/^CAJA\s+EXCEL\b/i] },
-    { key: "Caja menudo vísceras",  aliases: [/^CAJA\s+MENUDO\s+V[ÍI]SCERAS\b/i, /^CAJA\s+MENUDO\s+VISCERAS\b/i] },
-    { key: "Caja de tripa",         aliases: [/^CAJA\s+DE\s+TRIPA\b/i, /^CAJA\s+TRIPA\b/i] },
-  ];
-
-  const MAX_KG_LINE = 250.00; // para líneas en kg (no cajas)
-  const MAX_BOX_QTY = 200;    // máximo de cajas razonable en un ticket
-
-  /* ===== Helpers ===== */
+  // =========================
+  // === UI refs ===
+  // =========================
   const $ = (id)=>document.getElementById(id);
 
-  function setMsg(type, text){
-    const el = $("msg");
-    if(!el) return;
-    el.className = type === "err" ? "err" : (type==="ok" ? "ok" : "muted");
-    el.textContent = text;
-  }
+  const out = $("out");
+  const toggleBtn = $("toggle");
+  const switchBtn = $("switchCam");
+  const filePick = $("filePick");
 
-  function setLog(type, text){
-    const el = $("log");
-    if(!el) return;
-    el.className = type === "err" ? "err" : (type==="ok" ? "ok" : "muted");
-    el.textContent = text;
-  }
+  const totalKgEl = $("totalKg");
+  const countLinesEl = $("countLines");
+  const fpShortEl = $("fpShort");
 
-  function cleanPhone(s){
-    return String(s || "").replace(/\D/g, "").slice(-10);
-  }
+  // =========================
+  // === Estado ===
+  // =========================
+  let currentClient = null;
+  let clientsCache = [];
+
+  let scanner = null;
+  let running = false;
+  let cameras = [];
+  let camIndex = 0;
+
+  // anti spam
+  let busy = false;
+  const BUSY_COOLDOWN_MS = 900;
+
+  // items actuales
+  let ticketItemsUi = [];      // [{producto, kg, _kgTotal}]
+  let ticketItemsInv = [];     // [{sku, kg}]
+
+  // =========================
+  // ✅ REGLAS CAJAS COMPLETAS
+  // =========================
+  const BOX_FULL_KG = 27.22;
 
   function normalizeLine(s){
-    return String(s||"")
-      .replace(/[•·]/g," ")
-      .replace(/\s+/g, " ")
-      .trim();
+    return String(s||"").replace(/\s+/g," ").trim();
   }
-
   function stripDiacritics(s){
-    return String(s || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
-
-  function renderStatus(){
-    $("stCliente").textContent = "Cliente: " + (currentClient ? (currentClient.nombre || currentClient.telefono) : "—");
-    $("stPuntos").textContent  = "Puntos: " + (currentClient ? currentClient.puntos : "—");
-    $("stSaldo").textContent   = "Saldo kg: " + (currentClient ? Number(currentClient.saldo_kg).toFixed(3) : "—");
-  }
-
-  function siteBaseUrl(){
-    const u = new URL(window.location.href);
-    return u.origin + u.pathname.replace(/index\.html$/,'');
-  }
-
-  async function renderQR(){
-    const box = $("qrBox");
-    box.innerHTML = "";
-    $("qrText").textContent = "";
-
-    if(!currentClient){
-      box.innerHTML = '<span class="muted">Primero crea/selecciona un cliente</span>';
-      return;
-    }
-
-    const payload = `${siteBaseUrl()}?cid=${currentClient.id}`;
-    const img = document.createElement("img");
-    img.alt = "QR del cliente";
-    img.style.width = "240px";
-    img.style.height = "240px";
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`;
-    box.appendChild(img);
-    $("qrText").innerHTML = `URL en QR: <code>${payload}</code>`;
-  }
-
-  function formatErr(err){
-    if(!err) return "Error desconocido";
-    if(typeof err === "string") return err;
-    if(err.message) return err.message;
-    if(err.error_description) return err.error_description;
-    try { return JSON.stringify(err, null, 2); } catch { return String(err); }
-  }
-
   function toNum(s){
     const v = Number(String(s ?? "").replace(",", ".").trim());
     return Number.isFinite(v) ? v : NaN;
   }
-
+  function cleanPhone(s){
+    return String(s||"").replace(/\D/g,"").slice(-10);
+  }
   function escapeHtml(s){
-    return String(s || "")
+    return String(s||"")
       .replaceAll("&","&amp;")
       .replaceAll("<","&lt;")
       .replaceAll(">","&gt;")
       .replaceAll('"',"&quot;")
       .replaceAll("'","&#039;");
   }
+  function log(txt, cls=""){
+    out.innerHTML = cls ? `<span class="${cls}">${txt}</span>` : txt;
+  }
+  function setMsg(type, text){
+    const el = $("msg");
+    el.className = type === "badTxt" ? "badTxt" : (type==="okTxt" ? "okTxt" : "muted");
+    el.textContent = text;
+  }
+  function renderStatus(){
+    $("stCliente").textContent = "Cliente: " + (currentClient ? (currentClient.nombre || currentClient.telefono) : "—");
+    $("stPuntos").textContent  = "Puntos: " + (currentClient ? currentClient.puntos : "—");
+    $("stSaldo").textContent   = "Saldo kg: " + (currentClient ? Number(currentClient.saldo_kg||0).toFixed(3) : "—");
+  }
 
-  function mapToCatalogProduct(line){
-    const cleaned = stripDiacritics(normalizeLine(line)).toUpperCase();
-    for(const p of PRODUCT_CATALOG){
-      for(const rx of p.aliases){
-        if(rx.test(cleaned)) return p.key;
+  // =========================
+  // ✅ CANONIZADOR SKU (tu versión)
+  // =========================
+  function canonSku(productoOriginal){
+    let t = String(productoOriginal || "")
+      .trim()
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    if(/PATA[\s_-]*MORENA/.test(t)) return "PATA_MORENA";
+    if(/^CAJA\s+AZUL\b/.test(t) || t.includes("CAJA AZUL")) return "CAJA_MENUDO_NATIONAL";
+    if(/^CAJA\s+CANADIAN\b/.test(t) || t.includes("CAJA CANADIAN")) return "MENUDO_CANADIAN";
+    if(t.includes("NATIONAL")) return "CAJA_MENUDO_NATIONAL";
+
+    return t.replace(/\s+/g, "_");
+  }
+
+  // ✅ regla: caja completa (1.000) => inventario descuenta 27.22; total visual NO suma
+  function applyBoxRules(productoOriginal, qty){
+    const name = String(productoOriginal || "").toUpperCase();
+    const q = Number(qty);
+
+    const isCajaCompleta =
+      name.includes("CAJA") &&
+      name.includes("COMPLETA") &&
+      Number.isFinite(q) &&
+      Math.abs(q - 1) < 1e-9;
+
+    let kgForInv = Number.isFinite(q) ? q : 0;
+    let kgForTotal = kgForInv;
+
+    if(isCajaCompleta){
+      if(name.includes("AZUL") || name.includes("CANADIAN") || name.includes("NATIONAL")){
+        kgForInv = BOX_FULL_KG;  // descuenta 27.22
+        kgForTotal = 0;          // ignora en total visual
       }
+    }
+    return { kgForInv, kgForTotal };
+  }
+
+  // =========================
+  // ✅ HASH fingerprint
+  // =========================
+  function hashQr(str){
+    let h = 2166136261;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return "QR_" + (h >>> 0).toString(16);
+  }
+
+  function safeParseJson(text){
+    return JSON.parse((text||"").trim());
+  }
+
+  // Normaliza payload QR (array u objeto) -> items (inventario) y itemsUi (ventas)
+  function normalizePayload(raw, decodedText){
+    // QR como array
+    if(Array.isArray(raw)){
+      const itemsUi = raw.map(x => {
+        const producto = String(x.producto || x.sku || "").trim();
+        const qty = Number(x.cantidad ?? x.kg ?? 0);
+
+        const sku = canonSku(producto);
+        const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
+
+        return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
+      }).filter(it => it.sku && Number.isFinite(it.kg));
+
+      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
+      return { qr_id: hashQr(decodedText), items: itemsForRpc, _itemsUi: itemsUi };
+    }
+
+    // QR como objeto
+    if(raw && typeof raw === "object"){
+      let items = raw.items;
+      if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
+
+      const itemsUi = (items || []).map(x => {
+        const producto = String(x.sku || x.producto || "").trim();
+        const qty = Number(x.kg ?? x.cantidad ?? 0);
+
+        const sku = canonSku(producto);
+        const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
+
+        return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
+      }).filter(it => it.sku && Number.isFinite(it.kg));
+
+      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
+      return { qr_id: String(raw.qr_id || hashQr(decodedText)), items: itemsForRpc, _itemsUi: itemsUi };
     }
     return null;
   }
 
-  function filterSmallNumbersOnly(text){
-    const tokens = String(text || "")
-      .replace(/\r/g, "")
-      .split(/\s+/)
-      .filter(Boolean);
-
-    const keep = [];
-    for(const t of tokens){
-      const s = t.replace(/,/g, "");
-      const m = s.match(/^(\d{1,6})(?:\.(\d{1,6}))?$/);
-      if(!m) continue;
-      const intPart = m[1];
-      if(intPart.length > 2) continue;
-      keep.push(s);
+  function calcTotalKgVisual(itemsUi){
+    let sum = 0;
+    for(const it of (itemsUi||[])){
+      const k = Number(it._kgTotal ?? it.kg);
+      if(Number.isFinite(k)) sum += k;
     }
-    return keep.join("\n");
+    return sum;
   }
 
-  function getTicketTextForParsing(){
-    return (rawOcrText && rawOcrText.trim()) ? rawOcrText : ($("ticketText").value || "");
-  }
+  function updateTotalsUI(payload, fingerprint){
+    const itemsUi = payload._itemsUi || [];
+    const totalKg = calcTotalKgVisual(itemsUi);
 
-  /* =========================================================
-     ✅ PARSER MEJORADO PARA CAJAS
-     - Detecta producto (incluye CAJA ...)
-     - Lee cantidad en la(s) línea(s) de abajo
-     - Si es caja y cantidad parece “# de cajas” => multiplica por peso fijo
-     - Si parece kg, lo deja como kg
-  ========================================================= */
-  function parseTicketText(raw){
-    const text = String(raw || "").replace(/\r/g, "");
-    const lines = text
-      .split("\n")
-      .map(l => normalizeLine(l))
-      .filter(Boolean);
+    totalKgEl.textContent = totalKg.toFixed(2);
+    countLinesEl.textContent = String((payload.items || []).length || 0);
+    fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
 
-    const STOP = [
-      "PRODUCTOS", "PRODUCTOS DE LA", "PRODUCTOS DE LA VENTA",
-      "CANTIDAD", "PU", "IMPORTE",
-      "TOTAL", "PAGADO", "CAMBIO", "DESCUENTO", "ABONADO", "SALDO",
-      "FOLIO", "FECHA", "CAJERO", "VENDEDOR", "CLIENTE", "VENTA", "CREDITO", "CONTADO"
-    ];
-
-    function isStopLine(line){
-      const U = stripDiacritics(String(line||"").toUpperCase());
-      return STOP.some(w => U.includes(w));
-    }
-
-    function cleanLineForProduct(line){
-      return normalizeLine(line)
-        .replace(/[^\p{L}\s]/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    }
-
-    function extractNumbers(line){
-      let s = String(line || "").trim();
-      // 50,00 -> 50.00
-      s = s.replace(/(\d),(\d{2})(\b)/g, "$1.$2");
-      // 3,150.00 o 3,150 -> 3150 / 3150.00
-      s = s.replace(/(\d),(?=\d{3}\b)/g, "");
-      s = s.replace(/[^\d.\s]/g, " ");
-      return s.split(/\s+/).filter(Boolean)
-        .map(x => Number(x))
-        .filter(n => Number.isFinite(n) && n > 0);
-    }
-
-    function detectProduct(line){
-      const cleaned = cleanLineForProduct(line);
-      if(!cleaned) return null;
-      if(isStopLine(cleaned)) return null;
-      return mapToCatalogProduct(cleaned);
-    }
-
-    function maybeConvertCajaToKg(producto, qty){
-      const w = BOX_WEIGHT_KG[producto];
-      if(!w) return qty;
-
-      // Heurística:
-      // - Si qty es entero o casi entero y es "chico", lo tratamos como # cajas
-      // - Si qty viene grande/decimal (ej 189.54), lo tratamos como kg ya
-      const nearInt = Math.abs(qty - Math.round(qty)) < 0.0001;
-
-      if(nearInt && qty > 0 && qty <= MAX_BOX_QTY){
-        return qty * w;
-      }
-
-      // Si el ticket te trae cantidad en kg ya, lo dejamos
-      return qty;
-    }
-
-    const out = [];
-
-    for(let i=0; i<lines.length; i++){
-      const prod = detectProduct(lines[i]);
-      if(!prod) continue;
-
-      const nums1 = extractNumbers(lines[i+1] || "");
-      const nums2 = extractNumbers(lines[i+2] || "");
-      const nums  = nums1.length ? nums1 : nums2;
-      if(!nums.length) continue;
-
-      const qty = nums[0]; // cantidad
-      if(!Number.isFinite(qty) || qty <= 0) continue;
-
-      // Si es caja: convertir
-      if(BOX_WEIGHT_KG[prod]){
-        const kg = maybeConvertCajaToKg(prod, qty);
-        out.push({ producto: prod, kg });
-        continue;
-      }
-
-      // Si no es caja: validar como kg razonable
-      if(qty > MAX_KG_LINE) continue;
-      out.push({ producto: prod, kg: qty });
-    }
-
-    // Merge por producto
-    const map = new Map();
-    for(const it of out){
-      const key = it.producto.toLowerCase();
-      map.set(key, (map.get(key) || 0) + it.kg);
-    }
-
-    return [...map.entries()]
-      .map(([k,kg])=>({ producto: k.charAt(0).toUpperCase()+k.slice(1), kg: Number(kg) }))
-      .sort((a,b)=>b.kg-a.kg);
-  }
-
-  function calcTotalKg(items){
-    return items.reduce((acc,it)=>acc + (Number(it.kg)||0), 0);
+    // también llenamos kg editable con total visual por default
+    $("kgAuto").value = totalKg.toFixed(2);
   }
 
   function renderDetalleEditable(){
     const box = $("detalleBox");
-    if(!ticketItems.length){
+    if(!ticketItemsUi.length){
       box.className = "muted";
       box.textContent = "—";
       return;
     }
 
-    const rows = ticketItems.map((it, idx)=>`
+    const rows = ticketItemsUi.map((it, idx)=>`
       <tr>
-        <td style="width:65%">
+        <td style="width:55%">
           <input data-idx="${idx}" data-field="producto" value="${escapeHtml(it.producto)}" />
+          <div class="muted">sku: ${escapeHtml(it.sku)}</div>
         </td>
         <td style="width:25%">
           <input data-idx="${idx}" data-field="kg" inputmode="decimal" value="${Number(it.kg).toFixed(3)}" />
+          <div class="muted">total: ${Number(it._kgTotal ?? it.kg).toFixed(3)}</div>
         </td>
-        <td class="right" style="width:10%">
-          <button class="ghost" data-del="${idx}" style="margin:0;padding:8px;border-radius:10px">X</button>
+        <td class="right" style="width:20%">
+          <button class="secondary" data-del="${idx}" style="margin:0;padding:10px;border-radius:12px">X</button>
         </td>
       </tr>
     `).join("");
 
     box.className = "";
     box.innerHTML = `
-      <div class="mini">Puedes corregir nombres y kilos antes de guardar.</div>
+      <div class="muted">Puedes corregir antes de guardar (afecta venta + inventario).</div>
       <table>
-        <thead>
-          <tr><th>Producto</th><th>Kg</th><th class="right">Del</th></tr>
-        </thead>
+        <thead><tr><th>Producto</th><th>Kg</th><th class="right">Del</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="row" style="margin-top:10px">
-        <button id="btnAgregarLinea" class="ghost">+ Agregar línea</button>
-      </div>
     `;
 
+    // listeners
     box.querySelectorAll('input[data-idx]').forEach(inp=>{
       inp.addEventListener("input", ()=>{
         const idx = Number(inp.getAttribute("data-idx"));
         const field = inp.getAttribute("data-field");
-        if(!ticketItems[idx]) return;
+        if(!ticketItemsUi[idx]) return;
 
         if(field === "kg"){
           const v = toNum(inp.value);
-          ticketItems[idx].kg = Number.isFinite(v) ? v : 0;
+          ticketItemsUi[idx].kg = Number.isFinite(v) ? v : 0;
+          // si editas kg manual, por seguridad también reflejamos en total visual
+          ticketItemsUi[idx]._kgTotal = ticketItemsUi[idx].kg;
         }else{
-          ticketItems[idx].producto = normalizeLine(inp.value);
+          ticketItemsUi[idx].producto = normalizeLine(inp.value);
+          ticketItemsUi[idx].sku = canonSku(ticketItemsUi[idx].producto);
         }
-        $("kgAuto").value = calcTotalKg(ticketItems).toFixed(2);
+
+        // reconstruir inv items
+        ticketItemsInv = ticketItemsUi.map(it=>({ sku: it.sku, kg: Number(it.kg)||0 }))
+          .filter(it=>it.sku && Number.isFinite(it.kg) && it.kg>0);
+
+        // total editable = suma visual
+        const total = calcTotalKgVisual(ticketItemsUi);
+        $("kgAuto").value = total.toFixed(2);
+        totalKgEl.textContent = total.toFixed(2);
+        countLinesEl.textContent = String(ticketItemsInv.length);
       });
     });
 
     box.querySelectorAll('button[data-del]').forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const idx = Number(btn.getAttribute("data-del"));
-        ticketItems.splice(idx, 1);
-        $("kgAuto").value = calcTotalKg(ticketItems).toFixed(2);
+        ticketItemsUi.splice(idx, 1);
+
+        ticketItemsInv = ticketItemsUi.map(it=>({ sku: it.sku, kg: Number(it.kg)||0 }))
+          .filter(it=>it.sku && Number.isFinite(it.kg) && it.kg>0);
+
+        const total = calcTotalKgVisual(ticketItemsUi);
+        $("kgAuto").value = total.toFixed(2);
+        totalKgEl.textContent = total.toFixed(2);
+        countLinesEl.textContent = String(ticketItemsInv.length);
+
         renderDetalleEditable();
       });
     });
+  }
 
-    const addBtn = $("btnAgregarLinea");
-    if(addBtn){
-      addBtn.addEventListener("click", ()=>{
-        ticketItems.push({ producto:"Producto", kg:0 });
-        renderDetalleEditable();
-      });
+  // =========================
+  // ✅ 1) INVENTARIO: RPC procesar_venta_qr
+  // =========================
+  async function descontarInventarioConRPC(payload, fingerprint){
+    // payload esperado por tu backend: { qr_id, items:[{sku,kg}] }
+    const { data, error } = await sb.rpc('procesar_venta_qr', {
+      payload: { qr_id: payload.qr_id, items: payload.items },
+      p_fingerprint: fingerprint
+    });
+
+    if(error){
+      return { ok:false, error: error.message };
+    }
+    // tu backend regresa DUPLICATE
+    if(data?.code === 'DUPLICATE'){
+      return { ok:false, duplicate:true, data };
+    }
+    if(!data?.ok){
+      return { ok:false, error: "NO OK:\n" + JSON.stringify(data, null, 2), data };
+    }
+    return { ok:true, data };
+  }
+
+  // =========================
+  // ✅ 2) GUARDAR VENTA + PUNTOS (clientes/ventas/ventas_items)
+  // =========================
+  async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
+    if(!currentClient) throw new Error("Primero selecciona un cliente.");
+
+    const tipo = $("tipo").value;
+    const kg = toNum($("kgAuto").value);
+    if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
+
+    // Guardamos items como producto (sku) + kg
+    const items = ticketItemsInv
+      .map(it=>({ producto: it.sku, kg: Number(it.kg) }))
+      .filter(it=>it.producto && Number.isFinite(it.kg) && it.kg>0);
+
+    const ventaInsert = {
+      tipo,
+      cliente_id: currentClient.id,
+      total_kg: kg,
+      puntos_otorgados: 0,
+      raw_ticket: decodedText || null,     // aquí queda el QR crudo
+      captura: "ticket_qr_mostrador",
+      fingerprint: fingerprint             // ✅ si tu tabla ventas NO tiene fingerprint, borra esta línea
+    };
+
+    // Si tu tabla ventas NO tiene columna fingerprint, quita esa llave arriba
+    // (o crea la columna para auditoría)
+    let venta;
+    {
+      const { data, error } = await sb
+        .from(T_VENTAS)
+        .insert(ventaInsert)
+        .select("id,tipo,total_kg,puntos_otorgados,created_at")
+        .single();
+
+      if(error){
+        // fallback si no existe columna fingerprint
+        if((error.message||"").toLowerCase().includes("fingerprint")){
+          delete ventaInsert.fingerprint;
+          const r2 = await sb.from(T_VENTAS).insert(ventaInsert).select("id,tipo,total_kg,puntos_otorgados,created_at").single();
+          if(r2.error) throw r2.error;
+          venta = r2.data;
+        }else{
+          throw error;
+        }
+      }else{
+        venta = data;
+      }
+    }
+
+    if(items.length){
+      const payloadItems = items.map(it=>({
+        venta_id: venta.id,
+        producto: it.producto,
+        kg: it.kg
+      }));
+      const { error: e2 } = await sb.from(T_ITEMS).insert(payloadItems);
+      if(e2) throw e2;
+    }
+
+    // puntos/saldo (solo mostrador)
+    let puntosGanados = 0;
+    let nuevoSaldo = Number(currentClient.saldo_kg || 0);
+
+    if(tipo === "mostrador"){
+      const acumulado = Number(currentClient.saldo_kg || 0) + kg;
+      puntosGanados = Math.floor(acumulado / 100);
+      nuevoSaldo = acumulado % 100;
+
+      const { data: cli2, error: e3 } = await sb
+        .from(T_CLIENTES)
+        .update({
+          puntos: Number(currentClient.puntos||0) + puntosGanados,
+          saldo_kg: nuevoSaldo
+        })
+        .eq("id", currentClient.id)
+        .select("id,telefono,nombre,puntos,saldo_kg")
+        .single();
+
+      if(e3) throw e3;
+      currentClient = cli2;
+
+      // guarda puntos otorgados en venta
+      const { error: e4 } = await sb
+        .from(T_VENTAS)
+        .update({ puntos_otorgados: puntosGanados })
+        .eq("id", venta.id);
+      if(e4) throw e4;
+    }
+
+    renderStatus();
+    return { venta_id: venta.id, puntosGanados, itemsCount: items.length };
+  }
+
+  // =========================
+  // ✅ PIPELINE UNIDO: escaneo -> descuenta -> guarda
+  // =========================
+  async function handleDecoded(decodedText){
+    if(busy) return;
+    busy = true;
+
+    try{
+      if(!currentClient){
+        log("Selecciona un cliente primero (o abre con ?cid=).", "warnTxt");
+        return;
+      }
+
+      $("qrPayload").value = decodedText;
+
+      const raw = safeParseJson(decodedText);
+      const payload = normalizePayload(raw, decodedText);
+
+      if(!payload?.items?.length){
+        log("QR inválido: no pude formar items\n\n" + decodedText, "badTxt");
+        return;
+      }
+
+      const fingerprint = hashQr(decodedText);
+
+      // UI: totales + items
+      updateTotalsUI(payload, fingerprint);
+      ticketItemsUi = payload._itemsUi || [];
+      ticketItemsInv = payload.items || [];
+      renderDetalleEditable();
+
+      log("1) Descontando inventario…");
+
+      // 1) Descontar inventario (idempotente)
+      const invRes = await descontarInventarioConRPC(payload, fingerprint);
+
+      if(invRes.duplicate){
+        log("Ticket ya procesado (DUPLICATE). No se descontó otra vez ✅\n(No se guardó venta cliente para evitar duplicado)", "okTxt");
+        return;
+      }
+      if(!invRes.ok){
+        log("ERROR INVENTARIO:\n" + (invRes.error || "—"), "badTxt");
+        return;
+      }
+
+      log("2) Guardando venta del cliente…");
+
+      // 2) Guardar venta + puntos
+      const saveRes = await guardarVentaClienteDesdeQR(decodedText, fingerprint);
+
+      log(
+        "✅ LISTO\n" +
+        "Inventario: descontado ✅\n" +
+        `Venta guardada ✅ (ID: ${saveRes.venta_id})\n` +
+        `Items: ${saveRes.itemsCount}\n` +
+        `Puntos ganados: ${saveRes.puntosGanados}\n\n` +
+        "Respuesta inventario:\n" + JSON.stringify(invRes.data, null, 2),
+        "okTxt"
+      );
+
+    }catch(e){
+      log("ERROR:\n" + (e?.message || String(e)) + "\n\nContenido:\n" + decodedText, "badTxt");
+    }finally{
+      setTimeout(()=> busy = false, BUSY_COOLDOWN_MS);
     }
   }
 
-  /* =========================================================
-     LISTA DE NOMBRES (datalist) + AUTOLLENADO TEL
-  ========================================================= */
-  let clientsCache = [];
+  async function onScanSuccess(decodedText){
+    await handleDecoded(decodedText);
+  }
 
+  // =========================
+  // QR Scanner (tu base)
+  // =========================
+  async function refreshCameras(){
+    cameras = await Html5Qrcode.getCameras();
+    if(!Array.isArray(cameras)) cameras = [];
+    switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
+
+    const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
+    if(idxBack >= 0) camIndex = idxBack;
+  }
+
+  async function startWithCurrentCamera(){
+    if(!scanner) scanner = new Html5Qrcode("reader");
+    if(!cameras.length) await refreshCameras();
+
+    running = true;
+    toggleBtn.textContent = "Detener cámara";
+
+    const config = {
+      fps: 15,
+      qrbox: (vw, vh) => {
+        const size = Math.min(vw, vh) * 0.78;
+        return { width: Math.floor(size), height: Math.floor(size) };
+      },
+      disableFlip: true,
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    };
+
+    const constraints = cameras.length
+      ? { deviceId: { exact: cameras[camIndex].id } }
+      : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
+
+    try{
+      await scanner.start(constraints, config, onScanSuccess);
+      log("Cámara lista. Escanea un ticket (y el cliente ya seleccionado).", "muted");
+    }catch(e){
+      running = false;
+      toggleBtn.textContent = "Iniciar cámara";
+      log("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
+    }
+  }
+
+  async function start(){
+    if(running) return;
+    await refreshCameras();
+    await startWithCurrentCamera();
+  }
+
+  async function stop(){
+    if(!running) return;
+    running = false;
+    toggleBtn.textContent = "Iniciar cámara";
+    try{ await scanner.stop(); }catch(e){}
+    log("Cámara detenida.", "muted");
+  }
+
+  async function switchCamera(){
+    if(cameras.length < 2){
+      log("Solo hay 1 cámara disponible.", "badTxt");
+      return;
+    }
+    camIndex = (camIndex + 1) % cameras.length;
+    const name = cameras[camIndex]?.label || `Cámara ${camIndex+1}`;
+    log("Cambiando a: " + name + "…", "muted");
+    if(running){ await stop(); await start(); }
+  }
+
+  filePick.addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    try{
+      if(!scanner) scanner = new Html5Qrcode("reader");
+      log("Leyendo foto… (modo seguro)", "muted");
+      const decodedText = await scanner.scanFile(file, true);
+      await handleDecoded(decodedText);
+    }catch(err){
+      console.error(err);
+      log("No pude leer la foto. Tip: QR grande, sin reflejo, más cerca.", "badTxt");
+    }finally{
+      filePick.value = "";
+    }
+  });
+
+  toggleBtn.addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
+  switchBtn.addEventListener('click', switchCamera);
+
+  // =========================
+  // === Clientes: datalist + CRUD + cargar por ?cid=
+  // =========================
   async function loadNameDatalist(){
-    if(!sb) return;
     const dl = $("nombreList");
-    if(!dl) return;
-
     const { data, error } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
       .order("nombre", { ascending: true })
       .limit(5000);
 
-    if(error){
-      console.error(error);
-      return;
-    }
+    if(error){ console.error(error); return; }
 
     clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
-
     dl.innerHTML = "";
     for(const c of clientsCache){
       const opt = document.createElement("option");
@@ -611,23 +779,13 @@
       $("tel").value = c.telefono || "";
       currentClient = c;
       renderStatus();
-      await renderQR();
-      setMsg("ok", "Cliente cargado por nombre.");
+      setMsg("okTxt", "Cliente cargado por nombre ✅");
     }
   });
 
-  $("btnReloadNames").addEventListener("click", async ()=>{
-    setMsg("muted","Cargando nombres...");
-    await loadNameDatalist();
-    setMsg("ok","Nombres recargados ✅");
-  });
-
   async function buscarClientePorNombreOTel(){
-    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
-
     const nombre = normalizeLine($("nombre").value);
     const tel = cleanPhone($("tel").value);
-
     if(!nombre) throw new Error("Nombre es obligatorio.");
 
     const cached = findClientByName(nombre);
@@ -635,8 +793,7 @@
       currentClient = cached;
       $("tel").value = cached.telefono || tel;
       renderStatus();
-      await renderQR();
-      setMsg("ok","Cliente encontrado (por nombre).");
+      setMsg("okTxt","Cliente encontrado ✅");
       return;
     }
 
@@ -649,18 +806,12 @@
     if(error) throw error;
 
     currentClient = data || null;
-    if(data){
-      $("tel").value = data.telefono || tel;
-    }
+    if(data) $("tel").value = data.telefono || tel;
     renderStatus();
-    await renderQR();
-
-    setMsg(data ? "ok" : "muted", data ? "Cliente encontrado." : "No existe: crea el cliente.");
+    setMsg(data ? "okTxt" : "muted", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
   }
 
   async function crearOActualizarCliente(){
-    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
-
     const nombre = normalizeLine($("nombre").value);
     const tel = cleanPhone($("tel").value);
 
@@ -672,382 +823,63 @@
 
     let res;
     if(tel){
-      res = await sb
-        .from(T_CLIENTES)
-        .upsert(payload, { onConflict: "telefono" })
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .single();
+      res = await sb.from(T_CLIENTES).upsert(payload, { onConflict: "telefono" })
+        .select("id,telefono,nombre,puntos,saldo_kg").single();
     }else{
-      res = await sb
-        .from(T_CLIENTES)
-        .insert(payload)
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .single();
+      res = await sb.from(T_CLIENTES).insert(payload)
+        .select("id,telefono,nombre,puntos,saldo_kg").single();
     }
 
-    const { data, error } = res;
-    if(error) throw error;
+    if(res.error) throw res.error;
 
-    currentClient = data;
+    currentClient = res.data;
     renderStatus();
-    await renderQR();
-
-    setMsg("ok", "Cliente creado/actualizado y QR generado.");
+    setMsg("okTxt", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
   }
 
-  async function guardarVentaDesdeTicket(){
-    if(!sb) throw new Error("Supabase no cargó. Revisa internet o CDN.");
-    if(!currentClient) throw new Error("Primero selecciona un cliente.");
+  $("btnBuscar").addEventListener("click", async ()=>{
+    setMsg("muted","Buscando...");
+    try{ await buscarClientePorNombreOTel(); }
+    catch(e){ console.error(e); setMsg("badTxt", e.message || String(e)); }
+  });
 
-    const tipo = $("tipo").value;
-    const rawTicket = getTicketTextForParsing().trim();
+  $("btnCrear").addEventListener("click", async ()=>{
+    setMsg("muted","Guardando...");
+    try{ await crearOActualizarCliente(); }
+    catch(e){ console.error(e); setMsg("badTxt", e.message || String(e)); }
+  });
 
-    const kg = toNum($("kgAuto").value);
-    if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
+  $("btnReloadNames").addEventListener("click", async ()=>{
+    setMsg("muted","Recargando...");
+    await loadNameDatalist();
+    setMsg("okTxt","Listo ✅");
+  });
 
-    const items = (ticketItems || [])
-      .map(it=>({ producto: normalizeLine(it.producto), kg: Number(it.kg) }))
-      .filter(it=>it.producto && Number.isFinite(it.kg) && it.kg > 0);
+  // Procesar QR pegado (debug)
+  $("btnProcesarPegado").addEventListener("click", async ()=>{
+    const txt = $("qrPayload").value.trim();
+    if(!txt) return log("Pega el contenido del QR primero.", "warnTxt");
+    await handleDecoded(txt);
+  });
 
-    const ventaInsert = {
-      tipo,
-      cliente_id: currentClient.id,
-      total_kg: kg,
-      puntos_otorgados: 0,
-      raw_ticket: rawTicket || null,
-      captura: "ticket_ocr"
-    };
-
-    const { data: venta, error: e1 } = await sb
-      .from(T_VENTAS)
-      .insert(ventaInsert)
-      .select("id,tipo,total_kg,puntos_otorgados,created_at")
-      .single();
-
-    if(e1) throw e1;
-
-    if(items.length){
-      const payloadItems = items.map(it=>({
-        venta_id: venta.id,
-        producto: it.producto,
-        kg: it.kg
-      }));
-
-      const { error: e2 } = await sb.from(T_ITEMS).insert(payloadItems);
-      if(e2) throw e2;
-    }
-
-    let puntosGanados = 0;
-    let nuevoSaldo = Number(currentClient.saldo_kg);
-
-    if(tipo === "mostrador"){
-      const acumulado = Number(currentClient.saldo_kg) + kg;
-      puntosGanados = Math.floor(acumulado / 100);
-      nuevoSaldo = acumulado % 100;
-
-      const { data: cli2, error: e3 } = await sb
-        .from(T_CLIENTES)
-        .update({
-          puntos: currentClient.puntos + puntosGanados,
-          saldo_kg: nuevoSaldo
-        })
-        .eq("id", currentClient.id)
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .single();
-
-      if(e3) throw e3;
-      currentClient = cli2;
-
-      const { error: e4 } = await sb
-        .from(T_VENTAS)
-        .update({ puntos_otorgados: puntosGanados })
-        .eq("id", venta.id);
-
-      if(e4) throw e4;
-    }
-
-    renderStatus();
-    setLog("ok",
-      `✅ Venta guardada.
-Cliente: ${currentClient.nombre || currentClient.telefono}
-Tipo: ${tipo}
-Total kg: ${kg.toFixed(2)}
-Puntos ganados: ${puntosGanados}
-Items guardados: ${items.length}
-Venta ID: ${venta.id}`
-    );
-
-    limpiarTicket();
-  }
-
-  /* ===== OCR + Cámara ===== */
-  function setOcrUI(status, progress){
-    const st = $("ocrStatus");
-    if(st) st.textContent = status || "—";
-    const p = Math.max(0, Math.min(1, Number(progress||0)));
-    $("ocrBar").style.width = (p*100).toFixed(0) + "%";
-  }
-
-  async function runOCRFromCanvas(){
-    if(typeof Tesseract === "undefined") throw new Error("OCR no cargó (Tesseract). Revisa internet/CDN.");
-
-    setOcrUI("Leyendo ticket... (OCR)", 0.02);
-    const canvas = $("canvas");
-
-    const { data: { text } } = await Tesseract.recognize(
-      canvas,
-      "spa",
-      {
-        logger: (m)=>{
-          if(m && m.status){
-            const prog = (typeof m.progress === "number") ? m.progress : 0;
-            setOcrUI(`OCR: ${m.status} ${(prog*100).toFixed(0)}%`, prog);
-          }
-        }
-      }
-    );
-
-    const cleaned = (text || "")
-      .replace(/\r/g, "")
-      .replace(/[ \t]+\n/g, "\n")
-      .trim();
-
-    rawOcrText = cleaned;
-    filteredOcrView = filterSmallNumbersOnly(cleaned);
-    $("ticketText").value = filteredOcrView || cleaned;
-
-    setOcrUI("OCR terminado ✅", 1);
-
-    try { procesarTicket(); } catch(e){ console.error(e); }
-  }
-
-  async function runOCRFromFile(file){
-    const img = await fileToImage(file);
-    drawToCanvas(img);
-    await runOCRFromCanvas();
-  }
-
-  function fileToImage(file){
-    return new Promise((resolve,reject)=>{
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = ()=>{ URL.revokeObjectURL(url); resolve(img); };
-      img.onerror = (e)=>{ URL.revokeObjectURL(url); reject(e); };
-      img.src = url;
-    });
-  }
-
-  function drawToCanvas(img){
-    const canvas = $("canvas");
-    const ctx = canvas.getContext("2d");
-
-    const maxW = 1400;
-    const scale = Math.min(1, maxW / img.width);
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
-
-    canvas.width = w;
-    canvas.height = h;
-    ctx.drawImage(img, 0, 0, w, h);
-  }
-
-  async function startCamera(){
-    if(!navigator.mediaDevices?.getUserMedia) throw new Error("Este navegador no soporta cámara por web.");
-
-    $("camWrap").style.display = "grid";
-    $("btnStartCam").disabled = true;
-    $("btnStopCam").disabled = false;
-
-    const video = $("video");
-    camStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } },
-      audio: false
-    });
-    video.srcObject = camStream;
-    await video.play();
-    setOcrUI("Cámara lista. Pon el ticket centrado y toma la foto.", 0);
-  }
-
-  function stopCamera(){
-    try{
-      if(camStream){
-        camStream.getTracks().forEach(t=>t.stop());
-        camStream = null;
-      }
-    }catch(_){}
-    $("video").srcObject = null;
-    $("camWrap").style.display = "none";
-    $("btnStartCam").disabled = false;
-    $("btnStopCam").disabled = true;
-    setOcrUI("—", 0);
-  }
-
-  function snapToCanvas(){
-    const video = $("video");
-    const canvas = $("canvas");
-    const ctx = canvas.getContext("2d");
-
-    const w = video.videoWidth || 1280;
-    const h = video.videoHeight || 720;
-
-    const maxW = 1400;
-    const scale = Math.min(1, maxW / w);
-    canvas.width = Math.round(w * scale);
-    canvas.height = Math.round(h * scale);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  }
-
-  function procesarTicket(){
-    const raw = getTicketTextForParsing();
-    const items = parseTicketText(raw);
-
-    ticketItems = items;
-    const total = calcTotalKg(ticketItems);
-
-    $("kgAuto").value = Number.isFinite(total) ? total.toFixed(2) : "";
-    renderDetalleEditable();
-
-    if(!items.length){
-      setLog("err", "No pude detectar productos. Tip: escanea con buena luz y que se vea el texto del producto.");
-    }else{
-      setLog("ok", `Ticket procesado. Líneas detectadas: ${items.length}. Total kg: ${total.toFixed(2)}.`);
-    }
-  }
-
-  function limpiarTicket(){
-    $("ticketText").value = "";
+  function limpiar(){
+    $("qrPayload").value = "";
+    totalKgEl.textContent = "0.00";
+    countLinesEl.textContent = "0";
+    fpShortEl.textContent = "—";
     $("kgAuto").value = "";
-    ticketItems = [];
-    rawOcrText = "";
-    filteredOcrView = "";
+    ticketItemsUi = [];
+    ticketItemsInv = [];
     renderDetalleEditable();
-    setLog("muted","Listo.");
+    log("Listo.", "muted");
   }
-
-  /* ===== Historial ===== */
-  function setDateInputsDefault(){
-    const to = new Date();
-    const from = new Date();
-    from.setDate(to.getDate() - 7);
-    $("histTo").value = to.toISOString().slice(0,10);
-    $("histFrom").value = from.toISOString().slice(0,10);
-  }
-
-  function dateRangeToISO(fromDate, toDate){
-    const start = new Date(fromDate + "T00:00:00.000Z");
-    const end   = new Date(toDate   + "T23:59:59.999Z");
-    return { startISO: start.toISOString(), endISO: end.toISOString() };
-  }
-
-  function fmtDate(iso){
-    try{
-      const d = new Date(iso);
-      return d.toLocaleString("es-MX", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
-    }catch{
-      return iso;
-    }
-  }
-
-  async function fetchHistorial(){
-    if(!sb) throw new Error("Supabase no cargó.");
-    if(!currentClient) throw new Error("Primero selecciona un cliente.");
-
-    const from = $("histFrom").value;
-    const to = $("histTo").value;
-    if(!from || !to) throw new Error("Selecciona Desde y Hasta.");
-
-    const { startISO, endISO } = dateRangeToISO(from, to);
-
-    const { data, error } = await sb
-      .from(T_VENTAS)
-      .select(`
-        id, created_at, tipo, total_kg, puntos_otorgados,
-        ventas_items:ventas_items ( producto, kg )
-      `)
-      .eq("cliente_id", currentClient.id)
-      .gte("created_at", startISO)
-      .lte("created_at", endISO)
-      .order("created_at", { ascending: false });
-
-    if(error) throw error;
-
-    const ventas = data || [];
-    let totalKg = 0;
-    let totalPts = 0;
-    const byProduct = {};
-
-    for(const v of ventas){
-      totalKg += Number(v.total_kg || 0);
-      totalPts += Number(v.puntos_otorgados || 0);
-
-      const items = v.ventas_items || [];
-      for(const it of items){
-        const prod = normalizeLine(it.producto || "Producto");
-        const kg = Number(it.kg || 0);
-        byProduct[prod] = (byProduct[prod] || 0) + kg;
-      }
-    }
-
-    $("stHistCompras").textContent = `Compras: ${ventas.length}`;
-    $("stHistKg").textContent      = `Kg en periodo: ${totalKg.toFixed(2)}`;
-    $("stHistPts").textContent     = `Puntos en periodo: ${totalPts}`;
-
-    const rows = Object.entries(byProduct)
-      .sort((a,b)=>b[1]-a[1])
-      .map(([prod,kg])=>`
-        <tr><td>${escapeHtml(prod)}</td><td class="right">${Number(kg).toFixed(3)}</td></tr>
-      `).join("");
-
-    $("histResumen").className = "";
-    $("histResumen").innerHTML = `
-      <div class="mini">Resumen por producto (kg):</div>
-      <table>
-        <thead><tr><th>Producto</th><th class="right">Kg</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="2" class="muted">Sin items</td></tr>`}</tbody>
-      </table>
-    `;
-
-    const detRows = ventas.map(v=>{
-      const items = (v.ventas_items || []);
-      const itemTxt = items.length
-        ? items.map(it=>`${escapeHtml(it.producto)}: ${Number(it.kg||0).toFixed(3)} kg`).join("<br>")
-        : `<span class="mini muted">Sin detalle</span>`;
-      return `
-        <tr>
-          <td style="white-space:nowrap">${fmtDate(v.created_at)}</td>
-          <td>${escapeHtml(v.tipo || "")}</td>
-          <td class="right">${Number(v.total_kg||0).toFixed(2)}</td>
-          <td class="right">${Number(v.puntos_otorgados||0)}</td>
-          <td>${itemTxt}</td>
-        </tr>
-      `;
-    }).join("");
-
-    $("histDetalle").className = "";
-    $("histDetalle").innerHTML = `
-      <div class="mini">Detalle de compras:</div>
-      <table>
-        <thead>
-          <tr><th>Fecha</th><th>Tipo</th><th class="right">Kg</th><th class="right">Pts</th><th>Items</th></tr>
-        </thead>
-        <tbody>${detRows}</tbody>
-      </table>
-    `;
-  }
-
-  function setQuickRange(days){
-    const to = new Date();
-    const from = new Date();
-    from.setDate(to.getDate() - days);
-    $("histTo").value = to.toISOString().slice(0,10);
-    $("histFrom").value = from.toISOString().slice(0,10);
-  }
+  $("btnLimpiar").addEventListener("click", limpiar);
 
   async function cargarClientePorQuery(){
     const u = new URL(window.location.href);
     const cid = u.searchParams.get("cid");
-    if(!cid || !sb) return;
+    if(!cid) return;
 
     const { data, error } = await sb
       .from(T_CLIENTES)
@@ -1055,127 +887,26 @@ Venta ID: ${venta.id}`
       .eq("id", cid)
       .maybeSingle();
 
-    if(error){
-      console.error(error);
-      setMsg("err", "Error cargando cliente por QR: " + formatErr(error));
-      return;
-    }
-    if(!data){
-      setMsg("err", "Este QR no encontró cliente (cid no existe).");
-      return;
-    }
+    if(error){ console.error(error); setMsg("badTxt", "Error cargando cid: " + error.message); return; }
+    if(!data){ setMsg("badTxt", "Este cid no existe."); return; }
+
     currentClient = data;
     $("nombre").value = data.nombre || "";
     $("tel").value = data.telefono || "";
     renderStatus();
-    await renderQR();
-    setMsg("ok", "Cliente cargado desde QR.");
+    setMsg("okTxt", "Cliente cargado desde ?cid= ✅");
   }
 
-  /* ===== Listeners ===== */
-  $("btnBuscar").addEventListener("click", async ()=>{
-    setMsg("muted","Buscando...");
-    try{ await buscarClientePorNombreOTel(); }
-    catch(err){ console.error(err); setMsg("err", formatErr(err)); }
-  });
-
-  $("btnCrear").addEventListener("click", async ()=>{
-    setMsg("muted","Guardando...");
-    try{ await crearOActualizarCliente(); }
-    catch(err){ console.error(err); setMsg("err", formatErr(err)); }
-  });
-
-  $("btnProcesar").addEventListener("click", ()=>{
-    try{ procesarTicket(); }
-    catch(err){ console.error(err); setLog("err", formatErr(err)); }
-  });
-
-  $("btnLimpiar").addEventListener("click", ()=>{
-    limpiarTicket();
-  });
-
-  $("btnGuardar").addEventListener("click", async ()=>{
-    setLog("muted","Guardando venta...");
-    try{ await guardarVentaDesdeTicket(); }
-    catch(err){ console.error(err); setLog("err", formatErr(err)); }
-  });
-
-  $("btnStartCam").addEventListener("click", async ()=>{
-    try{ await startCamera(); }
-    catch(err){ console.error(err); setLog("err", "No pude abrir cámara: " + formatErr(err)); stopCamera(); }
-  });
-
-  $("btnStopCam").addEventListener("click", ()=>{
-    stopCamera();
-  });
-
-  $("btnSnap").addEventListener("click", async ()=>{
-    try{
-      if(!camStream) throw new Error("Cámara no está encendida.");
-      setLog("muted","Tomando foto...");
-      snapToCanvas();
-      await runOCRFromCanvas();
-    }catch(err){
-      console.error(err);
-      setLog("err", "OCR falló: " + formatErr(err));
-    }
-  });
-
-  $("fileTicket").addEventListener("change", async (e)=>{
-    try{
-      const f = e.target.files?.[0];
-      if(!f) return;
-      setLog("muted","Leyendo foto (OCR)...");
-      await runOCRFromFile(f);
-    }catch(err){
-      console.error(err);
-      setLog("err", "OCR falló: " + formatErr(err));
-    }finally{
-      e.target.value = "";
-    }
-  });
-
-  $("btnHist").addEventListener("click", async ()=>{
-    setLog("muted","Cargando historial...");
-    try{
-      await fetchHistorial();
-      setLog("ok","Historial cargado ✅");
-    }catch(err){
-      console.error(err);
-      setLog("err", formatErr(err));
-    }
-  });
-
-  $("btnHist7").addEventListener("click", ()=>{
-    setQuickRange(7);
-    $("btnHist").click();
-  });
-
-  $("btnHist30").addEventListener("click", ()=>{
-    setQuickRange(30);
-    $("btnHist").click();
-  });
-
-  window.addEventListener("beforeunload", stopCamera);
-  document.addEventListener("visibilitychange", ()=>{
-    if(document.hidden) stopCamera();
-  });
-
-  (function init(){
-    const d = [];
-    d.push("Supabase cargado: " + (!!sb));
-    d.push("OCR cargado: " + (typeof Tesseract !== "undefined"));
-    d.push("Base URL del sitio: " + siteBaseUrl());
-    d.push("HTTPS recomendado para cámara.");
-    d.push("Cajas activas: " + Object.keys(BOX_WEIGHT_KG).length);
-    $("diag").textContent = d.join("\n");
-
+  // init
+  (async function init(){
     renderStatus();
     renderDetalleEditable();
-    cargarClientePorQuery();
-    loadNameDatalist();
-    setDateInputsDefault();
+    await loadNameDatalist();
+    await cargarClientePorQuery();
+    await refreshCameras();
+    log("Listo. Selecciona cliente y escanea QR.", "muted");
   })();
 </script>
+
 </body>
 </html>
