@@ -1,9 +1,10 @@
+
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>VDC360° — Cliente + QR Ticket (Guarda + Descuenta Inventario)</title>
+  <title>VDC360° — Cliente (QR) + Ticket (QR) + Inventario</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -23,15 +24,15 @@
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
-    header{padding:14px 16px;background:#111827;border-bottom:1px solid rgba(255,255,255,.08);font-weight:1000}
-    .wrap{max-width:980px;margin:0 auto;padding:14px 16px;display:grid;gap:12px}
+    header{padding:14px 16px;background:#111827;border-bottom:1px solid rgba(255,255,255,.08);font-weight:1100}
+    .wrap{max-width:1000px;margin:0 auto;padding:14px 16px;display:grid;gap:12px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     @media(max-width:820px){.grid{grid-template-columns:1fr}}
     label{display:block;font-weight:900;margin-top:10px}
     input,select,textarea,button{width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:var(--ink);font-size:16px}
     textarea{min-height:120px;resize:vertical}
-    button{border:0;background:#60a5fa;color:#071a2f;font-weight:1000;cursor:pointer}
+    button{border:0;background:#60a5fa;color:#071a2f;font-weight:1100;cursor:pointer}
     button.secondary{background:#111;color:#fff;border:1px solid rgba(255,255,255,.12)}
     button.warn{background:var(--warn);color:#1f1300}
     button.ok{background:var(--brand);color:#052e16}
@@ -40,8 +41,20 @@
     .muted{color:var(--muted);font-size:12px}
     .log{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;opacity:.95}
     .okTxt{color:var(--brand)} .badTxt{color:var(--bad)} .warnTxt{color:var(--warn)}
-    .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);font-weight:1000;font-size:12px}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);font-weight:1100;font-size:12px}
     .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+    /* QR cliente */
+    #qrClienteBox{
+      display:grid;place-items:center;
+      border:1px dashed rgba(255,255,255,.18);
+      border-radius:16px;
+      min-height:240px;
+      margin-top:10px;
+      padding:12px;
+    }
+    #qrClienteBox img{width:220px;height:220px;border-radius:12px;background:#fff}
+    code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
 
     /* Totales bonitos */
     .totals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
@@ -52,9 +65,9 @@
       padding:14px;
       text-align:center;
     }
-    .bigTotal .t1{opacity:.85;font-weight:1000}
-    .bigTotal .t2{font-size:44px;line-height:1;margin-top:8px;font-weight:1100;color:var(--brand)}
-    .bigTotal .t3{opacity:.85;font-weight:1000;margin-top:6px}
+    .bigTotal .t1{opacity:.85;font-weight:1100}
+    .bigTotal .t2{font-size:44px;line-height:1;margin-top:8px;font-weight:1200;color:var(--brand)}
+    .bigTotal .t3{opacity:.85;font-weight:1100;margin-top:6px}
     .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     @media (max-width:720px){ .miniGrid{grid-template-columns:1fr;} }
     .miniCard{
@@ -64,7 +77,7 @@
       padding:12px;
     }
     .miniCard b{display:block;font-size:12px;opacity:.85}
-    .miniCard .val{font-size:20px;font-weight:1100;margin-top:6px}
+    .miniCard .val{font-size:20px;font-weight:1200;margin-top:6px}
 
     table{width:100%;border-collapse:collapse;margin-top:10px}
     th,td{border:1px solid rgba(255,255,255,.10);padding:8px;text-align:left;vertical-align:top}
@@ -76,13 +89,14 @@
 </head>
 
 <body>
-<header>VDC360° — Cliente + QR Ticket (Guardar + Descontar Inventario)</header>
+<header>VDC360° — QR Cliente + QR Ticket (Guardar compra + Inventario)</header>
 
 <div class="wrap">
 
   <!-- 1) Cliente -->
   <section class="card">
-    <h3 style="margin:0 0 6px">1) Cliente</h3>
+    <h3 style="margin:0 0 6px">1) Cliente (QR único por cliente)</h3>
+
     <div class="grid">
       <div>
         <label>Nombre</label>
@@ -110,12 +124,36 @@
     </div>
 
     <div id="msg" class="muted" style="margin-top:10px">—</div>
+
+    <!-- ✅ QR DEL CLIENTE -->
+    <div class="grid" style="margin-top:12px">
+      <div>
+        <div class="muted">Este QR es único por cliente: abre esta página con <code>?cid=</code> y lo carga automático.</div>
+        <div id="qrClienteBox"><span class="muted">Selecciona un cliente para generar el QR</span></div>
+        <div class="muted" id="qrClienteText" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <div class="muted">
+          Uso recomendado:
+          <ul>
+            <li>Imprímelo y pégalo en la libreta del cliente</li>
+            <li>O guárdalo en WhatsApp del cliente como “Mi QR VDC”</li>
+          </ul>
+        </div>
+        <div class="row">
+          <button id="btnCopiarUrl" class="secondary" type="button">Copiar URL del QR</button>
+          <button id="btnAbrirUrl" class="secondary" type="button">Abrir URL</button>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <!-- 2) Escáner QR -->
+  <!-- 2) Escáner QR Ticket -->
   <section class="card">
-    <h3 style="margin:0 0 6px">2) Escanear QR del Ticket (Mostrador)</h3>
-    <div id="reader" style="width:100%"></div>
+    <h3 style="margin:0 0 6px">2) Escanear QR del Ticket (productos/kg)</h3>
+    <div class="muted">Requisito: selecciona un cliente antes de escanear.</div>
+
+    <div id="reader" style="width:100%;margin-top:10px"></div>
 
     <div class="muted" style="margin-top:10px">
       Si el QR está pesado y no lo lee en vivo, usa <b>Subir foto</b> (modo seguro).
@@ -231,38 +269,27 @@
   const BUSY_COOLDOWN_MS = 900;
 
   // items actuales
-  let ticketItemsUi = [];      // [{producto, kg, _kgTotal}]
+  let ticketItemsUi = [];      // [{producto, sku, kg, _kgTotal}]
   let ticketItemsInv = [];     // [{sku, kg}]
+  let lastClientQrUrl = "";
 
   // =========================
   // ✅ REGLAS CAJAS COMPLETAS
   // =========================
   const BOX_FULL_KG = 27.22;
 
-  function normalizeLine(s){
-    return String(s||"").replace(/\s+/g," ").trim();
-  }
-  function stripDiacritics(s){
-    return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  }
+  function normalizeLine(s){ return String(s||"").replace(/\s+/g," ").trim(); }
   function toNum(s){
     const v = Number(String(s ?? "").replace(",", ".").trim());
     return Number.isFinite(v) ? v : NaN;
   }
-  function cleanPhone(s){
-    return String(s||"").replace(/\D/g,"").slice(-10);
-  }
+  function cleanPhone(s){ return String(s||"").replace(/\D/g,"").slice(-10); }
   function escapeHtml(s){
     return String(s||"")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
   }
-  function log(txt, cls=""){
-    out.innerHTML = cls ? `<span class="${cls}">${txt}</span>` : txt;
-  }
+  function log(txt, cls=""){ out.innerHTML = cls ? `<span class="${cls}">${txt}</span>` : txt; }
   function setMsg(type, text){
     const el = $("msg");
     el.className = type === "badTxt" ? "badTxt" : (type==="okTxt" ? "okTxt" : "muted");
@@ -273,6 +300,53 @@
     $("stPuntos").textContent  = "Puntos: " + (currentClient ? currentClient.puntos : "—");
     $("stSaldo").textContent   = "Saldo kg: " + (currentClient ? Number(currentClient.saldo_kg||0).toFixed(3) : "—");
   }
+
+  // =========================
+  // ✅ URL base (para QR cliente)
+  // =========================
+  function siteBaseUrl(){
+    const u = new URL(window.location.href);
+    // deja el mismo archivo, solo quitamos query/hash
+    return u.origin + u.pathname;
+  }
+
+  async function renderClientQR(){
+    const box = $("qrClienteBox");
+    const txt = $("qrClienteText");
+    box.innerHTML = "";
+    txt.textContent = "";
+
+    if(!currentClient?.id){
+      box.innerHTML = `<span class="muted">Selecciona un cliente para generar el QR</span>`;
+      lastClientQrUrl = "";
+      return;
+    }
+
+    const url = `${siteBaseUrl()}?cid=${encodeURIComponent(currentClient.id)}`;
+    lastClientQrUrl = url;
+
+    const img = document.createElement("img");
+    img.alt = "QR del cliente";
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`;
+    box.appendChild(img);
+
+    txt.innerHTML = `URL en QR: <code>${url}</code>`;
+  }
+
+  $("btnCopiarUrl").addEventListener("click", async ()=>{
+    if(!lastClientQrUrl) return setMsg("badTxt","No hay URL. Selecciona cliente primero.");
+    try{
+      await navigator.clipboard.writeText(lastClientQrUrl);
+      setMsg("okTxt","URL copiada ✅");
+    }catch{
+      setMsg("badTxt","No pude copiar (permiso del navegador).");
+    }
+  });
+
+  $("btnAbrirUrl").addEventListener("click", ()=>{
+    if(!lastClientQrUrl) return setMsg("badTxt","No hay URL. Selecciona cliente primero.");
+    window.open(lastClientQrUrl, "_blank");
+  });
 
   // =========================
   // ✅ CANONIZADOR SKU (tu versión)
@@ -291,7 +365,6 @@
     return t.replace(/\s+/g, "_");
   }
 
-  // ✅ regla: caja completa (1.000) => inventario descuenta 27.22; total visual NO suma
   function applyBoxRules(productoOriginal, qty){
     const name = String(productoOriginal || "").toUpperCase();
     const q = Number(qty);
@@ -307,16 +380,13 @@
 
     if(isCajaCompleta){
       if(name.includes("AZUL") || name.includes("CANADIAN") || name.includes("NATIONAL")){
-        kgForInv = BOX_FULL_KG;  // descuenta 27.22
-        kgForTotal = 0;          // ignora en total visual
+        kgForInv = BOX_FULL_KG;
+        kgForTotal = 0;
       }
     }
     return { kgForInv, kgForTotal };
   }
 
-  // =========================
-  // ✅ HASH fingerprint
-  // =========================
   function hashQr(str){
     let h = 2166136261;
     for(let i=0;i<str.length;i++){
@@ -330,17 +400,13 @@
     return JSON.parse((text||"").trim());
   }
 
-  // Normaliza payload QR (array u objeto) -> items (inventario) y itemsUi (ventas)
   function normalizePayload(raw, decodedText){
-    // QR como array
     if(Array.isArray(raw)){
       const itemsUi = raw.map(x => {
         const producto = String(x.producto || x.sku || "").trim();
         const qty = Number(x.cantidad ?? x.kg ?? 0);
-
         const sku = canonSku(producto);
         const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
-
         return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
       }).filter(it => it.sku && Number.isFinite(it.kg));
 
@@ -348,7 +414,6 @@
       return { qr_id: hashQr(decodedText), items: itemsForRpc, _itemsUi: itemsUi };
     }
 
-    // QR como objeto
     if(raw && typeof raw === "object"){
       let items = raw.items;
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
@@ -356,10 +421,8 @@
       const itemsUi = (items || []).map(x => {
         const producto = String(x.sku || x.producto || "").trim();
         const qty = Number(x.kg ?? x.cantidad ?? 0);
-
         const sku = canonSku(producto);
         const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
-
         return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
       }).filter(it => it.sku && Number.isFinite(it.kg));
 
@@ -381,12 +444,9 @@
   function updateTotalsUI(payload, fingerprint){
     const itemsUi = payload._itemsUi || [];
     const totalKg = calcTotalKgVisual(itemsUi);
-
     totalKgEl.textContent = totalKg.toFixed(2);
     countLinesEl.textContent = String((payload.items || []).length || 0);
     fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
-
-    // también llenamos kg editable con total visual por default
     $("kgAuto").value = totalKg.toFixed(2);
   }
 
@@ -397,7 +457,6 @@
       box.textContent = "—";
       return;
     }
-
     const rows = ticketItemsUi.map((it, idx)=>`
       <tr>
         <td style="width:55%">
@@ -423,7 +482,6 @@
       </table>
     `;
 
-    // listeners
     box.querySelectorAll('input[data-idx]').forEach(inp=>{
       inp.addEventListener("input", ()=>{
         const idx = Number(inp.getAttribute("data-idx"));
@@ -433,18 +491,15 @@
         if(field === "kg"){
           const v = toNum(inp.value);
           ticketItemsUi[idx].kg = Number.isFinite(v) ? v : 0;
-          // si editas kg manual, por seguridad también reflejamos en total visual
           ticketItemsUi[idx]._kgTotal = ticketItemsUi[idx].kg;
         }else{
           ticketItemsUi[idx].producto = normalizeLine(inp.value);
           ticketItemsUi[idx].sku = canonSku(ticketItemsUi[idx].producto);
         }
 
-        // reconstruir inv items
         ticketItemsInv = ticketItemsUi.map(it=>({ sku: it.sku, kg: Number(it.kg)||0 }))
           .filter(it=>it.sku && Number.isFinite(it.kg) && it.kg>0);
 
-        // total editable = suma visual
         const total = calcTotalKgVisual(ticketItemsUi);
         $("kgAuto").value = total.toFixed(2);
         totalKgEl.textContent = total.toFixed(2);
@@ -474,27 +529,18 @@
   // ✅ 1) INVENTARIO: RPC procesar_venta_qr
   // =========================
   async function descontarInventarioConRPC(payload, fingerprint){
-    // payload esperado por tu backend: { qr_id, items:[{sku,kg}] }
     const { data, error } = await sb.rpc('procesar_venta_qr', {
       payload: { qr_id: payload.qr_id, items: payload.items },
       p_fingerprint: fingerprint
     });
-
-    if(error){
-      return { ok:false, error: error.message };
-    }
-    // tu backend regresa DUPLICATE
-    if(data?.code === 'DUPLICATE'){
-      return { ok:false, duplicate:true, data };
-    }
-    if(!data?.ok){
-      return { ok:false, error: "NO OK:\n" + JSON.stringify(data, null, 2), data };
-    }
+    if(error) return { ok:false, error: error.message };
+    if(data?.code === 'DUPLICATE') return { ok:false, duplicate:true, data };
+    if(!data?.ok) return { ok:false, error: "NO OK:\n" + JSON.stringify(data, null, 2), data };
     return { ok:true, data };
   }
 
   // =========================
-  // ✅ 2) GUARDAR VENTA + PUNTOS (clientes/ventas/ventas_items)
+  // ✅ 2) Guardar venta + puntos (clientes/ventas/ventas_items)
   // =========================
   async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
     if(!currentClient) throw new Error("Primero selecciona un cliente.");
@@ -503,7 +549,6 @@
     const kg = toNum($("kgAuto").value);
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
-    // Guardamos items como producto (sku) + kg
     const items = ticketItemsInv
       .map(it=>({ producto: it.sku, kg: Number(it.kg) }))
       .filter(it=>it.producto && Number.isFinite(it.kg) && it.kg>0);
@@ -513,13 +558,11 @@
       cliente_id: currentClient.id,
       total_kg: kg,
       puntos_otorgados: 0,
-      raw_ticket: decodedText || null,     // aquí queda el QR crudo
+      raw_ticket: decodedText || null,
       captura: "ticket_qr_mostrador",
-      fingerprint: fingerprint             // ✅ si tu tabla ventas NO tiene fingerprint, borra esta línea
+      fingerprint: fingerprint // si no existe en tabla, hará fallback
     };
 
-    // Si tu tabla ventas NO tiene columna fingerprint, quita esa llave arriba
-    // (o crea la columna para auditoría)
     let venta;
     {
       const { data, error } = await sb
@@ -529,7 +572,6 @@
         .single();
 
       if(error){
-        // fallback si no existe columna fingerprint
         if((error.message||"").toLowerCase().includes("fingerprint")){
           delete ventaInsert.fingerprint;
           const r2 = await sb.from(T_VENTAS).insert(ventaInsert).select("id,tipo,total_kg,puntos_otorgados,created_at").single();
@@ -544,51 +586,38 @@
     }
 
     if(items.length){
-      const payloadItems = items.map(it=>({
-        venta_id: venta.id,
-        producto: it.producto,
-        kg: it.kg
-      }));
+      const payloadItems = items.map(it=>({ venta_id: venta.id, producto: it.producto, kg: it.kg }));
       const { error: e2 } = await sb.from(T_ITEMS).insert(payloadItems);
       if(e2) throw e2;
     }
 
     // puntos/saldo (solo mostrador)
     let puntosGanados = 0;
-    let nuevoSaldo = Number(currentClient.saldo_kg || 0);
-
     if(tipo === "mostrador"){
       const acumulado = Number(currentClient.saldo_kg || 0) + kg;
       puntosGanados = Math.floor(acumulado / 100);
-      nuevoSaldo = acumulado % 100;
+      const nuevoSaldo = acumulado % 100;
 
       const { data: cli2, error: e3 } = await sb
         .from(T_CLIENTES)
-        .update({
-          puntos: Number(currentClient.puntos||0) + puntosGanados,
-          saldo_kg: nuevoSaldo
-        })
+        .update({ puntos: Number(currentClient.puntos||0) + puntosGanados, saldo_kg: nuevoSaldo })
         .eq("id", currentClient.id)
         .select("id,telefono,nombre,puntos,saldo_kg")
         .single();
-
       if(e3) throw e3;
       currentClient = cli2;
 
-      // guarda puntos otorgados en venta
-      const { error: e4 } = await sb
-        .from(T_VENTAS)
-        .update({ puntos_otorgados: puntosGanados })
-        .eq("id", venta.id);
+      const { error: e4 } = await sb.from(T_VENTAS).update({ puntos_otorgados: puntosGanados }).eq("id", venta.id);
       if(e4) throw e4;
     }
 
     renderStatus();
+    await renderClientQR();
     return { venta_id: venta.id, puntosGanados, itemsCount: items.length };
   }
 
   // =========================
-  // ✅ PIPELINE UNIDO: escaneo -> descuenta -> guarda
+  // ✅ Pipeline unido
   // =========================
   async function handleDecoded(decodedText){
     if(busy) return;
@@ -612,7 +641,6 @@
 
       const fingerprint = hashQr(decodedText);
 
-      // UI: totales + items
       updateTotalsUI(payload, fingerprint);
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
@@ -620,7 +648,6 @@
 
       log("1) Descontando inventario…");
 
-      // 1) Descontar inventario (idempotente)
       const invRes = await descontarInventarioConRPC(payload, fingerprint);
 
       if(invRes.duplicate){
@@ -634,7 +661,6 @@
 
       log("2) Guardando venta del cliente…");
 
-      // 2) Guardar venta + puntos
       const saveRes = await guardarVentaClienteDesdeQR(decodedText, fingerprint);
 
       log(
@@ -654,18 +680,15 @@
     }
   }
 
-  async function onScanSuccess(decodedText){
-    await handleDecoded(decodedText);
-  }
+  // =========================
+  // Scanner QR
+  // =========================
+  async function onScanSuccess(decodedText){ await handleDecoded(decodedText); }
 
-  // =========================
-  // QR Scanner (tu base)
-  // =========================
   async function refreshCameras(){
     cameras = await Html5Qrcode.getCameras();
     if(!Array.isArray(cameras)) cameras = [];
     switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
-
     const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
     if(idxBack >= 0) camIndex = idxBack;
   }
@@ -701,12 +724,7 @@
     }
   }
 
-  async function start(){
-    if(running) return;
-    await refreshCameras();
-    await startWithCurrentCamera();
-  }
-
+  async function start(){ if(running) return; await refreshCameras(); await startWithCurrentCamera(); }
   async function stop(){
     if(!running) return;
     running = false;
@@ -714,12 +732,8 @@
     try{ await scanner.stop(); }catch(e){}
     log("Cámara detenida.", "muted");
   }
-
   async function switchCamera(){
-    if(cameras.length < 2){
-      log("Solo hay 1 cámara disponible.", "badTxt");
-      return;
-    }
+    if(cameras.length < 2){ log("Solo hay 1 cámara disponible.", "badTxt"); return; }
     camIndex = (camIndex + 1) % cameras.length;
     const name = cameras[camIndex]?.label || `Cámara ${camIndex+1}`;
     log("Cambiando a: " + name + "…", "muted");
@@ -746,7 +760,7 @@
   switchBtn.addEventListener('click', switchCamera);
 
   // =========================
-  // === Clientes: datalist + CRUD + cargar por ?cid=
+  // Clientes: datalist + CRUD + cargar por ?cid=
   // =========================
   async function loadNameDatalist(){
     const dl = $("nombreList");
@@ -779,7 +793,8 @@
       $("tel").value = c.telefono || "";
       currentClient = c;
       renderStatus();
-      setMsg("okTxt", "Cliente cargado por nombre ✅");
+      await renderClientQR(); // ✅ QR cliente al cargar
+      setMsg("okTxt", "Cliente cargado ✅");
     }
   });
 
@@ -793,6 +808,7 @@
       currentClient = cached;
       $("tel").value = cached.telefono || tel;
       renderStatus();
+      await renderClientQR();
       setMsg("okTxt","Cliente encontrado ✅");
       return;
     }
@@ -808,6 +824,8 @@
     currentClient = data || null;
     if(data) $("tel").value = data.telefono || tel;
     renderStatus();
+    await renderClientQR();
+
     setMsg(data ? "okTxt" : "muted", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
   }
 
@@ -834,6 +852,7 @@
 
     currentClient = res.data;
     renderStatus();
+    await renderClientQR();
     setMsg("okTxt", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
   }
@@ -856,7 +875,6 @@
     setMsg("okTxt","Listo ✅");
   });
 
-  // Procesar QR pegado (debug)
   $("btnProcesarPegado").addEventListener("click", async ()=>{
     const txt = $("qrPayload").value.trim();
     if(!txt) return log("Pega el contenido del QR primero.", "warnTxt");
@@ -894,6 +912,7 @@
     $("nombre").value = data.nombre || "";
     $("tel").value = data.telefono || "";
     renderStatus();
+    await renderClientQR();
     setMsg("okTxt", "Cliente cargado desde ?cid= ✅");
   }
 
@@ -904,7 +923,7 @@
     await loadNameDatalist();
     await cargarClientePorQuery();
     await refreshCameras();
-    log("Listo. Selecciona cliente y escanea QR.", "muted");
+    log("Listo. Selecciona cliente y escanea QR del ticket.", "muted");
   })();
 </script>
 
