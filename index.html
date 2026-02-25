@@ -185,6 +185,12 @@
     .adminOnly{display:block}
     .opOnly{display:none}
 
+    /* ✅ Ocultar selector de rol en modo operador */
+    body.role-op #roleChip,
+    body.role-op #btnCambiarUsuario{
+      display:none !important;
+    }
+
     /* Modal login */
     .modalBg{
       position:fixed; inset:0;
@@ -543,6 +549,10 @@
   function applyRoleUI(){
     roleChip.textContent = "Modo: " + (role === "admin" ? "Admin" : "Operador");
 
+    // ✅ Marca el rol en el body para CSS (oculta chip/botón en operador)
+    document.body.classList.toggle("role-admin", role === "admin");
+    document.body.classList.toggle("role-op", role !== "admin");
+
     document.querySelectorAll(".adminOnly").forEach(el=>{
       el.style.display = (role === "admin") ? "" : "none";
     });
@@ -564,7 +574,12 @@
   function openModal(){ modalBg.style.display = "grid"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
   function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
 
-  btnCambiarUsuario.addEventListener("click", openModal);
+  // ✅ Operador no puede abrir modal aunque encuentre el botón
+  btnCambiarUsuario.addEventListener("click", ()=>{
+    if(role !== "admin") return;
+    openModal();
+  });
+
   btnCloseModal.addEventListener("click", closeModal);
 
   btnSetOp.addEventListener("click", ()=>{
@@ -1269,7 +1284,7 @@
 
   // init
   (async function init(){
-    applyRoleUI();
+    applyRoleUI();             // ✅ pone body.role-op o body.role-admin
     renderStatus();
     renderDetalleEditable();
     await loadNameDatalist();
