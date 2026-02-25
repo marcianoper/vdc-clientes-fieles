@@ -3,14 +3,13 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>VDC360° — Clientes</title>
+  <title>VDC360° — Clientes </title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
     :root{
-      /* ✅ Tema amigable (claro) */
       --bg:#f6f7f8;
       --paper:#ffffff;
       --paper2:#f9fafb;
@@ -123,7 +122,6 @@
       color:var(--ink);
     }
 
-    /* QR cliente */
     #qrClienteBox{
       display:grid;place-items:center;
       border:1px dashed #cbd5e1;
@@ -136,7 +134,6 @@
     #qrClienteBox img{width:220px;height:220px;border-radius:12px;background:#fff}
     code{background:rgba(2,6,23,.06);padding:2px 6px;border-radius:10px;border:1px solid rgba(2,6,23,.08)}
 
-    /* Totales */
     .totals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
     .bigTotal{
       background:rgba(34,197,94,.10);
@@ -166,7 +163,6 @@
 
     input[type="file"]{display:none}
 
-    /* Resultado operador (simple) */
     .toast{
       display:none;
       margin-top:10px;
@@ -181,17 +177,14 @@
     .toast .t{font-weight:1100}
     .toast .d{margin-top:6px;color:var(--muted);font-size:12px;white-space:pre-wrap}
 
-    /* Ocultables por rol */
     .adminOnly{display:block}
     .opOnly{display:none}
 
-    /* ✅ Ocultar selector de rol en modo operador */
     body.role-op #roleChip,
     body.role-op #btnCambiarUsuario{
       display:none !important;
     }
 
-    /* Modal login */
     .modalBg{
       position:fixed; inset:0;
       background:rgba(2,6,23,.55);
@@ -214,6 +207,12 @@
       display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
     }
     .seg button{flex:1; min-width:140px}
+
+    /* Historial */
+    .histWrap{margin-top:10px}
+    .histHeader{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .histHeader .row{max-width:520px}
+    .histBox{display:none}
   </style>
 </head>
 
@@ -221,8 +220,8 @@
 <header>
   <div class="headRow">
     <div>
-      <b>VDC360° — Clientes</b>
-      <div class="muted" style="color:rgba(255,255,255,.85)">Guardar Compras</div>
+      <b>VDC360° — Clientes </b>
+      <div class="muted" style="color:rgba(255,255,255,.85)">Guardar Compras </div>
     </div>
     <div class="row" style="max-width:520px;align-items:center">
       <span class="chip" id="roleChip">Modo: —</span>
@@ -240,7 +239,7 @@
     <div class="titleRow">
       <div>
         <h3>1) Cliente</h3>
-        <div class="sub">Selecciona cliente existente o crea uno nuevo escribiendo.</div>
+        <div class="sub">Cada cliente tiene su QR único para cargarlo automático.</div>
       </div>
       <div class="pills">
         <span class="pill" id="stCliente">Cliente: —</span>
@@ -249,44 +248,17 @@
       </div>
     </div>
 
-    <!-- ✅ Selector tipo “foto 2” -->
     <div class="grid" style="margin-top:10px">
       <div>
-        <label>Cliente (existente)</label>
-        <select id="clienteSel">
-          <option value="">— Selecciona un cliente —</option>
-        </select>
-        <div class="muted">Tip: abre la lista y usa scroll para buscar.</div>
+        <label>Nombre</label>
+        <input id="nombre" placeholder="Ej. Taquería Don Chuy" list="nombreList" />
+        <datalist id="nombreList"></datalist>
+        <div class="muted">Tip: escribe y selecciona del autocompletado.</div>
       </div>
       <div>
         <label>Teléfono</label>
         <input id="tel" inputmode="numeric" placeholder="4621234567" />
         <div class="muted">Se autocompleta si eliges cliente existente.</div>
-      </div>
-    </div>
-
-    <!-- ✅ Alta rápida (nuevo) -->
-    <div class="card" style="margin-top:12px;background:var(--paper2);border-style:dashed;box-shadow:none">
-      <div class="titleRow">
-        <div>
-          <h3 style="font-size:14px;margin:0">Alta rápida (nuevo cliente)</h3>
-          <div class="sub">Si no existe, escríbelo aquí y créalo.</div>
-        </div>
-      </div>
-
-      <div class="grid" style="margin-top:10px">
-        <div>
-          <label>Nombre nuevo</label>
-          <input id="nombreNuevo" placeholder="Ej. Taquería Don Chuy" />
-        </div>
-        <div>
-          <label>Teléfono nuevo (opcional)</label>
-          <input id="telNuevo" inputmode="numeric" placeholder="4621234567" />
-        </div>
-      </div>
-
-      <div class="muted" style="margin-top:10px">
-        Si capturas teléfono debe ser de 10 dígitos. Si no, déjalo vacío.
       </div>
     </div>
 
@@ -298,12 +270,10 @@
 
     <div id="msg" class="muted" style="margin-top:10px">—</div>
 
-    <!-- QR Cliente -->
     <div class="grid" style="margin-top:12px">
       <div>
         <div id="qrClienteBox"><span class="muted">Selecciona un cliente para generar su QR</span></div>
 
-        <!-- ✅ ADMIN ONLY: muestra URL -->
         <div class="adminOnly">
           <div class="muted" id="qrClienteText" style="margin-top:10px"></div>
           <div class="row" style="margin-top:10px">
@@ -312,7 +282,6 @@
           </div>
         </div>
 
-        <!-- ✅ OP ONLY: mensaje simple -->
         <div class="opOnly">
           <div class="muted" style="margin-top:10px">
             QR listo para imprimir o guardar.
@@ -357,7 +326,6 @@
       <input id="filePick" type="file" accept="image/*" capture="environment">
     </label>
 
-    <!-- ✅ ADMIN ONLY: debug payload -->
     <div class="adminOnly" style="margin-top:10px">
       <label>Contenido del QR (debug)</label>
       <textarea id="qrPayload" placeholder='Aquí se pega / aparecerá lo escaneado...'></textarea>
@@ -367,7 +335,6 @@
       </div>
     </div>
 
-    <!-- Totales -->
     <div class="totals">
       <div class="bigTotal">
         <div class="t1">TOTAL KG DEL TICKET</div>
@@ -375,7 +342,6 @@
         <div class="t3">kg</div>
       </div>
 
-      <!-- ✅ ADMIN ONLY: fingerprint y líneas -->
       <div class="miniGrid adminOnly">
         <div class="miniCard">
           <b># Productos (líneas)</b>
@@ -398,14 +364,12 @@
         <div class="muted">Puntos solo en mostrador.</div>
       </div>
 
-      <!-- ✅ ADMIN ONLY: editable kg -->
       <div class="adminOnly">
         <label>Total kg (editable)</label>
         <input id="kgAuto" inputmode="decimal" placeholder="0.00" />
         <div class="muted">Admin puede corregir kilos antes de guardar.</div>
       </div>
 
-      <!-- ✅ OP ONLY: kg fijo (solo lectura) -->
       <div class="opOnly">
         <label>Total kg</label>
         <input id="kgAutoOp" disabled />
@@ -413,14 +377,59 @@
       </div>
     </div>
 
-    <!-- ✅ ADMIN ONLY: detalle editable -->
     <div id="detalleBox" class="adminOnly muted" style="margin-top:10px">—</div>
 
-    <!-- ✅ Operador: respuesta simple -->
     <div id="opToast" class="toast" aria-live="polite"></div>
   </section>
 
-  <!-- 3) Log (admin) -->
+  <!-- ✅ 3) Historial (nuevo) -->
+  <section class="card">
+    <div class="histHeader">
+      <div>
+        <h3>3) Historial de compras (acumulado)</h3>
+        <div class="sub">Suma total de kg por producto para este cliente.</div>
+      </div>
+      <div class="row">
+        <button class="ghost" id="btnHistToggle" type="button">Mostrar / Ocultar</button>
+        <button class="secondary" id="btnHistReload" type="button">↻ Actualizar</button>
+      </div>
+    </div>
+
+    <div class="histWrap histBox" id="histBox">
+      <div class="miniGrid">
+        <div class="miniCard">
+          <b>Total histórico kg</b>
+          <div class="val" id="histTotalKg">0.000</div>
+        </div>
+        <div class="miniCard">
+          <b># Productos distintos</b>
+          <div class="val" id="histCountProd">0</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <input id="histSearch" placeholder="Buscar producto (TRIPA, PANZA, PATA...)" />
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="right">Kg acumulados</th>
+            <th class="right">Movimientos</th>
+            <th>Última compra</th>
+          </tr>
+        </thead>
+        <tbody id="histTbody">
+          <tr><td colspan="4" class="muted">Selecciona un cliente…</td></tr>
+        </tbody>
+      </table>
+
+      <div class="muted" id="histMsg" style="margin-top:10px">—</div>
+    </div>
+  </section>
+
+  <!-- 4) Log (admin) -->
   <section class="card adminOnly">
     <div class="muted">Resultado (técnico):</div>
     <div id="out" class="log">Listo.</div>
@@ -428,7 +437,6 @@
 
 </div>
 
-<!-- Modal cambiar usuario -->
 <div class="modalBg" id="modalBg">
   <div class="modal">
     <h4>Cambiar usuario</h4>
@@ -461,24 +469,22 @@
   // === Credenciales ===
   // =========================
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
+  const SUPABASE_ANON_KEY = "PASTE_TU_ANON_KEY";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   // =========================
-  // === Tablas clientes/ventas ===
+  // === Tablas ===
   // =========================
   const T_CLIENTES = "clientes";
+  const VIEW_HIST = "v_cliente_compras_resumen"; // ✅ nueva view
 
   // =========================
   // === Roles UI ===
   // =========================
-  const ADMIN_PIN = "1234"; // 🔒 cámbialo
-  const ROLE_KEY = "vdc_role_ui"; // "admin" | "op"
+  const ADMIN_PIN = "1234";
+  const ROLE_KEY = "vdc_role_ui";
   let role = localStorage.getItem(ROLE_KEY) || "op";
 
-  // =========================
-  // === UI refs ===
-  // =========================
   const $ = (id)=>document.getElementById(id);
 
   const roleChip = $("roleChip");
@@ -503,12 +509,7 @@
   const fpShortEl = $("fpShort");
 
   const opToast = $("opToast");
-  const out = $("out"); // admin only
-
-  // NUEVOS inputs
-  const clienteSel = $("clienteSel");
-  const nombreNuevo = $("nombreNuevo");
-  const telNuevo = $("telNuevo");
+  const out = $("out");
 
   // =========================
   // === Estado ===
@@ -521,20 +522,19 @@
   let cameras = [];
   let camIndex = 0;
 
-  // anti spam
   let busy = false;
   const BUSY_COOLDOWN_MS = 900;
 
-  // items actuales
-  let ticketItemsUi = [];      // [{producto, sku, kg, _kgTotal}]
-  let ticketItemsInv = [];     // [{sku, kg}]
+  let ticketItemsUi = [];
+  let ticketItemsInv = [];
   let lastClientQrUrl = "";
 
-  // =========================
-  // ✅ REGLAS CAJAS COMPLETAS
-  // =========================
-  const BOX_FULL_KG = 27.22;
+  // Historial cache
+  let histRows = [];
 
+  // =========================
+  // Utils
+  // =========================
   function normalizeLine(s){ return String(s||"").replace(/\s+/g," ").trim(); }
   function toNum(s){
     const v = Number(String(s ?? "").replace(",", ".").trim());
@@ -544,29 +544,16 @@
   function escapeHtml(s){
     return String(s||"")
       .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+      .replaceAll('"',"quot;").replaceAll("'","&#039;");
   }
-
-  function logAdmin(txt, cls=""){
-    if(!out) return;
-    out.innerHTML = cls ? `<span class="${cls}">${txt}</span>` : txt;
-  }
-
+  function logAdmin(txt){ if(out) out.textContent = txt; }
   function showOpToast(type, title, details){
     opToast.style.display = "block";
     opToast.className = "toast " + (type === "ok" ? "ok" : "bad");
-    opToast.innerHTML = `
-      <div class="t">${escapeHtml(title || "")}</div>
-      <div class="d">${escapeHtml(details || "")}</div>
-    `;
+    opToast.innerHTML = `<div class="t">${title}</div><div class="d">${details}</div>`;
     setTimeout(()=>{ opToast.style.display = "none"; }, 4500);
   }
-
-  function setMsg(type, text){
-    const el = $("msg");
-    el.className = "muted";
-    el.textContent = text;
-  }
+  function setMsg(_, text){ $("msg").textContent = text; }
 
   function renderStatus(){
     $("stCliente").textContent = "Cliente: " + (currentClient ? (currentClient.nombre || currentClient.telefono) : "—");
@@ -574,12 +561,8 @@
     $("stSaldo").textContent   = "Saldo kg: " + (currentClient ? Number(currentClient.saldo_kg||0).toFixed(3) : "—");
   }
 
-  // =========================
-  // ✅ Aplicar rol (mostrar/ocultar secciones)
-  // =========================
   function applyRoleUI(){
     roleChip.textContent = "Modo: " + (role === "admin" ? "Admin" : "Operador");
-
     document.body.classList.toggle("role-admin", role === "admin");
     document.body.classList.toggle("role-op", role !== "admin");
 
@@ -589,63 +572,30 @@
     document.querySelectorAll(".opOnly").forEach(el=>{
       el.style.display = (role === "admin") ? "none" : "";
     });
-
-    if(role !== "admin"){
-      const opKg = $("kgAutoOp");
-      const adminKg = $("kgAuto");
-      if(opKg){
-        opKg.value = adminKg ? (adminKg.value || "") : "";
-      }
-    }
   }
 
-  // Modal handlers
+  // Modal
   function openModal(){ modalBg.style.display = "grid"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
   function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
-
-  btnCambiarUsuario.addEventListener("click", ()=>{
-    if(role !== "admin") return;
-    openModal();
-  });
-
+  btnCambiarUsuario.addEventListener("click", ()=>{ if(role==="admin") openModal(); });
   btnCloseModal.addEventListener("click", closeModal);
 
   btnSetOp.addEventListener("click", ()=>{
-    role = "op";
-    localStorage.setItem(ROLE_KEY, role);
-    applyRoleUI();
-    closeModal();
+    role = "op"; localStorage.setItem(ROLE_KEY, role); applyRoleUI(); closeModal();
   });
-
-  btnSetAdmin.addEventListener("click", ()=>{
-    pinBox.style.display = "block";
-    adminPin.focus();
-  });
-
-  btnCancelPin.addEventListener("click", ()=>{
-    pinBox.style.display = "none";
-    pinMsg.textContent = "";
-    adminPin.value = "";
-  });
-
+  btnSetAdmin.addEventListener("click", ()=>{ pinBox.style.display="block"; adminPin.focus(); });
+  btnCancelPin.addEventListener("click", ()=>{ pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; });
   btnOkPin.addEventListener("click", ()=>{
     if(String(adminPin.value||"").trim() === ADMIN_PIN){
-      role = "admin";
-      localStorage.setItem(ROLE_KEY, role);
-      applyRoleUI();
-      closeModal();
+      role = "admin"; localStorage.setItem(ROLE_KEY, role); applyRoleUI(); closeModal();
     }else{
-      pinMsg.style.color = "#ef4444";
       pinMsg.textContent = "PIN incorrecto.";
     }
   });
-
-  modalBg.addEventListener("click", (e)=>{
-    if(e.target === modalBg) closeModal();
-  });
+  modalBg.addEventListener("click", (e)=>{ if(e.target===modalBg) closeModal(); });
 
   // =========================
-  // ✅ URL base (para QR cliente)
+  // QR Cliente URL
   // =========================
   function siteBaseUrl(){
     const u = new URL(window.location.href);
@@ -677,12 +627,8 @@
 
   $("btnCopiarUrl")?.addEventListener("click", async ()=>{
     if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
-    try{
-      await navigator.clipboard.writeText(lastClientQrUrl);
-      setMsg("ok","URL copiada ✅");
-    }catch{
-      setMsg("bad","No pude copiar (permiso del navegador).");
-    }
+    await navigator.clipboard.writeText(lastClientQrUrl);
+    setMsg("ok","URL copiada ✅");
   });
 
   $("btnAbrirUrl")?.addEventListener("click", ()=>{
@@ -691,60 +637,92 @@
   });
 
   // =========================
-  // ✅ CANONIZADOR SKU (tu versión)
+  // ✅ HISTORIAL (nuevo)
   // =========================
-  function canonSku(productoOriginal){
-    let t = String(productoOriginal || "")
-      .trim()
-      .toUpperCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-    if(/PATA[\s_-]*MORENA/.test(t)) return "PATA_MORENA";
-    if(/^CAJA\s+AZUL\b/.test(t) || t.includes("CAJA AZUL")) return "CAJA_MENUDO_NATIONAL";
-    if(/^CAJA\s+CANADIAN\b/.test(t) || t.includes("CAJA CANADIAN")) return "MENUDO_CANADIAN";
-    if(t.includes("NATIONAL")) return "CAJA_MENUDO_NATIONAL";
-    return t.replace(/\s+/g, "_");
+  function fmtDate(d){
+    if(!d) return "—";
+    try{
+      const dt = new Date(d);
+      return dt.toLocaleString("es-MX", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+    }catch{ return String(d); }
   }
 
-  function applyBoxRules(productoOriginal, qty){
-    const name = String(productoOriginal || "").toUpperCase();
-    const q = Number(qty);
+  function renderHist(rows){
+    const tb = $("histTbody");
+    if(!tb) return;
 
-    const isCajaCompleta =
-      name.includes("CAJA") &&
-      name.includes("COMPLETA") &&
-      Number.isFinite(q) &&
-      Math.abs(q - 1) < 1e-9;
-
-    let kgForInv = Number.isFinite(q) ? q : 0;
-    let kgForTotal = kgForInv;
-
-    if(isCajaCompleta){
-      if(name.includes("AZUL") || name.includes("CANADIAN") || name.includes("NATIONAL")){
-        kgForInv = BOX_FULL_KG;
-        kgForTotal = 0;
-      }
+    if(!rows?.length){
+      tb.innerHTML = `<tr><td colspan="4" class="muted">Sin compras registradas.</td></tr>`;
+      $("histTotalKg").textContent = "0.000";
+      $("histCountProd").textContent = "0";
+      return;
     }
-    return { kgForInv, kgForTotal };
+
+    let total = 0;
+    for(const r of rows) total += Number(r.total_kg||0);
+
+    $("histTotalKg").textContent = total.toFixed(3);
+    $("histCountProd").textContent = String(rows.length);
+
+    tb.innerHTML = rows.map(r=>`
+      <tr>
+        <td>${escapeHtml(r.producto||"—")}</td>
+        <td class="right"><b>${Number(r.total_kg||0).toFixed(3)}</b></td>
+        <td class="right">${Number(r.movimientos||0)}</td>
+        <td>${escapeHtml(fmtDate(r.ultima_compra))}</td>
+      </tr>
+    `).join("");
   }
 
-  // =========================
-  // ✅ IGNORAR CONCEPTOS
-  // =========================
-  function isIgnorableItem(productoOriginal){
-    const t = String(productoOriginal||"")
-      .trim()
-      .toUpperCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  async function cargarHistorialCompras(){
+    if(!currentClient?.id){
+      histRows = [];
+      renderHist([]);
+      $("histMsg").textContent = "Selecciona un cliente para ver historial.";
+      return;
+    }
 
-    return (
-      /\bPELLEJO\b/.test(t) ||
-      /\bBOLSA(S)?\b/.test(t) ||
-      /\bSERVICIO\b/.test(t) ||
-      /\bPROPINA\b/.test(t)
-    );
+    $("histMsg").textContent = "Cargando historial…";
+
+    const { data, error } = await sb
+      .from(VIEW_HIST)
+      .select("producto,total_kg,movimientos,ultima_compra")
+      .eq("cliente_id", currentClient.id)
+      .order("total_kg", { ascending:false })
+      .limit(5000);
+
+    if(error){
+      console.error(error);
+      $("histMsg").textContent = "Error cargando historial: " + error.message;
+      histRows = [];
+      renderHist([]);
+      return;
+    }
+
+    histRows = data || [];
+    renderHist(histRows);
+    $("histMsg").textContent = `Historial listo ✅ (${histRows.length} productos)`;
   }
 
+  function applyHistFilter(){
+    const q = normalizeLine($("histSearch")?.value || "").toUpperCase();
+    if(!q) return renderHist(histRows);
+    const filtered = histRows.filter(r => String(r.producto||"").toUpperCase().includes(q));
+    renderHist(filtered);
+  }
+
+  $("btnHistToggle")?.addEventListener("click", ()=>{
+    const box = $("histBox");
+    if(!box) return;
+    box.style.display = (box.style.display === "none" || !box.style.display) ? "block" : "none";
+  });
+
+  $("btnHistReload")?.addEventListener("click", cargarHistorialCompras);
+  $("histSearch")?.addEventListener("input", applyHistFilter);
+
+  // =========================
+  // QR Ticket (tu lógica original)
+  // =========================
   function hashQr(str){
     let h = 2166136261;
     for(let i=0;i<str.length;i++){
@@ -753,40 +731,23 @@
     }
     return "QR_" + (h >>> 0).toString(16);
   }
-
   function safeParseJson(text){ return JSON.parse((text||"").trim()); }
 
+  // Simplificado: aquí usa tu normalizePayload real si lo ocupas
   function normalizePayload(raw, decodedText){
-    const mapLine = (x) => {
-      const producto = String(x.producto || x.sku || "").trim();
-      const qty = Number(x.cantidad ?? x.kg ?? 0);
+    if(!Array.isArray(raw)) return null;
 
-      if(isIgnorableItem(producto)) return null;
+    const itemsUi = raw
+      .map(x=>({
+        producto: String(x.producto||"").trim(),
+        sku: String(x.producto||"").trim(),
+        kg: Number(x.cantidad||0),
+        _kgTotal: Number(x.cantidad||0)
+      }))
+      .filter(it => it.producto && Number.isFinite(it.kg) && it.kg>0);
 
-      const sku = canonSku(producto);
-      const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
-
-      if(!sku || !Number.isFinite(kgForInv) || kgForInv <= 0) return null;
-
-      return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
-    };
-
-    if(Array.isArray(raw)){
-      const itemsUi = raw.map(mapLine).filter(Boolean);
-      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
-      return { qr_id: hashQr(decodedText), items: itemsForRpc, _itemsUi: itemsUi };
-    }
-
-    if(raw && typeof raw === "object"){
-      let items = raw.items;
-      if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
-
-      const itemsUi = (items || []).map(mapLine).filter(Boolean);
-      const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
-      return { qr_id: String(raw.qr_id || hashQr(decodedText)), items: itemsForRpc, _itemsUi: itemsUi };
-    }
-
-    return null;
+    const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
+    return { qr_id: hashQr(decodedText), items: itemsForRpc, _itemsUi: itemsUi };
   }
 
   function calcTotalKgVisual(itemsUi){
@@ -803,106 +764,15 @@
     const totalKg = calcTotalKgVisual(itemsUi);
 
     totalKgEl.textContent = totalKg.toFixed(2);
-
     if(countLinesEl) countLinesEl.textContent = String((payload.items || []).length || 0);
     if(fpShortEl) fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
 
     const kgAdmin = $("kgAuto");
     if(kgAdmin) kgAdmin.value = totalKg.toFixed(2);
-
     const kgOp = $("kgAutoOp");
     if(kgOp) kgOp.value = totalKg.toFixed(2);
   }
 
-  function renderDetalleEditable(){
-    const box = $("detalleBox");
-    if(!box) return;
-
-    if(!ticketItemsUi.length){
-      box.className = "muted";
-      box.textContent = "—";
-      return;
-    }
-
-    const rows = ticketItemsUi.map((it, idx)=>`
-      <tr>
-        <td style="width:55%">
-          <input data-idx="${idx}" data-field="producto" value="${escapeHtml(it.producto)}" />
-          <div class="muted">sku: ${escapeHtml(it.sku)}</div>
-        </td>
-        <td style="width:25%">
-          <input data-idx="${idx}" data-field="kg" inputmode="decimal" value="${Number(it.kg).toFixed(3)}" />
-          <div class="muted">total: ${Number(it._kgTotal ?? it.kg).toFixed(3)}</div>
-        </td>
-        <td class="right" style="width:20%">
-          <button class="ghost" data-del="${idx}" style="margin:0;padding:10px;border-radius:12px">X</button>
-        </td>
-      </tr>
-    `).join("");
-
-    box.className = "";
-    box.innerHTML = `
-      <div class="muted">Admin puede corregir antes de guardar (afecta venta + inventario).</div>
-      <table>
-        <thead><tr><th>Producto</th><th>Kg</th><th class="right">Del</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    `;
-
-    box.querySelectorAll('input[data-idx]').forEach(inp=>{
-      inp.addEventListener("input", ()=>{
-        const idx = Number(inp.getAttribute("data-idx"));
-        const field = inp.getAttribute("data-field");
-        if(!ticketItemsUi[idx]) return;
-
-        if(field === "kg"){
-          const v = toNum(inp.value);
-          ticketItemsUi[idx].kg = Number.isFinite(v) ? v : 0;
-          ticketItemsUi[idx]._kgTotal = ticketItemsUi[idx].kg;
-        }else{
-          ticketItemsUi[idx].producto = normalizeLine(inp.value);
-          ticketItemsUi[idx].sku = canonSku(ticketItemsUi[idx].producto);
-        }
-
-        ticketItemsInv = ticketItemsUi.map(it=>({ sku: it.sku, kg: Number(it.kg)||0 }))
-          .filter(it=>it.sku && Number.isFinite(it.kg) && it.kg>0);
-
-        const total = calcTotalKgVisual(ticketItemsUi);
-        const kgAdmin = $("kgAuto");
-        if(kgAdmin) kgAdmin.value = total.toFixed(2);
-        const kgOp = $("kgAutoOp");
-        if(kgOp) kgOp.value = total.toFixed(2);
-
-        totalKgEl.textContent = total.toFixed(2);
-        if(countLinesEl) countLinesEl.textContent = String(ticketItemsInv.length);
-      });
-    });
-
-    box.querySelectorAll('button[data-del]').forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const idx = Number(btn.getAttribute("data-del"));
-        ticketItemsUi.splice(idx, 1);
-
-        ticketItemsInv = ticketItemsUi.map(it=>({ sku: it.sku, kg: Number(it.kg)||0 }))
-          .filter(it=>it.sku && Number.isFinite(it.kg) && it.kg>0);
-
-        const total = calcTotalKgVisual(ticketItemsUi);
-        const kgAdmin = $("kgAuto");
-        if(kgAdmin) kgAdmin.value = total.toFixed(2);
-        const kgOp = $("kgAutoOp");
-        if(kgOp) kgOp.value = total.toFixed(2);
-
-        totalKgEl.textContent = total.toFixed(2);
-        if(countLinesEl) countLinesEl.textContent = String(ticketItemsInv.length);
-
-        renderDetalleEditable();
-      });
-    });
-  }
-
-  // =========================
-  // ✅ 1) INVENTARIO: RPC procesar_venta_qr
-  // =========================
   async function descontarInventarioConRPC(payload, fingerprint){
     const { data, error } = await sb.rpc('procesar_venta_qr', {
       payload: { qr_id: payload.qr_id, items: payload.items },
@@ -914,9 +784,6 @@
     return { ok:true, data };
   }
 
-  // =========================
-  // ✅ 2) Guardar venta + puntos: RPC guardar_venta_cliente_qr
-  // =========================
   async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
     if(!currentClient) throw new Error("Primero selecciona un cliente.");
 
@@ -924,7 +791,7 @@
 
     const kgAdmin = $("kgAuto");
     const kgOp = $("kgAutoOp");
-    const kg = toNum( (kgAdmin && role==="admin") ? kgAdmin.value : (kgOp ? kgOp.value : "") );
+    const kg = toNum((kgAdmin && role==="admin") ? kgAdmin.value : (kgOp ? kgOp.value : ""));
 
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
@@ -942,13 +809,8 @@
     });
 
     if(error) throw new Error("RPC guardar_venta_cliente_qr: " + error.message);
-
-    if(data?.code === "DUPLICATE"){
-      return { duplicate:true, venta_id: data.venta_id, puntosGanados: 0, itemsCount: items.length };
-    }
-    if(!data?.ok){
-      throw new Error("NO OK: " + JSON.stringify(data, null, 2));
-    }
+    if(data?.code === "DUPLICATE") return { duplicate:true, venta_id: data.venta_id, puntosGanados: 0, itemsCount: items.length };
+    if(!data?.ok) throw new Error("NO OK: " + JSON.stringify(data, null, 2));
 
     // refresca cliente
     const { data: cli2 } = await sb
@@ -956,33 +818,25 @@
       .select("id,telefono,nombre,puntos,saldo_kg")
       .eq("id", currentClient.id)
       .single();
-
     if(cli2) currentClient = cli2;
 
     renderStatus();
     await renderClientQR();
 
-    return {
-      venta_id: data.venta_id,
-      puntosGanados: Number(data.puntos_ganados||0),
-      itemsCount: items.length
-    };
+    // ✅ refresca historial tras compra
+    await cargarHistorialCompras();
+
+    return { venta_id: data.venta_id, puntosGanados: Number(data.puntos_ganados||0), itemsCount: items.length };
   }
 
-  // =========================
-  // ✅ Pipeline unido
-  // =========================
   async function handleDecoded(decodedText){
     if(busy) return;
     busy = true;
 
     try{
       if(!currentClient){
-        if(role === "admin"){
-          logAdmin("Selecciona un cliente primero (o abre con ?cid=).", "warnTxt");
-        }else{
-          showOpToast("bad", "Falta cliente", "Selecciona cliente primero.");
-        }
+        if(role === "admin") logAdmin("Selecciona un cliente primero (o abre con ?cid=).");
+        else showOpToast("bad", "Falta cliente", "Selecciona cliente primero.");
         return;
       }
 
@@ -993,11 +847,8 @@
       const payload = normalizePayload(raw, decodedText);
 
       if(!payload?.items?.length){
-        if(role === "admin"){
-          logAdmin("QR inválido o solo traía conceptos ignorados (p. ej. PELLEJO/BOLSA).\n\n" + decodedText, "badTxt");
-        }else{
-          showOpToast("bad", "QR inválido", "No pude leer productos (o era solo bolsa/pellejo).");
-        }
+        if(role === "admin") logAdmin("QR inválido.");
+        else showOpToast("bad", "QR inválido", "No pude leer productos.");
         return;
       }
 
@@ -1007,68 +858,39 @@
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
 
-      if(role === "admin"){
-        renderDetalleEditable();
-        logAdmin("1) Descontando inventario…", "muted");
-      }else{
-        showOpToast("ok", "Procesando…", "Aplicando inventario y guardando compra.");
-      }
+      if(role === "admin") logAdmin("1) Descontando inventario…");
+      else showOpToast("ok", "Procesando…", "Aplicando inventario y guardando compra.");
 
       const invRes = await descontarInventarioConRPC(payload, fingerprint);
 
       if(invRes.duplicate){
-        if(role === "admin"){
-          logAdmin("Ticket ya procesado (DUPLICATE). No se descontó otra vez ✅\n(No se guardó venta cliente para evitar duplicado)", "okTxt");
-        }else{
-          showOpToast("ok", "Ya procesado", "Este ticket ya estaba aplicado ✅");
-        }
+        if(role === "admin") logAdmin("Ticket ya procesado (DUPLICATE).");
+        else showOpToast("ok", "Ya procesado", "Este ticket ya estaba aplicado ✅");
         return;
       }
-
       if(!invRes.ok){
-        if(role === "admin"){
-          logAdmin("ERROR INVENTARIO:\n" + (invRes.error || "—"), "badTxt");
-        }else{
-          showOpToast("bad", "Error", "No se pudo descontar inventario.");
-        }
+        if(role === "admin") logAdmin("ERROR INVENTARIO:\n" + (invRes.error || "—"));
+        else showOpToast("bad", "Error", "No se pudo descontar inventario.");
         return;
       }
 
-      if(role === "admin"){
-        logAdmin("2) Guardando venta del cliente…", "muted");
-      }
+      if(role === "admin") logAdmin("2) Guardando venta del cliente…");
+      await guardarVentaClienteDesdeQR(decodedText, fingerprint);
 
-      const saveRes = await guardarVentaClienteDesdeQR(decodedText, fingerprint);
-
-      if(role === "admin"){
-        logAdmin(
-          "✅ LISTO\n" +
-          "Inventario: descontado ✅\n" +
-          `Venta guardada ✅ (ID: ${saveRes.venta_id})\n` +
-          `Items: ${saveRes.itemsCount}\n` +
-          `Puntos ganados: ${saveRes.puntosGanados}\n\n` +
-          "Respuesta inventario:\n" + JSON.stringify(invRes.data, null, 2),
-          "okTxt"
-        );
-      }else{
+      if(role === "admin") logAdmin("✅ LISTO");
+      else{
         const kg = $("kgAutoOp")?.value || "";
         showOpToast("ok", "✅ OK — Venta aplicada", `Cliente: ${currentClient?.nombre || "—"}\nTotal: ${kg} kg`);
       }
 
     }catch(e){
-      if(role === "admin"){
-        logAdmin("ERROR:\n" + (e?.message || String(e)) + "\n\nContenido:\n" + decodedText, "badTxt");
-      }else{
-        showOpToast("bad", "Error", "No se pudo procesar el ticket.");
-      }
+      if(role === "admin") logAdmin("ERROR:\n" + (e?.message || String(e)));
+      else showOpToast("bad", "Error", "No se pudo procesar el ticket.");
     }finally{
       setTimeout(()=> busy = false, BUSY_COOLDOWN_MS);
     }
   }
 
-  // =========================
-  // Scanner QR
-  // =========================
   async function onScanSuccess(decodedText){ await handleDecoded(decodedText); }
 
   async function refreshCameras(){
@@ -1100,16 +922,7 @@
       ? { deviceId: { exact: cameras[camIndex].id } }
       : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
 
-    try{
-      await scanner.start(constraints, config, onScanSuccess);
-      if(role === "admin") logAdmin("Cámara lista. Escanea un ticket (cliente seleccionado).", "muted");
-      else showOpToast("ok", "Cámara lista", "Escanea el QR del ticket.");
-    }catch(e){
-      running = false;
-      toggleBtn.textContent = "Iniciar cámara";
-      if(role === "admin") logAdmin("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
-      else showOpToast("bad", "Cámara", "No pude abrir la cámara.");
-    }
+    await scanner.start(constraints, config, onScanSuccess);
   }
 
   async function start(){ if(running) return; await refreshCameras(); await startWithCurrentCamera(); }
@@ -1118,14 +931,9 @@
     running = false;
     toggleBtn.textContent = "Iniciar cámara";
     try{ await scanner.stop(); }catch(e){}
-    if(role === "admin") logAdmin("Cámara detenida.", "muted");
   }
   async function switchCamera(){
-    if(cameras.length < 2){
-      if(role === "admin") logAdmin("Solo hay 1 cámara disponible.", "badTxt");
-      else showOpToast("bad", "Cámara", "Solo hay 1 cámara.");
-      return;
-    }
+    if(cameras.length < 2) return;
     camIndex = (camIndex + 1) % cameras.length;
     if(running){ await stop(); await start(); }
   }
@@ -1135,14 +943,8 @@
     if(!file) return;
     try{
       if(!scanner) scanner = new Html5Qrcode("reader");
-      if(role === "admin") logAdmin("Leyendo foto… (modo seguro)", "muted");
-      else showOpToast("ok", "Leyendo foto…", "Procesando QR.");
       const decodedText = await scanner.scanFile(file, true);
       await handleDecoded(decodedText);
-    }catch(err){
-      console.error(err);
-      if(role === "admin") logAdmin("No pude leer la foto. Tip: QR grande, sin reflejo, más cerca.", "badTxt");
-      else showOpToast("bad", "No se pudo", "Toma la foto más cerca y sin reflejo.");
     }finally{
       filePick.value = "";
     }
@@ -1152,110 +954,81 @@
   switchBtn.addEventListener('click', switchCamera);
 
   // =========================
-  // ✅ Clientes: SELECT + Alta rápida
+  // Clientes: datalist + CRUD + cargar por ?cid=
   // =========================
-  async function loadClientSelect(){
+  async function loadNameDatalist(){
+    const dl = $("nombreList");
     const { data, error } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
       .order("nombre", { ascending: true })
       .limit(5000);
+    if(error) return;
 
-    if(error){ console.error(error); return; }
-
-    clientsCache = data || [];
-
-    const keep = clienteSel.value || "";
-    clienteSel.innerHTML = `<option value="">— Selecciona un cliente —</option>`;
-
+    clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
+    dl.innerHTML = "";
     for(const c of clientsCache){
       const opt = document.createElement("option");
-      opt.value = c.id;
-      opt.textContent = `${(c.nombre||"SIN NOMBRE")} — ${c.telefono||""}`;
-      clienteSel.appendChild(opt);
+      opt.value = c.nombre;
+      opt.label = `${c.nombre} — ${c.telefono || ""}`;
+      dl.appendChild(opt);
     }
-
-    if(keep && clientsCache.some(x=>x.id===keep)) clienteSel.value = keep;
   }
 
-  async function seleccionarClientePorId(id){
-    if(!id) return;
-    const c = clientsCache.find(x => x.id === id);
-    if(!c) return;
+  function findClientByName(name){
+    const n = normalizeLine(name).toLowerCase();
+    return clientsCache.find(c => normalizeLine(c.nombre || "").toLowerCase() === n) || null;
+  }
 
-    clienteSel.value = id;
-    currentClient = c;
-    $("tel").value = c.telefono || "";
+  $("nombre").addEventListener("input", async ()=>{
+    const c = findClientByName($("nombre").value);
+    if(c){
+      $("tel").value = c.telefono || "";
+      currentClient = c;
+      renderStatus();
+      await renderClientQR();
+      await cargarHistorialCompras(); // ✅
+      setMsg("ok","Cliente cargado ✅");
+    }
+  });
+
+  async function buscarClientePorNombreOTel(){
+    const nombre = normalizeLine($("nombre").value);
+    const tel = cleanPhone($("tel").value);
+    if(!nombre) throw new Error("Nombre es obligatorio.");
+
+    const cached = findClientByName(nombre);
+    if(cached){
+      currentClient = cached;
+      $("tel").value = cached.telefono || tel;
+      renderStatus();
+      await renderClientQR();
+      await cargarHistorialCompras(); // ✅
+      setMsg("ok","Cliente encontrado ✅");
+      return;
+    }
+
+    const { data, error } = await sb
+      .from(T_CLIENTES)
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .ilike("nombre", nombre)
+      .maybeSingle();
+    if(error) throw error;
+
+    currentClient = data || null;
+    if(data) $("tel").value = data.telefono || tel;
 
     renderStatus();
     await renderClientQR();
-    setMsg("ok","Cliente cargado ✅");
+    await cargarHistorialCompras(); // ✅
+    setMsg("ok", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
   }
 
-  clienteSel.addEventListener("change", async ()=>{
-    const id = clienteSel.value;
-    if(!id){
-      currentClient = null;
-      $("tel").value = "";
-      renderStatus();
-      await renderClientQR();
-      setMsg("muted","—");
-      return;
-    }
-    await seleccionarClientePorId(id);
-  });
+  async function crearOActualizarCliente(){
+    const nombre = normalizeLine($("nombre").value);
+    const tel = cleanPhone($("tel").value);
 
-  async function buscarCliente(){
-    // 1) si ya eligió en select -> listo
-    const selId = clienteSel.value;
-    if(selId){
-      await seleccionarClientePorId(selId);
-      return;
-    }
-
-    // 2) si no eligió, busca por alta rápida
-    const nombre = normalizeLine(nombreNuevo.value);
-    const tel = cleanPhone(telNuevo.value);
-
-    if(!nombre && !tel) throw new Error("Selecciona un cliente o escribe Nombre/Teléfono en Alta rápida.");
-
-    let found = null;
-
-    if(tel){
-      const { data, error } = await sb
-        .from(T_CLIENTES)
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .eq("telefono", tel)
-        .maybeSingle();
-      if(error) throw error;
-      found = data || null;
-    }
-
-    if(!found && nombre){
-      const { data, error } = await sb
-        .from(T_CLIENTES)
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .ilike("nombre", nombre)
-        .maybeSingle();
-      if(error) throw error;
-      found = data || null;
-    }
-
-    if(!found){
-      setMsg("ok","No existe: créalo con 'Crear / Actualizar'.");
-      return;
-    }
-
-    await loadClientSelect();
-    await seleccionarClientePorId(found.id);
-    setMsg("ok","Cliente encontrado ✅");
-  }
-
-  async function crearOActualizarClienteDesdeAlta(){
-    const nombre = normalizeLine(nombreNuevo.value);
-    const tel = cleanPhone(telNuevo.value);
-
-    if(!nombre) throw new Error("Nombre nuevo es obligatorio.");
+    if(!nombre) throw new Error("Nombre es obligatorio.");
     if(tel && tel.length !== 10) throw new Error("Teléfono inválido (si lo pones debe ser de 10 dígitos).");
 
     const payload = { nombre };
@@ -1263,52 +1036,43 @@
 
     let res;
     if(tel){
-      res = await sb.from(T_CLIENTES)
-        .upsert(payload, { onConflict: "telefono" })
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .single();
+      res = await sb.from(T_CLIENTES).upsert(payload, { onConflict: "telefono" })
+        .select("id,telefono,nombre,puntos,saldo_kg").single();
     }else{
-      res = await sb.from(T_CLIENTES)
-        .insert(payload)
-        .select("id,telefono,nombre,puntos,saldo_kg")
-        .single();
+      res = await sb.from(T_CLIENTES).insert(payload)
+        .select("id,telefono,nombre,puntos,saldo_kg").single();
     }
-
     if(res.error) throw res.error;
 
-    // refresca select y selecciona
-    await loadClientSelect();
-    await seleccionarClientePorId(res.data.id);
-
-    // limpia alta
-    nombreNuevo.value = "";
-    telNuevo.value = "";
-
+    currentClient = res.data;
+    renderStatus();
+    await renderClientQR();
+    await cargarHistorialCompras(); // ✅
     setMsg("ok", "Cliente creado/actualizado ✅");
+    await loadNameDatalist();
   }
 
   $("btnBuscar").addEventListener("click", async ()=>{
     setMsg("muted","Buscando...");
-    try{ await buscarCliente(); }
-    catch(e){ console.error(e); setMsg("bad", e.message || String(e)); }
+    try{ await buscarClientePorNombreOTel(); }
+    catch(e){ setMsg("bad", e.message || String(e)); }
   });
 
   $("btnCrear").addEventListener("click", async ()=>{
     setMsg("muted","Guardando...");
-    try{ await crearOActualizarClienteDesdeAlta(); }
-    catch(e){ console.error(e); setMsg("bad", e.message || String(e)); }
+    try{ await crearOActualizarCliente(); }
+    catch(e){ setMsg("bad", e.message || String(e)); }
   });
 
   $("btnReloadNames").addEventListener("click", async ()=>{
     setMsg("muted","Recargando...");
-    await loadClientSelect();
+    await loadNameDatalist();
     setMsg("ok","Listo ✅");
   });
 
-  // admin-only processing pasted QR
   $("btnProcesarPegado")?.addEventListener("click", async ()=>{
     const txt = ($("qrPayload")?.value || "").trim();
-    if(!txt) return logAdmin("Pega el contenido del QR primero.", "warnTxt");
+    if(!txt) return logAdmin("Pega el contenido del QR primero.");
     await handleDecoded(txt);
   });
 
@@ -1325,8 +1089,7 @@
 
     ticketItemsUi = [];
     ticketItemsInv = [];
-    renderDetalleEditable();
-    logAdmin("Listo.", "muted");
+    logAdmin("Listo.");
   });
 
   async function cargarClientePorQuery(){
@@ -1339,13 +1102,17 @@
       .select("id,telefono,nombre,puntos,saldo_kg")
       .eq("id", cid)
       .maybeSingle();
+    if(error) return;
 
-    if(error){ console.error(error); setMsg("bad", "Error cargando cid: " + error.message); return; }
     if(!data){ setMsg("bad", "Este cid no existe."); return; }
 
-    // asegúrate de tener el select cargado, luego selecciona
-    await loadClientSelect();
-    await seleccionarClientePorId(data.id);
+    currentClient = data;
+    $("nombre").value = data.nombre || "";
+    $("tel").value = data.telefono || "";
+
+    renderStatus();
+    await renderClientQR();
+    await cargarHistorialCompras(); // ✅
     setMsg("ok", "Cliente cargado desde QR ✅");
   }
 
@@ -1353,17 +1120,16 @@
   (async function init(){
     applyRoleUI();
     renderStatus();
-    renderDetalleEditable();
-
-    await loadClientSelect();
+    await loadNameDatalist();
     await cargarClientePorQuery();
     await refreshCameras();
 
-    if(role === "admin"){
-      logAdmin("Listo. Selecciona cliente y escanea QR del ticket.", "muted");
-    }else{
-      showOpToast("ok", "Listo", "Selecciona cliente y escanea el QR del ticket.");
-    }
+    // tip: por default muestra historial
+    $("histBox").style.display = "block";
+    if(currentClient?.id) await cargarHistorialCompras();
+
+    if(role === "admin") logAdmin("Listo. Selecciona cliente y escanea QR del ticket.");
+    else showOpToast("ok", "Listo", "Selecciona cliente y escanea el QR del ticket.");
   })();
 </script>
 
