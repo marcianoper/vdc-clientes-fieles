@@ -707,6 +707,23 @@
     return { kgForInv, kgForTotal };
   }
 
+  // =========================
+  // ✅ IGNORAR CONCEPTOS (NO total y NO inventario)
+  // =========================
+  function isIgnorableItem(productoOriginal){
+    const t = String(productoOriginal||"")
+      .trim()
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    return (
+      /\bPELLEJO\b/.test(t) ||
+      /\bBOLSA(S)?\b/.test(t) ||
+      /\bSERVICIO\b/.test(t) ||
+      /\bPROPINA\b/.test(t)
+    );
+  }
+
   function hashQr(str){
     let h = 2166136261;
     for(let i=0;i<str.length;i++){
@@ -718,16 +735,26 @@
 
   function safeParseJson(text){ return JSON.parse((text||"").trim()); }
 
+  // ✅ REEMPLAZADA: normalizePayload con filtro PELLEJO
   function normalizePayload(raw, decodedText){
-    if(Array.isArray(raw)){
-      const itemsUi = raw.map(x => {
-        const producto = String(x.producto || x.sku || "").trim();
-        const qty = Number(x.cantidad ?? x.kg ?? 0);
-        const sku = canonSku(producto);
-        const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
-        return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
-      }).filter(it => it.sku && Number.isFinite(it.kg));
 
+    const mapLine = (x) => {
+      const producto = String(x.producto || x.sku || "").trim();
+      const qty = Number(x.cantidad ?? x.kg ?? 0);
+
+      // ✅ Ignorar “PELLEJO” y similares
+      if(isIgnorableItem(producto)) return null;
+
+      const sku = canonSku(producto);
+      const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
+
+      if(!sku || !Number.isFinite(kgForInv) || kgForInv <= 0) return null;
+
+      return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
+    };
+
+    if(Array.isArray(raw)){
+      const itemsUi = raw.map(mapLine).filter(Boolean);
       const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
       return { qr_id: hashQr(decodedText), items: itemsForRpc, _itemsUi: itemsUi };
     }
@@ -736,17 +763,11 @@
       let items = raw.items;
       if(!Array.isArray(items) && Array.isArray(raw.productos)) items = raw.productos;
 
-      const itemsUi = (items || []).map(x => {
-        const producto = String(x.sku || x.producto || "").trim();
-        const qty = Number(x.kg ?? x.cantidad ?? 0);
-        const sku = canonSku(producto);
-        const { kgForInv, kgForTotal } = applyBoxRules(producto, qty);
-        return { producto: producto || sku, sku, kg: kgForInv, _kgTotal: kgForTotal };
-      }).filter(it => it.sku && Number.isFinite(it.kg));
-
+      const itemsUi = (items || []).map(mapLine).filter(Boolean);
       const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
       return { qr_id: String(raw.qr_id || hashQr(decodedText)), items: itemsForRpc, _itemsUi: itemsUi };
     }
+
     return null;
   }
 
@@ -958,9 +979,9 @@
 
       if(!payload?.items?.length){
         if(role === "admin"){
-          logAdmin("QR inválido: no pude formar items\n\n" + decodedText, "badTxt");
+          logAdmin("QR inválido o solo traía conceptos ignorados (p. ej. PELLEJO/BOLSA).\n\n" + decodedText, "badTxt");
         }else{
-          showOpToast("bad", "QR inválido", "No pude leer los productos.");
+          showOpToast("bad", "QR inválido", "No pude leer productos (o era solo bolsa/pellejo).");
         }
         return;
       }
