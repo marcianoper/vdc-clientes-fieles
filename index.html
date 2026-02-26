@@ -123,6 +123,61 @@
       color:var(--ink);
     }
 
+    /* =========================
+       ✅ Combo sencillo clientes
+       ========================= */
+    .comboWrap{position:relative}
+    .comboInputRow{display:flex;gap:8px;align-items:stretch}
+    .comboInputRow input{flex:1}
+    .comboBtn{
+      width:auto;
+      min-width:54px;
+      padding:0 12px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:var(--paper2);
+      cursor:pointer;
+      font-weight:1000;
+      box-shadow:none;
+    }
+    .comboList{
+      position:absolute;
+      left:0; right:0;
+      top:calc(100% + 8px);
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:0 22px 60px rgba(2,6,23,.14);
+      max-height:320px;
+      overflow:auto;
+      display:none;
+      z-index:20;
+    }
+    .comboList.open{display:block}
+    .comboItem{
+      padding:12px 12px;
+      border-bottom:1px solid rgba(15,23,42,.08);
+      cursor:pointer;
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+    }
+    .comboItem:last-child{border-bottom:0}
+    .comboItem:hover{background:rgba(34,197,94,.08)}
+    .comboItem .dot{
+      width:10px;height:10px;border-radius:999px;
+      margin-top:6px;
+      background:rgba(34,197,94,.55);
+      flex:0 0 auto;
+    }
+    .comboItem .nm{font-weight:1000;line-height:1.15}
+    .comboItem .ph{font-size:12px;color:var(--muted);margin-top:4px}
+    .comboEmpty{
+      padding:12px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
     /* QR cliente */
     #qrClienteBox{
       display:grid;place-items:center;
@@ -252,9 +307,17 @@
     <div class="grid" style="margin-top:10px">
       <div>
         <label>Nombre</label>
-        <input id="nombre" placeholder="Ej. Taquería Don Chuy" list="nombreList" />
-        <datalist id="nombreList"></datalist>
-        <div class="muted">Tip: escribe y selecciona del autocompletado.</div>
+
+        <!-- ✅ Combo sencillo: tocar input => lista completa, escribir => filtra -->
+        <div class="comboWrap" id="comboWrap">
+          <div class="comboInputRow">
+            <input id="nombre" placeholder="Toca para ver todos, o escribe para buscar..." autocomplete="off" />
+            <button id="btnOpenCombo" class="comboBtn" type="button" aria-label="Abrir lista">▾</button>
+          </div>
+          <div id="comboList" class="comboList" role="listbox" aria-label="Lista de clientes"></div>
+        </div>
+
+        <div class="muted">Tip: toca el nombre para ver todos; escribe para filtrar.</div>
       </div>
       <div>
         <label>Teléfono</label>
@@ -479,6 +542,11 @@
 
   const out = $("out"); // admin only
 
+  // ✅ refs combo clientes
+  const comboWrap = $("comboWrap");
+  const comboList = $("comboList");
+  const btnOpenCombo = $("btnOpenCombo");
+
   // =========================
   // === Estado ===
   // =========================
@@ -549,7 +617,6 @@
   function applyRoleUI(){
     roleChip.textContent = "Modo: " + (role === "admin" ? "Admin" : "Operador");
 
-    // ✅ Marca el rol en el body para CSS (oculta chip/botón en operador)
     document.body.classList.toggle("role-admin", role === "admin");
     document.body.classList.toggle("role-op", role !== "admin");
 
@@ -560,7 +627,6 @@
       el.style.display = (role === "admin") ? "none" : "";
     });
 
-    // En operador, el input kgAutoOp refleja kgAuto
     if(role !== "admin"){
       const opKg = $("kgAutoOp");
       const adminKg = $("kgAuto");
@@ -574,7 +640,6 @@
   function openModal(){ modalBg.style.display = "grid"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
   function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
 
-  // ✅ Operador no puede abrir modal aunque encuentre el botón
   btnCambiarUsuario.addEventListener("click", ()=>{
     if(role !== "admin") return;
     openModal();
@@ -735,14 +800,12 @@
 
   function safeParseJson(text){ return JSON.parse((text||"").trim()); }
 
-  // ✅ REEMPLAZADA: normalizePayload con filtro PELLEJO
   function normalizePayload(raw, decodedText){
 
     const mapLine = (x) => {
       const producto = String(x.producto || x.sku || "").trim();
       const qty = Number(x.cantidad ?? x.kg ?? 0);
 
-      // ✅ Ignorar “PELLEJO” y similares
       if(isIgnorableItem(producto)) return null;
 
       const sku = canonSku(producto);
@@ -789,11 +852,9 @@
     if(countLinesEl) countLinesEl.textContent = String((payload.items || []).length || 0);
     if(fpShortEl) fpShortEl.textContent = fingerprint ? fingerprint.slice(0, 10) : "—";
 
-    // Admin: editable
     const kgAdmin = $("kgAuto");
     if(kgAdmin) kgAdmin.value = totalKg.toFixed(2);
 
-    // Operador: solo lectura
     const kgOp = $("kgAutoOp");
     if(kgOp) kgOp.value = totalKg.toFixed(2);
   }
@@ -934,7 +995,6 @@
       throw new Error("NO OK: " + JSON.stringify(data, null, 2));
     }
 
-    // refresca cliente
     const { data: cli2 } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
@@ -970,7 +1030,6 @@
         return;
       }
 
-      // Admin debug payload
       const payloadBox = $("qrPayload");
       if(payloadBox) payloadBox.value = decodedText;
 
@@ -1137,10 +1196,104 @@
   switchBtn.addEventListener('click', switchCamera);
 
   // =========================
-  // Clientes: datalist + CRUD + cargar por ?cid=
+  // ✅ COMBO CLIENTES (lo que pediste)
+  // - tocar/focus: abre lista COMPLETA aunque ya haya un cliente seleccionado
+  // - escribir: filtra sin tener que borrar todo
+  // =========================
+  function openCombo(showAll=false){
+    if(!comboList) return;
+    comboList.classList.add("open");
+    renderComboList(showAll ? "" : ($("nombre").value || ""));
+  }
+  function closeCombo(){
+    if(!comboList) return;
+    comboList.classList.remove("open");
+  }
+  function renderComboList(filterText){
+    const f = normalizeLine(filterText).toLowerCase();
+    const list = comboList;
+    if(!list) return;
+
+    const filtered = (clientsCache || [])
+      .filter(c => (c.nombre || "").trim().length > 0)
+      .filter(c => {
+        if(!f) return true;
+        const nm = normalizeLine(c.nombre||"").toLowerCase();
+        const ph = String(c.telefono||"");
+        return nm.includes(f) || ph.includes(f);
+      })
+      .slice(0, 250);
+
+    if(!filtered.length){
+      list.innerHTML = `<div class="comboEmpty">Sin resultados. Puedes crear este cliente con <b>Crear / Actualizar</b>.</div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(c => `
+      <div class="comboItem" data-id="${escapeHtml(c.id)}">
+        <span class="dot"></span>
+        <div>
+          <div class="nm">${escapeHtml(c.nombre || "—")}</div>
+          <div class="ph">${escapeHtml(c.telefono || "")}</div>
+        </div>
+      </div>
+    `).join("");
+
+    list.querySelectorAll(".comboItem").forEach(item=>{
+      item.addEventListener("click", async ()=>{
+        const id = item.getAttribute("data-id");
+        const c = (clientsCache||[]).find(x => String(x.id) === String(id));
+        if(!c) return;
+
+        $("nombre").value = c.nombre || "";
+        $("tel").value = c.telefono || "";
+        currentClient = c;
+        renderStatus();
+        await renderClientQR();
+        setMsg("ok","Cliente cargado ✅");
+        closeCombo();
+      });
+    });
+  }
+
+  // ✅ botón flechita: abre TODO
+  if(btnOpenCombo){
+    btnOpenCombo.addEventListener("click", ()=>{
+      if(comboList.classList.contains("open")) closeCombo();
+      else openCombo(true);
+    });
+  }
+
+  // ✅ tocar/click/focus en el input: abre TODO (aunque ya haya texto)
+  $("nombre").addEventListener("click", ()=> openCombo(true));
+  $("nombre").addEventListener("focus", ()=> openCombo(true));
+
+  // ✅ al escribir: filtra sin obligar borrar todo
+  $("nombre").addEventListener("input", async ()=>{
+    openCombo(false); // mantiene abierto y filtra
+    const c = findClientByName($("nombre").value);
+    if(c){
+      $("tel").value = c.telefono || "";
+      currentClient = c;
+      renderStatus();
+      await renderClientQR();
+      setMsg("ok","Cliente cargado ✅");
+      closeCombo();
+    }
+  });
+
+  // ✅ cerrar al tocar fuera
+  document.addEventListener("click", (e)=>{
+    if(!comboWrap) return;
+    if(comboList?.classList.contains("open") && !comboWrap.contains(e.target)){
+      closeCombo();
+    }
+  });
+
+  // =========================
+  // Clientes: CRUD + cargar por ?cid=
   // =========================
   async function loadNameDatalist(){
-    const dl = $("nombreList");
     const { data, error } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
@@ -1150,30 +1303,15 @@
     if(error){ console.error(error); return; }
 
     clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
-    dl.innerHTML = "";
-    for(const c of clientsCache){
-      const opt = document.createElement("option");
-      opt.value = c.nombre;
-      opt.label = `${c.nombre} — ${c.telefono || ""}`;
-      dl.appendChild(opt);
-    }
+
+    // refresca lista (si está abierto, muestra todo)
+    if(comboList?.classList.contains("open")) renderComboList("");
   }
 
   function findClientByName(name){
     const n = normalizeLine(name).toLowerCase();
     return clientsCache.find(c => normalizeLine(c.nombre || "").toLowerCase() === n) || null;
   }
-
-  $("nombre").addEventListener("input", async ()=>{
-    const c = findClientByName($("nombre").value);
-    if(c){
-      $("tel").value = c.telefono || "";
-      currentClient = c;
-      renderStatus();
-      await renderClientQR();
-      setMsg("ok","Cliente cargado ✅");
-    }
-  });
 
   async function buscarClientePorNombreOTel(){
     const nombre = normalizeLine($("nombre").value);
@@ -1187,6 +1325,7 @@
       renderStatus();
       await renderClientQR();
       setMsg("ok","Cliente encontrado ✅");
+      closeCombo();
       return;
     }
 
@@ -1232,6 +1371,7 @@
     await renderClientQR();
     setMsg("ok", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
+    closeCombo();
   }
 
   $("btnBuscar").addEventListener("click", async ()=>{
@@ -1301,11 +1441,12 @@
     renderStatus();
     await renderClientQR();
     setMsg("ok", "Cliente cargado desde QR ✅");
+    closeCombo();
   }
 
   // init
   (async function init(){
-    applyRoleUI();             // ✅ pone body.role-op o body.role-admin
+    applyRoleUI();
     renderStatus();
     renderDetalleEditable();
     await loadNameDatalist();
