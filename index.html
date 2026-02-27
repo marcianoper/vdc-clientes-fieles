@@ -269,6 +269,34 @@
       display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
     }
     .seg button{flex:1; min-width:140px}
+
+    /* =========================
+       ✅ Modal: Compra detallada (resumen por producto)
+       ========================= */
+    .detailBg{
+      position:fixed; inset:0;
+      background:rgba(2,6,23,.55);
+      display:none;
+      place-items:center;
+      z-index:60;
+      padding:16px;
+    }
+    .detailModal{
+      width:min(720px,100%);
+      background:#fff;
+      border-radius:22px;
+      border:1px solid var(--line);
+      box-shadow:0 30px 80px rgba(0,0,0,.25);
+      padding:14px;
+    }
+    .detailHead{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    }
+    .detailHead h4{ margin:0 }
+    .detailModal .sub{ margin:4px 0 10px }
+    .detailTableWrap{ max-height:60vh; overflow:auto; border-radius:16px; }
+    .detailModal table{ margin-top:0 }
+    .detailModal th{ position:sticky; top:0; z-index:2; }
   </style>
 </head>
 
@@ -411,6 +439,11 @@
         <div class="t3">kg</div>
       </div>
 
+      <!-- ✅ NUEVO: botón ver detalle -->
+      <div class="row" style="margin-top:10px">
+        <button id="btnVerDetalle" class="ghost" type="button" disabled>Ver compra detallada</button>
+      </div>
+
       <!-- ✅ ADMIN ONLY: fingerprint y líneas -->
       <div class="miniGrid adminOnly">
         <div class="miniCard">
@@ -492,6 +525,23 @@
   </div>
 </div>
 
+<!-- ✅ NUEVO: Modal compra detallada -->
+<div class="detailBg" id="detailBg">
+  <div class="detailModal">
+    <div class="detailHead">
+      <div>
+        <h4>Compra detallada</h4>
+        <p class="sub muted" id="detailSub">
+          Totales sumados por producto (aunque el ticket venga en varias líneas).
+        </p>
+      </div>
+      <button class="ghost" id="btnCerrarDetalle" type="button" style="width:auto">Cerrar</button>
+    </div>
+
+    <div class="detailTableWrap" id="detailWrap"></div>
+  </div>
+</div>
+
 <script>
   // =========================
   // === Credenciales ===
@@ -546,6 +596,13 @@
   const comboWrap = $("comboWrap");
   const comboList = $("comboList");
   const btnOpenCombo = $("btnOpenCombo");
+
+  // ✅ refs modal detalle compra
+  const btnVerDetalle = $("btnVerDetalle");
+  const detailBg = $("detailBg");
+  const btnCerrarDetalle = $("btnCerrarDetalle");
+  const detailWrap = $("detailWrap");
+  const detailSub = $("detailSub");
 
   // =========================
   // === Estado ===
@@ -766,7 +823,7 @@
     if(isCajaCompleta){
       if(name.includes("AZUL") || name.includes("CANADIAN") || name.includes("NATIONAL")){
         kgForInv = BOX_FULL_KG;
-        kgForTotal = 0;
+        kgForTotal = 0; // ✅ lo sigues ocultando del TOTAL visual si así lo quieres
       }
     }
     return { kgForInv, kgForTotal };
@@ -920,6 +977,9 @@
 
         totalKgEl.textContent = total.toFixed(2);
         if(countLinesEl) countLinesEl.textContent = String(ticketItemsInv.length);
+
+        // ✅ refresca detalle agrupado si está abierto
+        if(detailBg && detailBg.style.display === "grid") renderCompraDetallada();
       });
     });
 
@@ -941,7 +1001,102 @@
         if(countLinesEl) countLinesEl.textContent = String(ticketItemsInv.length);
 
         renderDetalleEditable();
+
+        // ✅ refresca detalle agrupado si está abierto
+        if(detailBg && detailBg.style.display === "grid") renderCompraDetallada();
       });
+    });
+  }
+
+  // =========================
+  // ✅ COMPRA DETALLADA (AGRUPADO POR SKU)
+  // =========================
+  function groupTicketBySku(itemsUi){
+    const map = new Map(); // sku -> {sku, producto, kgTotal, lines}
+    for(const it of (itemsUi || [])){
+      const sku = String(it.sku || "").trim();
+      if(!sku) continue;
+
+      const kg = Number(it.kg || 0); // ✅ aquí sumamos lo real para inventario (incluye CAJA COMPLETA = 27.22)
+      if(!Number.isFinite(kg) || kg <= 0) continue;
+
+      const prev = map.get(sku);
+      if(prev){
+        prev.kgTotal += kg;
+        prev.lines += 1;
+      }else{
+        map.set(sku, {
+          sku,
+          producto: String(it.producto || sku),
+          kgTotal: kg,
+          lines: 1
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a,b)=> a.producto.localeCompare(b.producto));
+  }
+
+  function renderCompraDetallada(){
+    if(!detailWrap) return;
+
+    const grouped = groupTicketBySku(ticketItemsUi);
+
+    if(!grouped.length){
+      detailWrap.innerHTML = `<div class="muted" style="padding:12px">No hay productos para mostrar.</div>`;
+      return;
+    }
+
+    const totalInv = grouped.reduce((s,x)=> s + (Number(x.kgTotal)||0), 0);
+    if(detailSub){
+      detailSub.textContent =
+        `Totales sumados por producto (inventario). Total sumado: ${totalInv.toFixed(2)} kg.`;
+    }
+
+    const rows = grouped.map(g => `
+      <tr>
+        <td>
+          <div style="font-weight:1000">${escapeHtml(g.producto)}</div>
+          <div class="muted">SKU: ${escapeHtml(g.sku)}</div>
+        </td>
+        <td class="right" style="width:130px;font-weight:1100">${Number(g.kgTotal).toFixed(3)}</td>
+        <td class="right" style="width:90px">${g.lines}</td>
+      </tr>
+    `).join("");
+
+    detailWrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="right">Kg totales</th>
+            <th class="right">Líneas</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function openDetalle(){
+    renderCompraDetallada();
+    detailBg.style.display = "grid";
+  }
+  function closeDetalle(){
+    detailBg.style.display = "none";
+  }
+
+  if(btnVerDetalle){
+    btnVerDetalle.addEventListener("click", ()=>{
+      if(!ticketItemsUi.length) return;
+      openDetalle();
+    });
+  }
+  if(btnCerrarDetalle){
+    btnCerrarDetalle.addEventListener("click", closeDetalle);
+  }
+  if(detailBg){
+    detailBg.addEventListener("click", (e)=>{
+      if(e.target === detailBg) closeDetalle();
     });
   }
 
@@ -1050,6 +1205,9 @@
       updateTotalsUI(payload, fingerprint);
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
+
+      // ✅ habilitar botón detalle
+      if(btnVerDetalle) btnVerDetalle.disabled = ticketItemsUi.length === 0;
 
       if(role === "admin"){
         renderDetalleEditable();
@@ -1418,6 +1576,10 @@
       ticketItemsInv = [];
       renderDetalleEditable();
       logAdmin("Listo.", "muted");
+
+      // ✅ deshabilitar botón detalle
+      if(btnVerDetalle) btnVerDetalle.disabled = true;
+      closeDetalle();
     });
   }
 
@@ -1452,6 +1614,8 @@
     await loadNameDatalist();
     await cargarClientePorQuery();
     await refreshCameras();
+
+    if(btnVerDetalle) btnVerDetalle.disabled = true;
 
     if(role === "admin"){
       logAdmin("Listo. Selecciona cliente y escanea QR del ticket.", "muted");
