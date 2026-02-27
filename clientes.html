@@ -686,19 +686,30 @@
   // =========================
   // SKU + cajas + ignorables
   // =========================
-  function canonSku(productoOriginal){
-    let t = String(productoOriginal || "")
-      .trim()
-      .toUpperCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function canonSku(productoOriginal){
+  let t = String(productoOriginal || "")
+    .trim()
+    .toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    if(/PATA[\s_-]*MORENA/.test(t)) return "PATA_MORENA";
-    if(/^CAJA\s+AZUL\b/.test(t) || t.includes("CAJA AZUL")) return "CAJA_MENUDO_NATIONAL";
-    if(/^CAJA\s+CANADIAN\b/.test(t) || t.includes("CAJA CANADIAN")) return "MENUDO_CANADIAN";
-    if(t.includes("NATIONAL")) return "CAJA_MENUDO_NATIONAL";
-    if(t.includes("WASHINGTON")) return "MENUDO_WASHINGTON";
-    return t.replace(/\s+/g, "_");
-  }
+  // patas
+  if(/PATA[\s_-]*MORENA/.test(t)) return "PATA_MORENA";
+
+  // ====== CAJAS / MENUDOS (mapea TODAS las variantes a los SKU reales) ======
+  // CANADIAN (incluye "CANADIAN X KG", "CAJA CANADIAN", etc.)
+  if(t.includes("CANADIAN")) return "MENUDO_CANADIAN";
+
+  // WASHINGTON
+  if(t.includes("WASHINGTON")) return "MENUDO_WASHINGTON";
+
+  // AZUL / NATIONAL
+  // (tu operación: CAJA AZUL es el SKU de national, lo dejamos igual)
+  if(t.includes("AZUL")) return "CAJA_MENUDO_NATIONAL";
+  if(t.includes("NATIONAL")) return "CAJA_MENUDO_NATIONAL";
+
+  // ====== fallback general ======
+  return t.replace(/\s+/g, "_");
+}
 
   function applyBoxRules(productoOriginal, qty){
     const name = String(productoOriginal || "").toUpperCase();
