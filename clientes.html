@@ -271,7 +271,7 @@
     .seg button{flex:1; min-width:140px}
 
     /* =========================
-       ✅ Modal: Compra detallada (resumen por producto)
+       ✅ Modal: Compra detallada
        ========================= */
     .detailBg{
       position:fixed; inset:0;
@@ -282,7 +282,7 @@
       padding:16px;
     }
     .detailModal{
-      width:min(720px,100%);
+      width:min(760px,100%);
       background:#fff;
       border-radius:22px;
       border:1px solid var(--line);
@@ -336,7 +336,6 @@
       <div>
         <label>Nombre</label>
 
-        <!-- ✅ Combo sencillo: tocar input => lista completa, escribir => filtra -->
         <div class="comboWrap" id="comboWrap">
           <div class="comboInputRow">
             <input id="nombre" placeholder="Toca para ver todos, o escribe para buscar..." autocomplete="off" />
@@ -347,10 +346,18 @@
 
         <div class="muted">Tip: toca el nombre para ver todos; escribe para filtrar.</div>
       </div>
-      <div>
+
+      <!-- ✅ TELEFONO: admin ve, operador solo captura -->
+      <div class="adminOnly">
         <label>Teléfono</label>
         <input id="tel" inputmode="numeric" placeholder="4621234567" />
-        <div class="muted">Se autocompleta si eliges cliente existente.</div>
+        <div class="muted">Admin puede ver y editar.</div>
+      </div>
+
+      <div class="opOnly">
+        <label>Teléfono (captura)</label>
+        <input id="tel_op" inputmode="numeric" placeholder="4621234567" />
+        <div class="muted">Se usa solo para registrar. No se muestra después.</div>
       </div>
     </div>
 
@@ -367,7 +374,6 @@
       <div>
         <div id="qrClienteBox"><span class="muted">Selecciona un cliente para generar su QR</span></div>
 
-        <!-- ✅ ADMIN ONLY: muestra URL -->
         <div class="adminOnly">
           <div class="muted" id="qrClienteText" style="margin-top:10px"></div>
           <div class="row" style="margin-top:10px">
@@ -376,7 +382,6 @@
           </div>
         </div>
 
-        <!-- ✅ OP ONLY: mensaje simple -->
         <div class="opOnly">
           <div class="muted" style="margin-top:10px">
             QR listo para imprimir o guardar.
@@ -421,7 +426,6 @@
       <input id="filePick" type="file" accept="image/*" capture="environment">
     </label>
 
-    <!-- ✅ ADMIN ONLY: debug payload -->
     <div class="adminOnly" style="margin-top:10px">
       <label>Contenido del QR (debug)</label>
       <textarea id="qrPayload" placeholder='Aquí se pega / aparecerá lo escaneado...'></textarea>
@@ -439,12 +443,10 @@
         <div class="t3">kg</div>
       </div>
 
-      <!-- ✅ NUEVO: botón ver detalle -->
       <div class="row" style="margin-top:10px">
         <button id="btnVerDetalle" class="ghost" type="button" disabled>Ver compra detallada</button>
       </div>
 
-      <!-- ✅ ADMIN ONLY: fingerprint y líneas -->
       <div class="miniGrid adminOnly">
         <div class="miniCard">
           <b># Productos (líneas)</b>
@@ -467,14 +469,12 @@
         <div class="muted">Puntos solo en mostrador.</div>
       </div>
 
-      <!-- ✅ ADMIN ONLY: editable kg -->
       <div class="adminOnly">
         <label>Total kg (editable)</label>
         <input id="kgAuto" inputmode="decimal" placeholder="0.00" />
         <div class="muted">Admin puede corregir kilos antes de guardar.</div>
       </div>
 
-      <!-- ✅ OP ONLY: kg fijo (solo lectura) -->
       <div class="opOnly">
         <label>Total kg</label>
         <input id="kgAutoOp" disabled />
@@ -482,14 +482,10 @@
       </div>
     </div>
 
-    <!-- ✅ ADMIN ONLY: detalle editable -->
     <div id="detalleBox" class="adminOnly muted" style="margin-top:10px">—</div>
-
-    <!-- ✅ Operador: respuesta simple -->
     <div id="opToast" class="toast" aria-live="polite"></div>
   </section>
 
-  <!-- 3) Log (admin) -->
   <section class="card adminOnly">
     <div class="muted">Resultado (técnico):</div>
     <div id="out" class="log">Listo.</div>
@@ -525,15 +521,13 @@
   </div>
 </div>
 
-<!-- ✅ NUEVO: Modal compra detallada -->
+<!-- ✅ Modal compra detallada -->
 <div class="detailBg" id="detailBg">
   <div class="detailModal">
     <div class="detailHead">
       <div>
         <h4>Compra detallada</h4>
-        <p class="sub muted" id="detailSub">
-          Totales sumados por producto (aunque el ticket venga en varias líneas).
-        </p>
+        <p class="sub muted" id="detailSub">Totales sumados por producto (inventario).</p>
       </div>
       <button class="ghost" id="btnCerrarDetalle" type="button" style="width:auto">Cerrar</button>
     </div>
@@ -550,9 +544,6 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
-  // =========================
-  // === Tablas clientes/ventas ===
-  // =========================
   const T_CLIENTES = "clientes";
 
   // =========================
@@ -562,9 +553,6 @@
   const ROLE_KEY = "vdc_role_ui"; // "admin" | "op"
   let role = localStorage.getItem(ROLE_KEY) || "op";
 
-  // =========================
-  // === UI refs ===
-  // =========================
   const $ = (id)=>document.getElementById(id);
 
   const roleChip = $("roleChip");
@@ -589,24 +577,20 @@
   const fpShortEl = $("fpShort");
 
   const opToast = $("opToast");
-
   const out = $("out"); // admin only
 
-  // ✅ refs combo clientes
+  // combo
   const comboWrap = $("comboWrap");
   const comboList = $("comboList");
   const btnOpenCombo = $("btnOpenCombo");
 
-  // ✅ refs modal detalle compra
+  // detalle compra
   const btnVerDetalle = $("btnVerDetalle");
   const detailBg = $("detailBg");
   const btnCerrarDetalle = $("btnCerrarDetalle");
   const detailWrap = $("detailWrap");
   const detailSub = $("detailSub");
 
-  // =========================
-  // === Estado ===
-  // =========================
   let currentClient = null;
   let clientsCache = [];
 
@@ -615,18 +599,13 @@
   let cameras = [];
   let camIndex = 0;
 
-  // anti spam
   let busy = false;
   const BUSY_COOLDOWN_MS = 900;
 
-  // items actuales
   let ticketItemsUi = [];      // [{producto, sku, kg, _kgTotal}]
   let ticketItemsInv = [];     // [{sku, kg}]
   let lastClientQrUrl = "";
 
-  // =========================
-  // ✅ REGLAS CAJAS COMPLETAS
-  // =========================
   const BOX_FULL_KG = 27.22;
 
   function normalizeLine(s){ return String(s||"").replace(/\s+/g," ").trim(); }
@@ -668,9 +647,6 @@
     $("stSaldo").textContent   = "Saldo kg: " + (currentClient ? Number(currentClient.saldo_kg||0).toFixed(3) : "—");
   }
 
-  // =========================
-  // ✅ Aplicar rol (mostrar/ocultar secciones)
-  // =========================
   function applyRoleUI(){
     roleChip.textContent = "Modo: " + (role === "admin" ? "Admin" : "Operador");
 
@@ -693,7 +669,6 @@
     }
   }
 
-  // Modal handlers
   function openModal(){ modalBg.style.display = "grid"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
   function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
 
@@ -738,9 +713,6 @@
     if(e.target === modalBg) closeModal();
   });
 
-  // =========================
-  // ✅ URL base (para QR cliente)
-  // =========================
   function siteBaseUrl(){
     const u = new URL(window.location.href);
     return u.origin + u.pathname;
@@ -792,7 +764,7 @@
   }
 
   // =========================
-  // ✅ CANONIZADOR SKU (tu versión)
+  // SKU
   // =========================
   function canonSku(productoOriginal){
     let t = String(productoOriginal || "")
@@ -823,15 +795,12 @@
     if(isCajaCompleta){
       if(name.includes("AZUL") || name.includes("CANADIAN") || name.includes("NATIONAL")){
         kgForInv = BOX_FULL_KG;
-        kgForTotal = 0; // ✅ lo sigues ocultando del TOTAL visual si así lo quieres
+        kgForTotal = 0;
       }
     }
     return { kgForInv, kgForTotal };
   }
 
-  // =========================
-  // ✅ IGNORAR CONCEPTOS (NO total y NO inventario)
-  // =========================
   function isIgnorableItem(productoOriginal){
     const t = String(productoOriginal||"")
       .trim()
@@ -978,7 +947,6 @@
         totalKgEl.textContent = total.toFixed(2);
         if(countLinesEl) countLinesEl.textContent = String(ticketItemsInv.length);
 
-        // ✅ refresca detalle agrupado si está abierto
         if(detailBg && detailBg.style.display === "grid") renderCompraDetallada();
       });
     });
@@ -1002,14 +970,13 @@
 
         renderDetalleEditable();
 
-        // ✅ refresca detalle agrupado si está abierto
         if(detailBg && detailBg.style.display === "grid") renderCompraDetallada();
       });
     });
   }
 
   // =========================
-  // ✅ COMPRA DETALLADA (AGRUPADO POR SKU)
+  // ✅ COMPRA DETALLADA: Agrupar + minisuma frescos
   // =========================
   function groupTicketBySku(itemsUi){
     const map = new Map(); // sku -> {sku, producto, kgTotal, lines}
@@ -1017,7 +984,7 @@
       const sku = String(it.sku || "").trim();
       if(!sku) continue;
 
-      const kg = Number(it.kg || 0); // ✅ aquí sumamos lo real para inventario (incluye CAJA COMPLETA = 27.22)
+      const kg = Number(it.kg || 0); // ✅ inventario real
       if(!Number.isFinite(kg) || kg <= 0) continue;
 
       const prev = map.get(sku);
@@ -1036,6 +1003,20 @@
     return Array.from(map.values()).sort((a,b)=> a.producto.localeCompare(b.producto));
   }
 
+  function isBoxItem(producto, sku){
+    const p = String(producto||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    const s = String(sku||"").toUpperCase();
+
+    if(s.includes("CAJA_MENUDO_NATIONAL")) return true; // AZUL/NATIONAL
+    if(s.includes("MENUDO_CANADIAN")) return true;      // CANADIAN
+
+    const looksCaja = p.includes("CAJA");
+    const isKnownBox =
+      p.includes("AZUL") || p.includes("NATIONAL") || p.includes("CANADIAN") || p.includes("WASHINGTON");
+
+    return looksCaja && isKnownBox;
+  }
+
   function renderCompraDetallada(){
     if(!detailWrap) return;
 
@@ -1043,13 +1024,23 @@
 
     if(!grouped.length){
       detailWrap.innerHTML = `<div class="muted" style="padding:12px">No hay productos para mostrar.</div>`;
+      if(detailSub) detailSub.textContent = "—";
       return;
     }
 
     const totalInv = grouped.reduce((s,x)=> s + (Number(x.kgTotal)||0), 0);
+
+    // ✅ minisuma frescos = suma de líneas NO CAJA
+    let totalFrescos = 0;
+    for(const it of (ticketItemsUi || [])){
+      const kg = Number(it.kg || 0);
+      if(!Number.isFinite(kg) || kg <= 0) continue;
+      if(isBoxItem(it.producto, it.sku)) continue;
+      totalFrescos += kg;
+    }
+
     if(detailSub){
-      detailSub.textContent =
-        `Totales sumados por producto (inventario). Total sumado: ${totalInv.toFixed(2)} kg.`;
+      detailSub.textContent = `Totales por producto (inventario). Total: ${totalInv.toFixed(2)} kg.`;
     }
 
     const rows = grouped.map(g => `
@@ -1058,12 +1049,23 @@
           <div style="font-weight:1000">${escapeHtml(g.producto)}</div>
           <div class="muted">SKU: ${escapeHtml(g.sku)}</div>
         </td>
-        <td class="right" style="width:130px;font-weight:1100">${Number(g.kgTotal).toFixed(3)}</td>
+        <td class="right" style="width:140px;font-weight:1100">${Number(g.kgTotal).toFixed(3)}</td>
         <td class="right" style="width:90px">${g.lines}</td>
       </tr>
     `).join("");
 
     detailWrap.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="miniCard">
+          <b>Total inventario (sumado)</b>
+          <div class="val">${totalInv.toFixed(2)} kg</div>
+        </div>
+        <div class="miniCard" style="background:rgba(34,197,94,.10);border-color:rgba(34,197,94,.22)">
+          <b>Total frescos (SIN cajas)</b>
+          <div class="val" style="color:var(--brand)">${totalFrescos.toFixed(2)} kg</div>
+        </div>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -1206,7 +1208,6 @@
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
 
-      // ✅ habilitar botón detalle
       if(btnVerDetalle) btnVerDetalle.disabled = ticketItemsUi.length === 0;
 
       if(role === "admin"){
@@ -1354,9 +1355,7 @@
   switchBtn.addEventListener('click', switchCamera);
 
   // =========================
-  // ✅ COMBO CLIENTES (lo que pediste)
-  // - tocar/focus: abre lista COMPLETA aunque ya haya un cliente seleccionado
-  // - escribir: filtra sin tener que borrar todo
+  // ✅ COMBO CLIENTES
   // =========================
   function openCombo(showAll=false){
     if(!comboList) return;
@@ -1392,7 +1391,7 @@
         <span class="dot"></span>
         <div>
           <div class="nm">${escapeHtml(c.nombre || "—")}</div>
-          <div class="ph">${escapeHtml(c.telefono || "")}</div>
+          ${role === "admin" ? `<div class="ph">${escapeHtml(c.telefono || "")}</div>` : ``}
         </div>
       </div>
     `).join("");
@@ -1404,7 +1403,14 @@
         if(!c) return;
 
         $("nombre").value = c.nombre || "";
-        $("tel").value = c.telefono || "";
+
+        // ✅ operador NO puede ver ni autocompletar teléfono
+        if(role === "admin"){
+          $("tel").value = c.telefono || "";
+        }else{
+          if($("tel_op")) $("tel_op").value = "";
+        }
+
         currentClient = c;
         renderStatus();
         await renderClientQR();
@@ -1414,7 +1420,6 @@
     });
   }
 
-  // ✅ botón flechita: abre TODO
   if(btnOpenCombo){
     btnOpenCombo.addEventListener("click", ()=>{
       if(comboList.classList.contains("open")) closeCombo();
@@ -1422,16 +1427,18 @@
     });
   }
 
-  // ✅ tocar/click/focus en el input: abre TODO (aunque ya haya texto)
   $("nombre").addEventListener("click", ()=> openCombo(true));
   $("nombre").addEventListener("focus", ()=> openCombo(true));
 
-  // ✅ al escribir: filtra sin obligar borrar todo
   $("nombre").addEventListener("input", async ()=>{
-    openCombo(false); // mantiene abierto y filtra
+    openCombo(false);
     const c = findClientByName($("nombre").value);
     if(c){
-      $("tel").value = c.telefono || "";
+      if(role === "admin"){
+        $("tel").value = c.telefono || "";
+      }else{
+        if($("tel_op")) $("tel_op").value = "";
+      }
       currentClient = c;
       renderStatus();
       await renderClientQR();
@@ -1440,7 +1447,6 @@
     }
   });
 
-  // ✅ cerrar al tocar fuera
   document.addEventListener("click", (e)=>{
     if(!comboWrap) return;
     if(comboList?.classList.contains("open") && !comboWrap.contains(e.target)){
@@ -1462,7 +1468,6 @@
 
     clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
 
-    // refresca lista (si está abierto, muestra todo)
     if(comboList?.classList.contains("open")) renderComboList("");
   }
 
@@ -1473,13 +1478,23 @@
 
   async function buscarClientePorNombreOTel(){
     const nombre = normalizeLine($("nombre").value);
-    const tel = cleanPhone($("tel").value);
+
+    // ✅ Operador NO usa teléfono para consultar
+    const tel = cleanPhone(role==="admin" ? ($("tel")?.value || "") : "");
+
     if(!nombre) throw new Error("Nombre es obligatorio.");
 
     const cached = findClientByName(nombre);
     if(cached){
       currentClient = cached;
-      $("tel").value = cached.telefono || tel;
+
+      // ✅ operador NO autocompleta teléfono
+      if(role === "admin"){
+        $("tel").value = cached.telefono || tel;
+      }else{
+        if($("tel_op")) $("tel_op").value = "";
+      }
+
       renderStatus();
       await renderClientQR();
       setMsg("ok","Cliente encontrado ✅");
@@ -1487,16 +1502,22 @@
       return;
     }
 
-    const { data, error } = await sb
-      .from(T_CLIENTES)
-      .select("id,telefono,nombre,puntos,saldo_kg")
-      .ilike("nombre", nombre)
-      .maybeSingle();
+    // ✅ búsqueda en supabase
+    const q = sb.from(T_CLIENTES).select("id,telefono,nombre,puntos,saldo_kg").ilike("nombre", nombre);
 
+    const { data, error } = await q.maybeSingle();
     if(error) throw error;
 
     currentClient = data || null;
-    if(data) $("tel").value = data.telefono || tel;
+
+    if(data){
+      if(role === "admin"){
+        $("tel").value = data.telefono || tel;
+      }else{
+        if($("tel_op")) $("tel_op").value = "";
+      }
+    }
+
     renderStatus();
     await renderClientQR();
 
@@ -1505,7 +1526,11 @@
 
   async function crearOActualizarCliente(){
     const nombre = normalizeLine($("nombre").value);
-    const tel = cleanPhone($("tel").value);
+
+    // ✅ Admin usa #tel, operador usa #tel_op (solo captura)
+    const tel = cleanPhone(
+      role === "admin" ? $("tel")?.value : $("tel_op")?.value
+    );
 
     if(!nombre) throw new Error("Nombre es obligatorio.");
     if(tel && tel.length !== 10) throw new Error("Teléfono inválido (si lo pones debe ser de 10 dígitos).");
@@ -1530,6 +1555,11 @@
     setMsg("ok", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
     closeCombo();
+
+    // ✅ operador: borra el campo de captura para que NO lo vea después
+    if(role !== "admin"){
+      if($("tel_op")) $("tel_op").value = "";
+    }
   }
 
   $("btnBuscar").addEventListener("click", async ()=>{
@@ -1577,7 +1607,6 @@
       renderDetalleEditable();
       logAdmin("Listo.", "muted");
 
-      // ✅ deshabilitar botón detalle
       if(btnVerDetalle) btnVerDetalle.disabled = true;
       closeDetalle();
     });
@@ -1599,11 +1628,264 @@
 
     currentClient = data;
     $("nombre").value = data.nombre || "";
-    $("tel").value = data.telefono || "";
+
+    // ✅ operador no ve teléfono nunca
+    if(role === "admin"){
+      $("tel").value = data.telefono || "";
+    }else{
+      if($("tel_op")) $("tel_op").value = "";
+    }
+
     renderStatus();
     await renderClientQR();
     setMsg("ok", "Cliente cargado desde QR ✅");
     closeCombo();
+  }
+
+  // =========================
+  // Scanner: QR ticket
+  // =========================
+  async function onScanSuccess(decodedText){ await handleDecoded(decodedText); }
+
+  async function refreshCameras(){
+    cameras = await Html5Qrcode.getCameras();
+    if(!Array.isArray(cameras)) cameras = [];
+    switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
+    const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
+    if(idxBack >= 0) camIndex = idxBack;
+  }
+
+  async function startWithCurrentCamera(){
+    if(!scanner) scanner = new Html5Qrcode("reader");
+    if(!cameras.length) await refreshCameras();
+
+    running = true;
+    toggleBtn.textContent = "Detener cámara";
+
+    const config = {
+      fps: 15,
+      qrbox: (vw, vh) => {
+        const size = Math.min(vw, vh) * 0.78;
+        return { width: Math.floor(size), height: Math.floor(size) };
+      },
+      disableFlip: true,
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    };
+
+    const constraints = cameras.length
+      ? { deviceId: { exact: cameras[camIndex].id } }
+      : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
+
+    try{
+      await scanner.start(constraints, config, onScanSuccess);
+      if(role === "admin") logAdmin("Cámara lista. Escanea un ticket (cliente seleccionado).", "muted");
+      else showOpToast("ok", "Cámara lista", "Escanea el QR del ticket.");
+    }catch(e){
+      running = false;
+      toggleBtn.textContent = "Iniciar cámara";
+      if(role === "admin") logAdmin("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
+      else showOpToast("bad", "Cámara", "No pude abrir la cámara.");
+    }
+  }
+
+  async function start(){ if(running) return; await refreshCameras(); await startWithCurrentCamera(); }
+  async function stop(){
+    if(!running) return;
+    running = false;
+    toggleBtn.textContent = "Iniciar cámara";
+    try{ await scanner.stop(); }catch(e){}
+    if(role === "admin") logAdmin("Cámara detenida.", "muted");
+  }
+  async function switchCamera(){
+    if(cameras.length < 2){
+      if(role === "admin") logAdmin("Solo hay 1 cámara disponible.", "badTxt");
+      else showOpToast("bad", "Cámara", "Solo hay 1 cámara.");
+      return;
+    }
+    camIndex = (camIndex + 1) % cameras.length;
+    if(running){ await stop(); await start(); }
+  }
+
+  filePick.addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    try{
+      if(!scanner) scanner = new Html5Qrcode("reader");
+      if(role === "admin") logAdmin("Leyendo foto… (modo seguro)", "muted");
+      else showOpToast("ok", "Leyendo foto…", "Procesando QR.");
+      const decodedText = await scanner.scanFile(file, true);
+      await handleDecoded(decodedText);
+    }catch(err){
+      console.error(err);
+      if(role === "admin") logAdmin("No pude leer la foto. Tip: QR grande, sin reflejo, más cerca.", "badTxt");
+      else showOpToast("bad", "No se pudo", "Toma la foto más cerca y sin reflejo.");
+    }finally{
+      filePick.value = "";
+    }
+  });
+
+  toggleBtn.addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
+  switchBtn.addEventListener('click', switchCamera);
+
+  // =========================
+  // ✅ INVENTARIO + GUARDAR VENTA
+  // =========================
+  async function descontarInventarioConRPC(payload, fingerprint){
+    const { data, error } = await sb.rpc('procesar_venta_qr', {
+      payload: { qr_id: payload.qr_id, items: payload.items },
+      p_fingerprint: fingerprint
+    });
+    if(error) return { ok:false, error: error.message };
+    if(data?.code === 'DUPLICATE') return { ok:false, duplicate:true, data };
+    if(!data?.ok) return { ok:false, error: "NO OK:\n" + JSON.stringify(data, null, 2), data };
+    return { ok:true, data };
+  }
+
+  async function guardarVentaClienteDesdeQR(decodedText, fingerprint){
+    if(!currentClient) throw new Error("Primero selecciona un cliente.");
+
+    const tipo = $("tipo").value;
+
+    const kgAdmin = $("kgAuto");
+    const kgOp = $("kgAutoOp");
+    const kg = toNum( (kgAdmin && role==="admin") ? kgAdmin.value : (kgOp ? kgOp.value : "") );
+
+    if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
+
+    const items = (ticketItemsInv || [])
+      .map(it => ({ sku: String(it.sku||"").trim(), kg: Number(it.kg)||0 }))
+      .filter(it => it.sku && Number.isFinite(it.kg) && it.kg > 0);
+
+    const { data, error } = await sb.rpc("guardar_venta_cliente_qr", {
+      p_cliente_id: currentClient.id,
+      p_tipo: tipo,
+      p_total_kg: kg,
+      p_items: items,
+      p_fingerprint: fingerprint,
+      p_raw: decodedText
+    });
+
+    if(error) throw new Error("RPC guardar_venta_cliente_qr: " + error.message);
+
+    if(data?.code === "DUPLICATE"){
+      return { duplicate:true, venta_id: data.venta_id, puntosGanados: 0, itemsCount: items.length };
+    }
+    if(!data?.ok){
+      throw new Error("NO OK: " + JSON.stringify(data, null, 2));
+    }
+
+    const { data: cli2 } = await sb
+      .from(T_CLIENTES)
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .eq("id", currentClient.id)
+      .single();
+
+    if(cli2) currentClient = cli2;
+
+    renderStatus();
+    await renderClientQR();
+
+    return {
+      venta_id: data.venta_id,
+      puntosGanados: Number(data.puntos_ganados||0),
+      itemsCount: items.length
+    };
+  }
+
+  async function handleDecoded(decodedText){
+    if(busy) return;
+    busy = true;
+
+    try{
+      if(!currentClient){
+        if(role === "admin"){
+          logAdmin("Selecciona un cliente primero (o abre con ?cid=).", "warnTxt");
+        }else{
+          showOpToast("bad", "Falta cliente", "Selecciona cliente primero.");
+        }
+        return;
+      }
+
+      const payloadBox = $("qrPayload");
+      if(payloadBox) payloadBox.value = decodedText;
+
+      const raw = safeParseJson(decodedText);
+      const payload = normalizePayload(raw, decodedText);
+
+      if(!payload?.items?.length){
+        if(role === "admin"){
+          logAdmin("QR inválido o solo traía conceptos ignorados (p. ej. PELLEJO/BOLSA).\n\n" + decodedText, "badTxt");
+        }else{
+          showOpToast("bad", "QR inválido", "No pude leer productos (o era solo bolsa/pellejo).");
+        }
+        return;
+      }
+
+      const fingerprint = hashQr(decodedText);
+
+      updateTotalsUI(payload, fingerprint);
+      ticketItemsUi = payload._itemsUi || [];
+      ticketItemsInv = payload.items || [];
+
+      if(btnVerDetalle) btnVerDetalle.disabled = ticketItemsUi.length === 0;
+
+      if(role === "admin"){
+        renderDetalleEditable();
+        logAdmin("1) Descontando inventario…", "muted");
+      }else{
+        showOpToast("ok", "Procesando…", "Aplicando inventario y guardando compra.");
+      }
+
+      const invRes = await descontarInventarioConRPC(payload, fingerprint);
+
+      if(invRes.duplicate){
+        if(role === "admin"){
+          logAdmin("Ticket ya procesado (DUPLICATE). No se descontó otra vez ✅\n(No se guardó venta cliente para evitar duplicado)", "okTxt");
+        }else{
+          showOpToast("ok", "Ya procesado", "Este ticket ya estaba aplicado ✅");
+        }
+        return;
+      }
+
+      if(!invRes.ok){
+        if(role === "admin"){
+          logAdmin("ERROR INVENTARIO:\n" + (invRes.error || "—"), "badTxt");
+        }else{
+          showOpToast("bad", "Error", "No se pudo descontar inventario.");
+        }
+        return;
+      }
+
+      if(role === "admin"){
+        logAdmin("2) Guardando venta del cliente…", "muted");
+      }
+
+      const saveRes = await guardarVentaClienteDesdeQR(decodedText, fingerprint);
+
+      if(role === "admin"){
+        logAdmin(
+          "✅ LISTO\n" +
+          "Inventario: descontado ✅\n" +
+          `Venta guardada ✅ (ID: ${saveRes.venta_id})\n` +
+          `Items: ${saveRes.itemsCount}\n` +
+          `Puntos ganados: ${saveRes.puntosGanados}\n\n` +
+          "Respuesta inventario:\n" + JSON.stringify(invRes.data, null, 2),
+          "okTxt"
+        );
+      }else{
+        const kg = $("kgAutoOp")?.value || "";
+        showOpToast("ok", "✅ OK — Venta aplicada", `Cliente: ${currentClient?.nombre || "—"}\nTotal: ${kg} kg`);
+      }
+
+    }catch(e){
+      if(role === "admin"){
+        logAdmin("ERROR:\n" + (e?.message || String(e)) + "\n\nContenido:\n" + decodedText, "badTxt");
+      }else{
+        showOpToast("bad", "Error", "No se pudo procesar el ticket.");
+      }
+    }finally{
+      setTimeout(()=> busy = false, BUSY_COOLDOWN_MS);
+    }
   }
 
   // init
