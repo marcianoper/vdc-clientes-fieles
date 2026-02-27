@@ -1,15 +1,16 @@
-<!doctype html>
+¿<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>VDC360° — Clientes </title>
+  <title>VDC360° — Clientes</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
     :root{
+      /* ✅ Tema amigable (claro) */
       --bg:#f6f7f8;
       --paper:#ffffff;
       --paper2:#f9fafb;
@@ -123,7 +124,9 @@
       color:var(--ink);
     }
 
-    /* Combo clientes */
+    /* =========================
+       ✅ Combo sencillo clientes
+       ========================= */
     .comboWrap{position:relative}
     .comboInputRow{display:flex;gap:8px;align-items:stretch}
     .comboInputRow input{flex:1}
@@ -294,7 +297,7 @@
 <header>
   <div class="headRow">
     <div>
-      <b>VDC360° — Clientes </b>
+      <b>VDC360° — Clientes</b>
       <div class="muted" style="color:rgba(255,255,255,.85)">Guardar Compras</div>
     </div>
     <div class="row" style="max-width:520px;align-items:center">
@@ -337,17 +340,11 @@
         <div class="muted">Tip: toca el nombre para ver todos; escribe para filtrar.</div>
       </div>
 
-      <!-- ✅ TELEFONO -->
-      <div class="adminOnly">
+      <!-- ✅ Un solo teléfono (se usa para registrar; se oculta si es operador) -->
+      <div>
         <label>Teléfono</label>
         <input id="tel" inputmode="numeric" placeholder="4621234567" />
-        <div class="muted">Admin puede ver y editar.</div>
-      </div>
-
-      <div class="opOnly">
-        <label>Teléfono (solo para NUEVO cliente)</label>
-        <input id="tel_op" inputmode="numeric" placeholder="4621234567" disabled />
-        <div class="muted" id="telOpHint">Escribe un nombre nuevo para habilitar captura.</div>
+        <div class="muted" id="telHint">Se usa para registrar. No se mostrará después (operador).</div>
       </div>
     </div>
 
@@ -373,9 +370,7 @@
         </div>
 
         <div class="opOnly">
-          <div class="muted" style="margin-top:10px">
-            QR listo para imprimir o guardar.
-          </div>
+          <div class="muted" style="margin-top:10px">QR listo para imprimir o guardar.</div>
         </div>
       </div>
 
@@ -385,9 +380,7 @@
           <li>Imprímelo y pégalo en la libreta del cliente</li>
           <li>O guárdalo en WhatsApp del cliente como “Mi QR VDC”</li>
         </ul>
-        <div class="muted">
-          Tip: para cargar cliente rápido, abre esta misma página con el QR del cliente.
-        </div>
+        <div class="muted">Tip: para cargar cliente rápido, abre esta misma página con el QR del cliente.</div>
       </div>
     </div>
   </section>
@@ -471,7 +464,6 @@
       </div>
     </div>
 
-    <div id="detalleBox" class="adminOnly muted" style="margin-top:10px">—</div>
     <div id="opToast" class="toast" aria-live="polite"></div>
   </section>
 
@@ -538,7 +530,7 @@
   // =========================
   // === Roles UI ===
   // =========================
-  const ADMIN_PIN = "1234";
+  const ADMIN_PIN = "1234"; // cámbialo
   const ROLE_KEY = "vdc_role_ui";
   let role = localStorage.getItem(ROLE_KEY) || "op";
 
@@ -578,9 +570,9 @@
   const detailWrap = $("detailWrap");
   const detailSub = $("detailSub");
 
-  const telOp = $("tel_op");
-  const telOpHint = $("telOpHint");
+  const telHint = $("telHint");
 
+  // Estado
   let currentClient = null;
   let clientsCache = [];
 
@@ -592,8 +584,9 @@
   let busy = false;
   const BUSY_COOLDOWN_MS = 900;
 
-  let ticketItemsUi = [];
-  let ticketItemsInv = [];
+  // items actuales ticket
+  let ticketItemsUi = [];   // [{producto, sku, kg, _kgTotal}]
+  let ticketItemsInv = [];  // [{sku, kg}]
   let lastClientQrUrl = "";
 
   // =========================
@@ -648,10 +641,13 @@
     document.querySelectorAll(".adminOnly").forEach(el=> el.style.display = (role === "admin") ? "" : "none");
     document.querySelectorAll(".opOnly").forEach(el=> el.style.display = (role === "admin") ? "none" : "");
 
-    if(role !== "admin"){
-      const opKg = $("kgAutoOp");
-      const adminKg = $("kgAuto");
-      if(opKg) opKg.value = adminKg ? (adminKg.value || "") : "";
+    // ✅ Teléfono: operador lo oculta visualmente
+    if(role === "admin"){
+      $("tel").type = "text";
+      if(telHint) telHint.textContent = "Admin puede ver y editar.";
+    }else{
+      $("tel").type = "text"; // para capturar al crear
+      if(telHint) telHint.textContent = "Captura teléfono SOLO al registrar cliente nuevo. Luego se oculta.";
     }
   }
 
@@ -669,7 +665,9 @@
     localStorage.setItem(ROLE_KEY, role);
     applyRoleUI();
     closeModal();
-    lockTelOp(true, "Escribe un nombre nuevo para habilitar captura.");
+    // en modo op, por seguridad limpia
+    $("tel").value = "";
+    $("tel").type = "text";
   });
 
   btnSetAdmin.addEventListener("click", ()=>{
@@ -700,39 +698,7 @@
   });
 
   // =========================
-  // ✅ Tel operador: SOLO NUEVO CLIENTE
-  // =========================
-  function lockTelOp(lock, hint){
-    if(!telOp) return;
-    telOp.disabled = !!lock;
-    if(lock) telOp.value = "";
-    if(telOpHint) telOpHint.textContent = hint || (lock ? "Escribe un nombre nuevo para habilitar captura." : "Captura teléfono para registrar cliente nuevo.");
-  }
-
-  function isExistingClientName(name){
-    const n = normalizeLine(name).toLowerCase();
-    if(!n) return false;
-    return clientsCache.some(c => normalizeLine(c.nombre||"").toLowerCase() === n);
-  }
-
-  function updateTelOpAvailability(){
-    if(role === "admin") return;
-    const name = $("nombre").value || "";
-    const exists = isExistingClientName(name);
-    if(exists){
-      lockTelOp(true, "Cliente existente: teléfono oculto.");
-    }else{
-      // si hay algo escrito, habilita para capturar; si está vacío, manten bloqueado
-      if(normalizeLine(name).length > 0){
-        lockTelOp(false, "Captura teléfono solo para registrar cliente nuevo.");
-      }else{
-        lockTelOp(true, "Escribe un nombre nuevo para habilitar captura.");
-      }
-    }
-  }
-
-  // =========================
-  // ✅ URL base (QR cliente)
+  // ✅ URL base (para QR cliente)
   // =========================
   function siteBaseUrl(){
     const u = new URL(window.location.href);
@@ -785,7 +751,7 @@
   }
 
   // =========================
-  // ✅ CANON SKU + reglas cajas
+  // ✅ SKU + cajas + ignorables
   // =========================
   function canonSku(productoOriginal){
     let t = String(productoOriginal || "")
@@ -907,7 +873,7 @@
   }
 
   // =========================
-  // ✅ COMPRA DETALLADA: agrupar + minisuma frescos
+  // ✅ Compra detallada: totales por producto + minisuma frescos
   // =========================
   function groupTicketBySku(itemsUi){
     const map = new Map();
@@ -943,7 +909,6 @@
   }
 
   function renderCompraDetallada(){
-    if(!detailWrap) return;
     const grouped = groupTicketBySku(ticketItemsUi);
 
     if(!grouped.length){
@@ -1003,12 +968,12 @@
   function openDetalle(){ renderCompraDetallada(); detailBg.style.display = "grid"; }
   function closeDetalle(){ detailBg.style.display = "none"; }
 
-  btnVerDetalle.addEventListener("click", ()=>{ if(ticketItemsUi.length) openDetalle(); });
-  btnCerrarDetalle.addEventListener("click", closeDetalle);
+  $("btnVerDetalle").addEventListener("click", ()=>{ if(ticketItemsUi.length) openDetalle(); });
+  $("btnCerrarDetalle").addEventListener("click", closeDetalle);
   detailBg.addEventListener("click", (e)=>{ if(e.target === detailBg) closeDetalle(); });
 
   // =========================
-  // ✅ INVENTARIO RPC
+  // ✅ INVENTARIO + VENTA (RPCs)
   // =========================
   async function descontarInventarioConRPC(payload, fingerprint){
     const { data, error } = await sb.rpc('procesar_venta_qr', {
@@ -1094,7 +1059,7 @@
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
 
-      btnVerDetalle.disabled = ticketItemsUi.length === 0;
+      $("btnVerDetalle").disabled = ticketItemsUi.length === 0;
 
       if(role === "admin") logAdmin("1) Descontando inventario…", "muted");
       else showOpToast("ok", "Procesando…", "Aplicando inventario y guardando compra.");
@@ -1145,7 +1110,7 @@
   async function refreshCameras(){
     cameras = await Html5Qrcode.getCameras();
     if(!Array.isArray(cameras)) cameras = [];
-    switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
+    $("switchCam").style.display = (cameras.length >= 2) ? "block" : "none";
     const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
     if(idxBack >= 0) camIndex = idxBack;
   }
@@ -1155,7 +1120,7 @@
     if(!cameras.length) await refreshCameras();
 
     running = true;
-    toggleBtn.textContent = "Detener cámara";
+    $("toggle").textContent = "Detener cámara";
 
     const config = {
       fps: 15,
@@ -1177,7 +1142,7 @@
       else showOpToast("ok", "Cámara lista", "Escanea el QR del ticket.");
     }catch(e){
       running = false;
-      toggleBtn.textContent = "Iniciar cámara";
+      $("toggle").textContent = "Iniciar cámara";
       if(role === "admin") logAdmin("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
       else showOpToast("bad", "Cámara", "No pude abrir la cámara.");
     }
@@ -1187,7 +1152,7 @@
   async function stop(){
     if(!running) return;
     running = false;
-    toggleBtn.textContent = "Iniciar cámara";
+    $("toggle").textContent = "Iniciar cámara";
     try{ await scanner.stop(); }catch(e){}
     if(role === "admin") logAdmin("Cámara detenida.", "muted");
   }
@@ -1219,11 +1184,11 @@
     }
   });
 
-  toggleBtn.addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
-  switchBtn.addEventListener('click', switchCamera);
+  $("toggle").addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
+  $("switchCam").addEventListener('click', switchCamera);
 
   // =========================
-  // ✅ COMBO CLIENTES
+  // ✅ COMBO CLIENTES + privacidad teléfono (solo UI)
   // =========================
   function openCombo(showAll=false){
     comboList.classList.add("open");
@@ -1233,6 +1198,7 @@
 
   function renderComboList(filterText){
     const f = normalizeLine(filterText).toLowerCase();
+
     const filtered = (clientsCache || [])
       .filter(c => (c.nombre || "").trim().length > 0)
       .filter(c => {
@@ -1266,12 +1232,14 @@
         $("nombre").value = c.nombre || "";
         currentClient = c;
 
-        // ✅ operador: siempre bloquea captura cuando es existente
-        updateTelOpAvailability();
-
-        // ✅ operador NO ve teléfono ni se autocompleta
-        if(role === "admin") $("tel").value = c.telefono || "";
-        else lockTelOp(true, "Cliente existente: teléfono oculto.");
+        // ✅ privacidad: operador NO ve teléfono ni se autocompleta
+        if(role === "admin"){
+          $("tel").type = "text";
+          $("tel").value = c.telefono || "";
+        }else{
+          $("tel").type = "password";
+          $("tel").value = "";
+        }
 
         renderStatus();
         await renderClientQR();
@@ -1289,22 +1257,11 @@
   $("nombre").addEventListener("click", ()=> openCombo(true));
   $("nombre").addEventListener("focus", ()=> openCombo(true));
 
-  $("nombre").addEventListener("input", async ()=>{
+  $("nombre").addEventListener("input", ()=>{
     openCombo(false);
-    const c = findClientByName($("nombre").value);
-
-    // ✅ aquí decide si es existente o nuevo (para habilitar tel_op)
-    updateTelOpAvailability();
-
-    if(c){
-      currentClient = c;
-      renderStatus();
-      await renderClientQR();
-      setMsg("ok","Cliente cargado ✅");
-      closeCombo();
-    }else{
-      currentClient = null;
-      renderStatus();
+    // si el operador escribe, permitir capturar tel para nuevo cliente
+    if(role !== "admin"){
+      $("tel").type = "text";
     }
   });
 
@@ -1329,9 +1286,6 @@
     clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
 
     if(comboList.classList.contains("open")) renderComboList("");
-
-    // ✅ al recargar, re-evalúa si es nuevo/existente
-    updateTelOpAvailability();
   }
 
   function findClientByName(name){
@@ -1346,13 +1300,19 @@
     const cached = findClientByName(nombre);
     if(cached){
       currentClient = cached;
+
+      if(role === "admin"){
+        $("tel").type = "text";
+        $("tel").value = cached.telefono || "";
+      }else{
+        $("tel").type = "password";
+        $("tel").value = "";
+      }
+
       renderStatus();
       await renderClientQR();
       setMsg("ok","Cliente encontrado ✅");
       closeCombo();
-
-      // ✅ operador: bloquear captura porque ya existe
-      updateTelOpAvailability();
       return;
     }
 
@@ -1365,55 +1325,55 @@
     if(error) throw error;
 
     currentClient = data || null;
+
+    if(role === "admin"){
+      $("tel").type = "text";
+      $("tel").value = data?.telefono || "";
+    }else{
+      // no existe: permitir capturar teléfono para registrar nuevo
+      $("tel").type = data ? "password" : "text";
+      $("tel").value = "";
+    }
+
     renderStatus();
     await renderClientQR();
-
-    // ✅ si no existe, habilita captura (operador)
-    updateTelOpAvailability();
 
     setMsg("ok", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
   }
 
   async function crearOActualizarCliente(){
     const nombre = normalizeLine($("nombre").value);
-
-    // ✅ Admin usa #tel, Operador usa #tel_op SOLO para nuevo cliente
-    const tel = cleanPhone(role === "admin" ? $("tel")?.value : $("tel_op")?.value);
+    const telInput = $("tel")?.value || "";
+    const tel = cleanPhone(telInput);
 
     if(!nombre) throw new Error("Nombre es obligatorio.");
-    if(tel && tel.length !== 10) throw new Error("Teléfono inválido (si lo pones debe ser de 10 dígitos).");
 
-    // ✅ operador: si es cliente existente, NO aceptar tel_op
-    if(role !== "admin" && isExistingClientName(nombre)){
-      lockTelOp(true, "Cliente existente: teléfono oculto.");
-      throw new Error("Este cliente ya existe. No se permite capturar teléfono aquí.");
-    }
+    // ✅ FIX NOT NULL: siempre exige teléfono para crear/actualizar
+    if(tel.length !== 10) throw new Error("Teléfono inválido (debe ser de 10 dígitos).");
 
-    const payload = { nombre };
-    if(tel) payload.telefono = tel;
+    const payload = { nombre, telefono: tel };
 
-    let res;
-    if(tel){
-      res = await sb.from(T_CLIENTES).upsert(payload, { onConflict: "telefono" })
-        .select("id,telefono,nombre,puntos,saldo_kg").single();
-    }else{
-      res = await sb.from(T_CLIENTES).insert(payload)
-        .select("id,telefono,nombre,puntos,saldo_kg").single();
-    }
+    // upsert por telefono (como ya lo traías)
+    const res = await sb.from(T_CLIENTES)
+      .upsert(payload, { onConflict: "telefono" })
+      .select("id,telefono,nombre,puntos,saldo_kg")
+      .single();
 
     if(res.error) throw res.error;
 
     currentClient = res.data;
+
+    // ✅ privacidad: operador guarda y luego oculta
+    if(role !== "admin"){
+      $("tel").value = "";
+      $("tel").type = "password";
+    }
+
     renderStatus();
     await renderClientQR();
     setMsg("ok", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
     closeCombo();
-
-    // ✅ operador: limpia y bloquea para que no quede el número visible
-    if(role !== "admin"){
-      lockTelOp(true, "Registrado ✅ Teléfono oculto.");
-    }
   }
 
   $("btnBuscar").addEventListener("click", async ()=>{
@@ -1451,20 +1411,21 @@
     currentClient = data;
     $("nombre").value = data.nombre || "";
 
-    if(role === "admin") $("tel").value = data.telefono || "";
-    else lockTelOp(true, "Cliente cargado: teléfono oculto.");
+    if(role === "admin"){
+      $("tel").type = "text";
+      $("tel").value = data.telefono || "";
+    }else{
+      $("tel").type = "password";
+      $("tel").value = "";
+    }
 
     renderStatus();
     await renderClientQR();
     setMsg("ok", "Cliente cargado desde QR ✅");
     closeCombo();
-
-    updateTelOpAvailability();
   }
 
-  // =========================
-  // INIT
-  // =========================
+  // init
   (async function init(){
     applyRoleUI();
     renderStatus();
@@ -1474,15 +1435,13 @@
 
     btnVerDetalle.disabled = true;
 
-    if(role !== "admin"){
-      lockTelOp(true, "Escribe un nombre nuevo para habilitar captura.");
-      updateTelOpAvailability();
-    }
-
     if(role === "admin"){
       logAdmin("Listo. Selecciona cliente y escanea QR del ticket.", "muted");
     }else{
       showOpToast("ok", "Listo", "Selecciona cliente y escanea el QR del ticket.");
+      // operador: al inicio deja visible para capturar solo si va a crear
+      $("tel").type = "text";
+      $("tel").value = "";
     }
   })();
 </script>
