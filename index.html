@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>VDC360° — Clintes</title>
+  <title>VDC360° — Clientes</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -891,6 +891,13 @@
 
     let s = raw;
 
+    const halves = s.split(/\t+/).map(x => x.trim()).filter(Boolean);
+    if(halves.length >= 2){
+      const first = halves[0];
+      const allSame = halves.every(x => x === first);
+      if(allSame) s = first;
+    }
+
     s = s
       .replace(/´¨/g, '"')
       .replace(/¨/g, '"')
@@ -902,18 +909,25 @@
     s = s.replace(/\[\s*cantidad\s*:/gi, '{"cantidad":');
     s = s.replace(/,\s*producto\s*:/gi, ',"producto":');
 
+    s = s.replace(/}\s*{/g, '},{');
     s = s.replace(/}\s*,\s*{/g, '},{');
 
     s = s.replace(/"cantidad":\s*([0-9.]+)/gi, '"cantidad":"$1"');
     s = s.replace(/"producto":\s*([^"}\]]+)/gi, (_m, p1) => {
-      return `"producto":"${String(p1).trim().replace(/^"+|"+$/g, "")}"`;
+      const clean = String(p1).trim().replace(/^"+|"+$/g, "");
+      return `"producto":"${clean}"`;
     });
 
     if(s.startsWith('{') && !s.startsWith('[')){
       s = `[${s}]`;
     }
 
+    if(!s.startsWith('[') && s.includes('},{')){
+      s = `[${s}]`;
+    }
+
     s = s.replace(/,+\s*]/g, ']');
+    s = s.replace(/,+\s*}/g, '}');
 
     try{
       return JSON.parse(s);
@@ -1307,8 +1321,15 @@
   }
 
   async function processGunText(text){
-    const t = String(text || "").trim();
+    let t = String(text || "").trim();
     if(!t) return;
+
+    const parts = t.split(/[\t\r\n]+/).map(x => x.trim()).filter(Boolean);
+    if(parts.length >= 2){
+      const first = parts[0];
+      const allSame = parts.every(x => x === first);
+      if(allSame) t = first;
+    }
 
     const qrBox = $("qrPayload");
     if(qrBox) qrBox.value = t;
