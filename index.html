@@ -293,8 +293,6 @@
     th{background:rgba(248,250,252,.92);font-weight:1100}
     .right{text-align:right}
 
-    input[type="file"]{display:none}
-
     .toast{
       display:none;
       margin-top:10px;
@@ -616,7 +614,6 @@
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   const T_CLIENTES = "clientes";
-
   const ADMIN_PIN = "1234";
   const ROLE_KEY = "vdc_role_ui";
   let role = localStorage.getItem(ROLE_KEY) || "op";
@@ -625,7 +622,6 @@
 
   const roleChip = $("roleChip");
   const btnCambiarUsuario = $("btnCambiarUsuario");
-
   const modalBg = $("modalBg");
   const btnSetOp = $("btnSetOp");
   const btnSetAdmin = $("btnSetAdmin");
@@ -663,12 +659,10 @@
 
   let currentClient = null;
   let clientsCache = [];
-
   let scanner = null;
   let running = false;
   let cameras = [];
   let camIndex = 0;
-
   let busy = false;
   const BUSY_COOLDOWN_MS = 900;
 
@@ -888,7 +882,47 @@
     return "QR_" + (h >>> 0).toString(16);
   }
 
-  function safeParseJson(text){ return JSON.parse((text||"").trim()); }
+  function safeParseJson(text){
+    const raw = String(text || "").trim();
+
+    try{
+      return JSON.parse(raw);
+    }catch(_e){}
+
+    let s = raw;
+
+    s = s
+      .replace(/´¨/g, '"')
+      .replace(/¨/g, '"')
+      .replace(/´/g, '"')
+      .replace(/Ñ/g, ':')
+      .replace(/\*/g, '}')
+      .replace(/\+/g, ']');
+
+    s = s.replace(/\[\s*cantidad\s*:/gi, '{"cantidad":');
+    s = s.replace(/,\s*producto\s*:/gi, ',"producto":');
+
+    s = s.replace(/}\s*,\s*{/g, '},{');
+
+    s = s.replace(/"cantidad":\s*([0-9.]+)/gi, '"cantidad":"$1"');
+    s = s.replace(/"producto":\s*([^"}\]]+)/gi, (_m, p1) => {
+      return `"producto":"${String(p1).trim().replace(/^"+|"+$/g, "")}"`;
+    });
+
+    if(s.startsWith('{') && !s.startsWith('[')){
+      s = `[${s}]`;
+    }
+
+    s = s.replace(/,+\s*]/g, ']');
+
+    try{
+      return JSON.parse(s);
+    }catch(e){
+      console.error("Texto original pistola:", raw);
+      console.error("Texto saneado:", s);
+      throw new Error("No pude convertir el texto de la pistola a JSON válido.");
+    }
+  }
 
   function normalizePayload(raw, decodedText){
     const mapLine = (x) => {
@@ -1251,7 +1285,6 @@
     }
   });
 
-  // 🔫 Pistola escáner
   let gunBuffer = "";
   let gunLastTs = 0;
   let gunTimer = null;
@@ -1285,7 +1318,7 @@
     if(scanGun){
       scanGun.value = "";
       scanGun.focus();
-      if (scanGun.select) scanGun.select();
+      scanGun.select?.();
     }
     resetGunBuffer();
   }
@@ -1333,7 +1366,7 @@
   if(btnFocusGun){
     btnFocusGun.addEventListener("click", ()=>{
       scanGun.focus();
-      if (scanGun.select) scanGun.select();
+      scanGun.select?.();
       if(role === "admin") logAdmin("Modo pistola activo ✅", "muted");
       else showOpToast("ok", "Pistola activa", "Escanea con la pistola.");
     });
