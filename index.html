@@ -891,14 +891,36 @@
 
     let s = raw;
 
-    const halves = s.split(/\t+/).map(x => x.trim()).filter(Boolean);
-    if(halves.length >= 2){
-      const first = halves[0];
-      const allSame = halves.every(x => x === first);
+    const parts = s.split(/[\t\r\n]+/).map(x => x.trim()).filter(Boolean);
+    if(parts.length >= 2){
+      const first = parts[0];
+      const allSame = parts.every(x => x === first);
       if(allSame) s = first;
     }
 
-    s = s
+    const items = [];
+    const re = /cantidad\W*([0-9]+(?:\.[0-9]+)?)\W*producto\W*([^*+\]\}\r\n\t]+)/gi;
+
+    let m;
+    while((m = re.exec(s)) !== null){
+      const cantidad = String(m[1] || "").trim();
+      const producto = String(m[2] || "")
+        .replace(/[\[\]{}"]/g, "")
+        .trim();
+
+      if(cantidad && producto){
+        items.push({
+          cantidad,
+          producto
+        });
+      }
+    }
+
+    if(items.length){
+      return items;
+    }
+
+    let t = s
       .replace(/´¨/g, '"')
       .replace(/¨/g, '"')
       .replace(/´/g, '"')
@@ -906,35 +928,12 @@
       .replace(/\*/g, '}')
       .replace(/\+/g, ']');
 
-    s = s.replace(/\[\s*cantidad\s*:/gi, '{"cantidad":');
-    s = s.replace(/,\s*producto\s*:/gi, ',"producto":');
-
-    s = s.replace(/}\s*{/g, '},{');
-    s = s.replace(/}\s*,\s*{/g, '},{');
-
-    s = s.replace(/"cantidad":\s*([0-9.]+)/gi, '"cantidad":"$1"');
-    s = s.replace(/"producto":\s*([^"}\]]+)/gi, (_m, p1) => {
-      const clean = String(p1).trim().replace(/^"+|"+$/g, "");
-      return `"producto":"${clean}"`;
-    });
-
-    if(s.startsWith('{') && !s.startsWith('[')){
-      s = `[${s}]`;
-    }
-
-    if(!s.startsWith('[') && s.includes('},{')){
-      s = `[${s}]`;
-    }
-
-    s = s.replace(/,+\s*]/g, ']');
-    s = s.replace(/,+\s*}/g, '}');
-
     try{
-      return JSON.parse(s);
+      return JSON.parse(t);
     }catch(e){
       console.error("Texto original pistola:", raw);
-      console.error("Texto saneado:", s);
-      throw new Error("No pude convertir el texto de la pistola a JSON válido.");
+      console.error("Texto saneado:", t);
+      throw new Error("No pude convertir el texto de la pistola a datos válidos.");
     }
   }
 
