@@ -320,8 +320,7 @@
     /* ====== Roles ====== */
     .adminOnly{display:block}
     .opOnly{display:none}
-    body.role-op #roleChip,
-    body.role-op #btnCambiarUsuario{ display:none !important; }
+    body.role-op #roleChip{ display:none !important; }
 
     /* ====== Modal (login) ====== */
     .modalBg{
@@ -438,7 +437,6 @@
           <div class="muted">Tip: toca el nombre para ver todos; escribe para filtrar.</div>
         </div>
 
-        <!-- Teléfono -->
         <div>
           <label>Teléfono</label>
           <input id="tel" inputmode="numeric" placeholder="4621234567" />
@@ -688,8 +686,8 @@
   const BUSY_COOLDOWN_MS = 900;
 
   // items actuales ticket
-  let ticketItemsUi = [];   // [{producto, sku, kg, _kgTotal}]
-  let ticketItemsInv = [];  // [{sku, kg}]
+  let ticketItemsUi = [];
+  let ticketItemsInv = [];
   let lastClientQrUrl = "";
 
   // =========================
@@ -744,12 +742,11 @@
     document.querySelectorAll(".adminOnly").forEach(el=> el.style.display = (role === "admin") ? "" : "none");
     document.querySelectorAll(".opOnly").forEach(el=> el.style.display = (role === "admin") ? "none" : "");
 
-    // ✅ Teléfono: operador lo oculta visualmente
     if(role === "admin"){
       $("tel").type = "text";
       if(telHint) telHint.textContent = "Admin puede ver y editar.";
     }else{
-      $("tel").type = "text"; // para capturar al crear
+      $("tel").type = "text";
       if(telHint) telHint.textContent = "Captura teléfono.";
     }
   }
@@ -758,9 +755,9 @@
   function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
 
   btnCambiarUsuario.addEventListener("click", ()=>{
-    if(role !== "admin") return;
     openModal();
   });
+
   btnCloseModal.addEventListener("click", closeModal);
 
   btnSetOp.addEventListener("click", ()=>{
@@ -975,7 +972,7 @@
   }
 
   // =========================
-  // ✅ Compra detallada: totales por producto + minisuma frescos
+  // ✅ Compra detallada
   // =========================
   function groupTicketBySku(itemsUi){
     const map = new Map();
@@ -1075,7 +1072,7 @@
   detailBg.addEventListener("click", (e)=>{ if(e.target === detailBg) closeDetalle(); });
 
   // =========================
-  // ✅ INVENTARIO + VENTA (RPCs)
+  // ✅ INVENTARIO + VENTA
   // =========================
   async function descontarInventarioConRPC(payload, fingerprint){
     const { data, error } = await sb.rpc('procesar_venta_qr', {
@@ -1290,7 +1287,7 @@
   $("switchCam").addEventListener('click', switchCamera);
 
   // =========================
-  // ✅ COMBO CLIENTES + privacidad teléfono (solo UI)
+  // ✅ COMBO CLIENTES
   // =========================
   function openCombo(showAll=false){
     comboList.classList.add("open");
@@ -1520,7 +1517,7 @@
     closeCombo();
   }
 
-  // ===== Botones debug (pegado/manual) =====
+  // ===== Botones debug =====
   const btnProcesarPegado = $("btnProcesarPegado");
   const btnLimpiar = $("btnLimpiar");
 
