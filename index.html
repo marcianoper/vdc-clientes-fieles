@@ -10,6 +10,7 @@
 
   <style>
     :root{
+      /* ====== TEMA PRO CLARO ====== */
       --bg:#f5f7fb;
       --paper:#ffffff;
       --paper2:#f8fafc;
@@ -50,6 +51,7 @@
         var(--bg);
     }
 
+    /* ====== HEADER ====== */
     header{
       position:sticky; top:0; z-index:20;
       backdrop-filter: blur(14px);
@@ -88,6 +90,7 @@
       box-shadow:0 0 0 3px rgba(255,255,255,.18);
     }
 
+    /* ====== LAYOUT ====== */
     .wrap{
       max-width:1100px;
       margin:0 auto;
@@ -194,6 +197,7 @@
     }
     button:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
 
+    /* ====== Combo clientes ====== */
     .comboWrap{position:relative}
     .comboInputRow{display:flex;gap:8px;align-items:stretch}
     .comboInputRow input{flex:1}
@@ -244,6 +248,7 @@
     .comboItem .ph{font-size:12px;color:var(--muted);margin-top:4px}
     .comboEmpty{padding:12px;color:var(--muted);font-size:12px}
 
+    /* ====== QR cliente box ====== */
     #qrClienteBox{
       display:grid;place-items:center;
       border:1px dashed rgba(15,23,42,.18);
@@ -263,6 +268,7 @@
       border:1px solid rgba(2,6,23,.08)
     }
 
+    /* ====== Totales ====== */
     .totals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
     .bigTotal{
       background:linear-gradient(180deg, rgba(34,197,94,.12), rgba(34,197,94,.06));
@@ -288,11 +294,15 @@
     .miniCard b{display:block;font-size:12px;color:var(--muted);font-weight:1000}
     .miniCard .val{font-size:18px;font-weight:1200;margin-top:6px}
 
+    /* ====== Tablas ====== */
     table{width:100%;border-collapse:collapse;margin-top:10px}
     th,td{border:1px solid rgba(15,23,42,.10);padding:10px;text-align:left;vertical-align:top}
     th{background:rgba(248,250,252,.92);font-weight:1100}
     .right{text-align:right}
 
+    input[type="file"]{display:none}
+
+    /* ====== Toast ====== */
     .toast{
       display:none;
       margin-top:10px;
@@ -307,11 +317,13 @@
     .toast .t{font-weight:1200}
     .toast .d{margin-top:6px;color:var(--muted);font-size:12px;white-space:pre-wrap}
 
+    /* ====== Roles ====== */
     .adminOnly{display:block}
     .opOnly{display:none}
     body.role-op #roleChip,
     body.role-op #btnCambiarUsuario{ display:none !important; }
 
+    /* ====== Modal (login) ====== */
     .modalBg{
       position:fixed; inset:0;
       background:rgba(2,6,23,.58);
@@ -335,6 +347,7 @@
     .seg{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
     .seg button{flex:1; min-width:160px}
 
+    /* ====== Modal compra detallada ====== */
     .detailBg{
       position:fixed; inset:0;
       background:rgba(2,6,23,.58);
@@ -369,6 +382,7 @@
     .detailModal th{position:sticky; top:0; z-index:2}
     .detailModal .miniCard{box-shadow:none}
 
+    /* ====== Pequeños detalles ====== */
     ul{margin:10px 0 0 18px}
     li{margin:6px 0}
   </style>
@@ -394,6 +408,7 @@
 
 <div class="wrap">
 
+  <!-- 1) Cliente -->
   <section class="card">
     <div class="cardInner">
       <div class="titleRow">
@@ -423,6 +438,7 @@
           <div class="muted">Tip: toca el nombre para ver todos; escribe para filtrar.</div>
         </div>
 
+        <!-- Teléfono -->
         <div>
           <label>Teléfono</label>
           <input id="tel" inputmode="numeric" placeholder="4621234567" />
@@ -467,6 +483,7 @@
     </div>
   </section>
 
+  <!-- 2) QR Ticket -->
   <section class="card">
     <div class="cardInner">
       <div class="titleRow">
@@ -491,13 +508,6 @@
         📸 Subir foto del QR (modo seguro)
         <input id="filePick" type="file" accept="image/*" capture="environment">
       </label>
-
-      <label style="margin-top:10px">Escáner pistola</label>
-      <div class="row" style="margin-top:8px">
-        <input id="scanGun" placeholder="Escanea aquí con la pistola y presiona Enter (o auto Enter)" autocomplete="off" />
-        <button id="btnFocusGun" class="ghost" type="button" style="max-width:220px">Activar pistola</button>
-      </div>
-      <div class="muted">Tip: la mayoría de las pistolas manda Enter al final. Si la tuya manda Tab, también la toma.</div>
 
       <div class="adminOnly" style="margin-top:10px">
         <label>Contenido del QR (debug)</label>
@@ -567,6 +577,7 @@
 
 </div>
 
+<!-- Modal cambiar usuario -->
 <div class="modalBg" id="modalBg">
   <div class="modal">
     <h4>Cambiar usuario</h4>
@@ -594,6 +605,7 @@
   </div>
 </div>
 
+<!-- Modal compra detallada -->
 <div class="detailBg" id="detailBg">
   <div class="detailModal">
     <div class="detailHead">
@@ -609,12 +621,19 @@
 </div>
 
 <script>
+  // =========================
+  // === Credenciales ===
+  // =========================
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   const T_CLIENTES = "clientes";
-  const ADMIN_PIN = "1234";
+
+  // =========================
+  // === Roles UI ===
+  // =========================
+  const ADMIN_PIN = "1234"; // cámbialo
   const ROLE_KEY = "vdc_role_ui";
   let role = localStorage.getItem(ROLE_KEY) || "op";
 
@@ -622,6 +641,7 @@
 
   const roleChip = $("roleChip");
   const btnCambiarUsuario = $("btnCambiarUsuario");
+
   const modalBg = $("modalBg");
   const btnSetOp = $("btnSetOp");
   const btnSetAdmin = $("btnSetAdmin");
@@ -635,8 +655,6 @@
   const toggleBtn = $("toggle");
   const switchBtn = $("switchCam");
   const filePick = $("filePick");
-  const scanGun = $("scanGun");
-  const btnFocusGun = $("btnFocusGun");
 
   const totalKgEl = $("totalKg");
   const countLinesEl = $("countLines");
@@ -657,19 +675,26 @@
 
   const telHint = $("telHint");
 
+  // Estado
   let currentClient = null;
   let clientsCache = [];
+
   let scanner = null;
   let running = false;
   let cameras = [];
   let camIndex = 0;
+
   let busy = false;
   const BUSY_COOLDOWN_MS = 900;
 
-  let ticketItemsUi = [];
-  let ticketItemsInv = [];
+  // items actuales ticket
+  let ticketItemsUi = [];   // [{producto, sku, kg, _kgTotal}]
+  let ticketItemsInv = [];  // [{sku, kg}]
   let lastClientQrUrl = "";
 
+  // =========================
+  // ✅ REGLAS CAJAS COMPLETAS
+  // =========================
   const BOX_FULL_KG = 27.22;
 
   function normalizeLine(s){ return String(s||"").replace(/\s+/g," ").trim(); }
@@ -719,11 +744,12 @@
     document.querySelectorAll(".adminOnly").forEach(el=> el.style.display = (role === "admin") ? "" : "none");
     document.querySelectorAll(".opOnly").forEach(el=> el.style.display = (role === "admin") ? "none" : "");
 
+    // ✅ Teléfono: operador lo oculta visualmente
     if(role === "admin"){
       $("tel").type = "text";
       if(telHint) telHint.textContent = "Admin puede ver y editar.";
     }else{
-      $("tel").type = "text";
+      $("tel").type = "text"; // para capturar al crear
       if(telHint) telHint.textContent = "Captura teléfono.";
     }
   }
@@ -773,6 +799,9 @@
     if(e.target === modalBg) closeModal();
   });
 
+  // =========================
+  // ✅ URL base (para QR cliente)
+  // =========================
   function siteBaseUrl(){
     const u = new URL(window.location.href);
     return u.origin + u.pathname;
@@ -823,6 +852,9 @@
     });
   }
 
+  // =========================
+  // ✅ SKU + cajas + ignorables
+  // =========================
   function canonSku(productoOriginal){
     let t = String(productoOriginal || "")
       .trim()
@@ -882,60 +914,7 @@
     return "QR_" + (h >>> 0).toString(16);
   }
 
-  function safeParseJson(text){
-    const raw = String(text || "").trim();
-
-    try{
-      return JSON.parse(raw);
-    }catch(_e){}
-
-    let s = raw;
-
-    const parts = s.split(/[\t\r\n]+/).map(x => x.trim()).filter(Boolean);
-    if(parts.length >= 2){
-      const first = parts[0];
-      const allSame = parts.every(x => x === first);
-      if(allSame) s = first;
-    }
-
-    const items = [];
-    const re = /cantidad\W*([0-9]+(?:\.[0-9]+)?)\W*producto\W*([^*+\]\}\r\n\t]+)/gi;
-
-    let m;
-    while((m = re.exec(s)) !== null){
-      const cantidad = String(m[1] || "").trim();
-      const producto = String(m[2] || "")
-        .replace(/[\[\]{}"]/g, "")
-        .trim();
-
-      if(cantidad && producto){
-        items.push({
-          cantidad,
-          producto
-        });
-      }
-    }
-
-    if(items.length){
-      return items;
-    }
-
-    let t = s
-      .replace(/´¨/g, '"')
-      .replace(/¨/g, '"')
-      .replace(/´/g, '"')
-      .replace(/Ñ/g, ':')
-      .replace(/\*/g, '}')
-      .replace(/\+/g, ']');
-
-    try{
-      return JSON.parse(t);
-    }catch(e){
-      console.error("Texto original pistola:", raw);
-      console.error("Texto saneado:", t);
-      throw new Error("No pude convertir el texto de la pistola a datos válidos.");
-    }
-  }
+  function safeParseJson(text){ return JSON.parse((text||"").trim()); }
 
   function normalizePayload(raw, decodedText){
     const mapLine = (x) => {
@@ -995,6 +974,9 @@
     if(kgOp) kgOp.value = totalKg.toFixed(2);
   }
 
+  // =========================
+  // ✅ Compra detallada: totales por producto + minisuma frescos
+  // =========================
   function groupTicketBySku(itemsUi){
     const map = new Map();
     for(const it of (itemsUi || [])){
@@ -1092,6 +1074,9 @@
   $("btnCerrarDetalle").addEventListener("click", closeDetalle);
   detailBg.addEventListener("click", (e)=>{ if(e.target === detailBg) closeDetalle(); });
 
+  // =========================
+  // ✅ INVENTARIO + VENTA (RPCs)
+  // =========================
   async function descontarInventarioConRPC(payload, fingerprint){
     const { data, error } = await sb.rpc('procesar_venta_qr', {
       payload: { qr_id: payload.qr_id, items: payload.items },
@@ -1219,6 +1204,9 @@
     }
   }
 
+  // =========================
+  // Scanner
+  // =========================
   async function onScanSuccess(decodedText){ await handleDecoded(decodedText); }
 
   async function refreshCameras(){
@@ -1298,109 +1286,12 @@
     }
   });
 
-  let gunBuffer = "";
-  let gunLastTs = 0;
-  let gunTimer = null;
-  const GUN_RESET_MS = 120;
+  $("toggle").addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
+  $("switchCam").addEventListener('click', switchCamera);
 
-  function resetGunBuffer(){
-    gunBuffer = "";
-    gunLastTs = 0;
-    if(gunTimer){
-      clearTimeout(gunTimer);
-      gunTimer = null;
-    }
-  }
-
-  function armGunReset(){
-    if(gunTimer) clearTimeout(gunTimer);
-    gunTimer = setTimeout(() => {
-      gunBuffer = "";
-    }, 250);
-  }
-
-  async function processGunText(text){
-    let t = String(text || "").trim();
-    if(!t) return;
-
-    const parts = t.split(/[\t\r\n]+/).map(x => x.trim()).filter(Boolean);
-    if(parts.length >= 2){
-      const first = parts[0];
-      const allSame = parts.every(x => x === first);
-      if(allSame) t = first;
-    }
-
-    const qrBox = $("qrPayload");
-    if(qrBox) qrBox.value = t;
-
-    await handleDecoded(t);
-
-    if(scanGun){
-      scanGun.value = "";
-      scanGun.focus();
-      scanGun.select?.();
-    }
-    resetGunBuffer();
-  }
-
-  function isTypingField(el){
-    if(!el) return false;
-    const tag = (el.tagName || "").toUpperCase();
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-  }
-
-  document.addEventListener("keydown", async (e) => {
-    const active = document.activeElement;
-    const focusedGun = active === scanGun;
-
-    if (isTypingField(active) && !focusedGun) return;
-    if (e.ctrlKey || e.altKey || e.metaKey) return;
-
-    const now = Date.now();
-    if (gunLastTs && (now - gunLastTs) > GUN_RESET_MS) {
-      gunBuffer = "";
-    }
-    gunLastTs = now;
-
-    if (e.key === "Enter" || e.key === "Tab") {
-      const fromInput = (scanGun?.value || "").trim();
-      const finalText = fromInput || gunBuffer;
-
-      if(finalText){
-        e.preventDefault();
-        await processGunText(finalText);
-      }
-      return;
-    }
-
-    if (e.key.length === 1) {
-      if (focusedGun) {
-        armGunReset();
-        return;
-      }
-      gunBuffer += e.key;
-      armGunReset();
-    }
-  }, true);
-
-  if(btnFocusGun){
-    btnFocusGun.addEventListener("click", ()=>{
-      scanGun.focus();
-      scanGun.select?.();
-      if(role === "admin") logAdmin("Modo pistola activo ✅", "muted");
-      else showOpToast("ok", "Pistola activa", "Escanea con la pistola.");
-    });
-  }
-
-  if(scanGun){
-    scanGun.addEventListener("keydown", async (e)=>{
-      if(e.key === "Enter" || e.key === "Tab"){
-        e.preventDefault();
-        await processGunText(scanGun.value);
-      }
-    });
-  }
-
+  // =========================
+  // ✅ COMBO CLIENTES + privacidad teléfono (solo UI)
+  // =========================
   function openCombo(showAll=false){
     comboList.classList.add("open");
     renderComboList(showAll ? "" : ($("nombre").value || ""));
@@ -1480,6 +1371,9 @@
     }
   });
 
+  // =========================
+  // Clientes: CRUD + cargar por ?cid=
+  // =========================
   async function loadNameDatalist(){
     const { data, error } = await sb
       .from(T_CLIENTES)
@@ -1626,6 +1520,7 @@
     closeCombo();
   }
 
+  // ===== Botones debug (pegado/manual) =====
   const btnProcesarPegado = $("btnProcesarPegado");
   const btnLimpiar = $("btnLimpiar");
 
@@ -1651,6 +1546,7 @@
     });
   }
 
+  // init
   (async function init(){
     applyRoleUI();
     renderStatus();
@@ -1666,10 +1562,6 @@
       showOpToast("ok", "Listo", "Selecciona cliente y escanea el QR del ticket.");
       $("tel").type = "text";
       $("tel").value = "";
-    }
-
-    if(scanGun){
-      setTimeout(() => { scanGun.focus(); }, 200);
     }
   })();
 </script>
