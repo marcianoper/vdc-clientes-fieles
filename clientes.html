@@ -10,7 +10,6 @@
 
   <style>
     :root{
-      /* ====== TEMA PRO CLARO ====== */
       --bg:#f5f7fb;
       --paper:#ffffff;
       --paper2:#f8fafc;
@@ -29,13 +28,8 @@
       --shadow2: 0 10px 28px rgba(2,6,23,.10);
 
       --r:20px;
-      --r2:16px;
-
       --ring: 0 0 0 4px rgba(34,197,94,.16);
-      --ring2: 0 0 0 4px rgba(15,23,42,.08);
-
       --glass: rgba(255,255,255,.76);
-      --glassLine: rgba(255,255,255,.25);
     }
 
     *{box-sizing:border-box}
@@ -51,7 +45,6 @@
         var(--bg);
     }
 
-    /* ====== HEADER ====== */
     header{
       position:sticky; top:0; z-index:20;
       backdrop-filter: blur(14px);
@@ -90,7 +83,6 @@
       box-shadow:0 0 0 3px rgba(255,255,255,.18);
     }
 
-    /* ====== LAYOUT ====== */
     .wrap{
       max-width:1100px;
       margin:0 auto;
@@ -118,8 +110,10 @@
       gap:10px;
       flex-wrap:wrap;
     }
+
     h3{margin:0;font-weight:1100; letter-spacing:.2px}
     .sub{color:var(--muted);font-size:12px;margin-top:6px}
+    .muted{color:var(--muted);font-size:12px}
 
     .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .pill{
@@ -144,7 +138,6 @@
     @media(max-width:860px){.grid{grid-template-columns:1fr}}
 
     label{display:block;font-weight:1000;margin-top:10px;font-size:13px}
-    .muted{color:var(--muted);font-size:12px}
 
     input,select,textarea,button{
       width:100%;
@@ -167,7 +160,6 @@
 
     .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
     .row > *{flex:1}
-    @media(max-width:520px){ .row{gap:8px} }
 
     button{
       border:0;
@@ -197,7 +189,6 @@
     }
     button:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
 
-    /* ====== Combo clientes ====== */
     .comboWrap{position:relative}
     .comboInputRow{display:flex;gap:8px;align-items:stretch}
     .comboInputRow input{flex:1}
@@ -212,7 +203,6 @@
       font-weight:1100;
       box-shadow:0 10px 24px rgba(2,6,23,.08);
     }
-    .comboBtn:hover{filter:brightness(1.02)}
     .comboList{
       position:absolute;
       left:0; right:0;
@@ -248,7 +238,6 @@
     .comboItem .ph{font-size:12px;color:var(--muted);margin-top:4px}
     .comboEmpty{padding:12px;color:var(--muted);font-size:12px}
 
-    /* ====== QR cliente box ====== */
     #qrClienteBox{
       display:grid;place-items:center;
       border:1px dashed rgba(15,23,42,.18);
@@ -262,13 +251,13 @@
       width:220px;height:220px;border-radius:14px;background:#fff;
       box-shadow:0 18px 50px rgba(2,6,23,.14);
     }
+
     code{
       background:rgba(2,6,23,.06);
       padding:2px 6px;border-radius:10px;
       border:1px solid rgba(2,6,23,.08)
     }
 
-    /* ====== Totales ====== */
     .totals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
     .bigTotal{
       background:linear-gradient(180deg, rgba(34,197,94,.12), rgba(34,197,94,.06));
@@ -284,6 +273,7 @@
 
     .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     @media (max-width:720px){ .miniGrid{grid-template-columns:1fr;} }
+
     .miniCard{
       background:rgba(248,250,252,.92);
       border:1px solid rgba(15,23,42,.10);
@@ -294,15 +284,66 @@
     .miniCard b{display:block;font-size:12px;color:var(--muted);font-weight:1000}
     .miniCard .val{font-size:18px;font-weight:1200;margin-top:6px}
 
-    /* ====== Tablas ====== */
     table{width:100%;border-collapse:collapse;margin-top:10px}
     th,td{border:1px solid rgba(15,23,42,.10);padding:10px;text-align:left;vertical-align:top}
     th{background:rgba(248,250,252,.92);font-weight:1100}
     .right{text-align:right}
 
+    .histWrap{
+      margin-top:12px;
+      border:1px solid rgba(15,23,42,.10);
+      border-radius:18px;
+      overflow:auto;
+      background:rgba(255,255,255,.72);
+    }
+
+    .ventaCard{
+      background:rgba(248,250,252,.92);
+      border:1px solid rgba(15,23,42,.10);
+      border-radius:18px;
+      padding:12px;
+      margin:12px;
+      box-shadow:0 10px 26px rgba(2,6,23,.06);
+    }
+    .ventaHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 9px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:1100;
+      border:1px solid rgba(15,23,42,.10);
+      background:rgba(255,255,255,.82);
+      white-space:nowrap;
+    }
+    .tag.ok{
+      background:rgba(34,197,94,.12);
+      border-color:rgba(34,197,94,.25);
+      color:#166534;
+    }
+    .tag.warn{
+      background:rgba(245,158,11,.12);
+      border-color:rgba(245,158,11,.25);
+      color:#92400e;
+    }
+    .tag.bad{
+      background:rgba(239,68,68,.10);
+      border-color:rgba(239,68,68,.22);
+      color:#991b1b;
+    }
+
     input[type="file"]{display:none}
 
-    /* ====== Toast ====== */
     .toast{
       display:none;
       margin-top:10px;
@@ -317,13 +358,10 @@
     .toast .t{font-weight:1200}
     .toast .d{margin-top:6px;color:var(--muted);font-size:12px;white-space:pre-wrap}
 
-    /* ====== Roles ====== */
     .adminOnly{display:block}
     .opOnly{display:none}
-    body.role-op #roleChip,
-    body.role-op #btnCambiarUsuario{ display:none !important; }
+    body.role-op #roleChip{ display:none !important; }
 
-    /* ====== Modal (login) ====== */
     .modalBg{
       position:fixed; inset:0;
       background:rgba(2,6,23,.58);
@@ -347,7 +385,6 @@
     .seg{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
     .seg button{flex:1; min-width:160px}
 
-    /* ====== Modal compra detallada ====== */
     .detailBg{
       position:fixed; inset:0;
       background:rgba(2,6,23,.58);
@@ -382,9 +419,11 @@
     .detailModal th{position:sticky; top:0; z-index:2}
     .detailModal .miniCard{box-shadow:none}
 
-    /* ====== Pequeños detalles ====== */
-    ul{margin:10px 0 0 18px}
-    li{margin:6px 0}
+    .log{white-space:pre-wrap}
+    .okTxt{color:#166534; white-space:pre-wrap}
+    .badTxt{color:#991b1b; white-space:pre-wrap}
+    .warnTxt{color:#92400e; white-space:pre-wrap}
+    .mutedTxt{color:var(--muted); white-space:pre-wrap}
   </style>
 </head>
 
@@ -393,7 +432,7 @@
   <div class="headRow">
     <div class="brandTitle">
       <b>VDC360° — Clientes</b>
-      <div class="mutedTop">Guardar Compras</div>
+      <div class="mutedTop">Guardar Compras + Historial</div>
     </div>
 
     <div class="headActions">
@@ -438,7 +477,6 @@
           <div class="muted">Tip: toca el nombre para ver todos; escribe para filtrar.</div>
         </div>
 
-        <!-- Teléfono -->
         <div>
           <label>Teléfono</label>
           <input id="tel" inputmode="numeric" placeholder="4621234567" />
@@ -477,7 +515,7 @@
             <li>Imprímelo y pégalo en la libreta del cliente</li>
             <li>O guárdalo en WhatsApp del cliente como “Mi QR VDC”</li>
           </ul>
-          <div class="muted" style="margin-top:8px">Tip: para cargar cliente rápido, abre esta misma página con el QR del cliente.</div>
+          <div class="muted" style="margin-top:8px">Tip: en caso de que no puedas escanear el qr toma una foto.</div>
         </div>
       </div>
     </div>
@@ -568,13 +606,130 @@
     </div>
   </section>
 
+  <!-- 3) Historial -->
+  <section class="card">
+    <div class="cardInner">
+      <div class="titleRow">
+        <div>
+          <h3>3) Historial de compras</h3>
+          <div class="sub">Fecha, hora estimada por captura, kilos y si regresó después.</div>
+        </div>
+        <div class="row" style="min-width:260px;max-width:460px;margin-top:0">
+          <button id="btnLoadHistorial" class="ghost" type="button">Ver historial</button>
+          <button id="btnClearHistorial" class="ghost" type="button">Limpiar historial</button>
+        </div>
+      </div>
+
+      <div class="miniGrid">
+        <div class="miniCard">
+          <b>Total compras</b>
+          <div class="val" id="histTotalCompras">0</div>
+        </div>
+        <div class="miniCard">
+          <b>Kg acumulados</b>
+          <div class="val" id="histKgAcumulados">0.00 kg</div>
+        </div>
+        <div class="miniCard">
+          <b>Última compra</b>
+          <div class="val" id="histUltimaCompra">—</div>
+        </div>
+        <div class="miniCard">
+          <b>Frecuencia promedio</b>
+          <div class="val" id="histFrecuencia">—</div>
+        </div>
+      </div>
+
+      <div id="historialWrap" class="histWrap">
+        <div class="muted" style="padding:12px">Selecciona un cliente para ver su historial.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4) Resumen -->
+  <section class="card">
+    <div class="cardInner">
+      <div class="titleRow">
+        <div>
+          <h3>4) Resumen semanal / mensual</h3>
+          <div class="sub">Resumen de compras del cliente por periodo.</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label>Periodo de resumen</label>
+          <select id="resumenPeriodo">
+            <option value="semana">Semanal</option>
+            <option value="mes" selected>Mensual</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Rango</label>
+          <select id="resumenRango">
+            <option value="8">Últimos 8 periodos</option>
+            <option value="12" selected>Últimos 12 periodos</option>
+            <option value="24">Últimos 24 periodos</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btnLoadResumen" class="ghost" type="button">Ver resumen</button>
+        <button id="btnClearResumen" class="ghost" type="button">Limpiar resumen</button>
+      </div>
+
+      <div class="miniGrid">
+        <div class="miniCard">
+          <b>Periodo con más kg</b>
+          <div class="val" id="resTopPeriodo">—</div>
+        </div>
+        <div class="miniCard">
+          <b>Promedio por compra</b>
+          <div class="val" id="resPromCompra">—</div>
+        </div>
+        <div class="miniCard">
+          <b>Producto más frecuente</b>
+          <div class="val" id="resTopProducto">—</div>
+        </div>
+        <div class="miniCard">
+          <b>Producto con más kg</b>
+          <div class="val" id="resTopProductoKg">—</div>
+        </div>
+      </div>
+
+      <div class="histWrap" id="resumenWrap">
+        <div class="muted" style="padding:12px">Selecciona un cliente para ver su resumen.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5) Detalle de compras -->
+  <section class="card">
+    <div class="cardInner">
+      <div class="titleRow">
+        <div>
+          <h3>5) Productos comprados por visita</h3>
+          <div class="sub">Detalle real tomado desde <code>ventas_items</code>.</div>
+        </div>
+        <div class="row" style="min-width:260px;max-width:460px;margin-top:0">
+          <button id="btnLoadDetalleCompras" class="ghost" type="button">Ver detalle</button>
+          <button id="btnClearDetalleCompras" class="ghost" type="button">Limpiar detalle</button>
+        </div>
+      </div>
+
+      <div class="histWrap" id="detalleComprasWrap">
+        <div class="muted" style="padding:12px">Aquí aparecerá el detalle de productos por compra.</div>
+      </div>
+    </div>
+  </section>
+
   <section class="card adminOnly">
     <div class="cardInner">
       <div class="muted">Resultado (técnico):</div>
       <div id="out" class="log">Listo.</div>
     </div>
   </section>
-
 </div>
 
 <!-- Modal cambiar usuario -->
@@ -605,7 +760,7 @@
   </div>
 </div>
 
-<!-- Modal compra detallada -->
+<!-- Modal compra detallada del ticket actual -->
 <div class="detailBg" id="detailBg">
   <div class="detailModal">
     <div class="detailHead">
@@ -622,18 +777,20 @@
 
 <script>
   // =========================
-  // === Credenciales ===
+  // Credenciales
   // =========================
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   const T_CLIENTES = "clientes";
+  const T_VENTAS = "ventas";
+  const T_VENTAS_ITEMS = "ventas_items";
 
   // =========================
-  // === Roles UI ===
+  // Roles UI
   // =========================
-  const ADMIN_PIN = "1234"; // cámbialo
+  const ADMIN_PIN = "1234";
   const ROLE_KEY = "vdc_role_ui";
   let role = localStorage.getItem(ROLE_KEY) || "op";
 
@@ -652,14 +809,9 @@
   const btnCancelPin = $("btnCancelPin");
   const btnCloseModal = $("btnCloseModal");
 
-  const toggleBtn = $("toggle");
-  const switchBtn = $("switchCam");
-  const filePick = $("filePick");
-
   const totalKgEl = $("totalKg");
   const countLinesEl = $("countLines");
   const fpShortEl = $("fpShort");
-
   const opToast = $("opToast");
   const out = $("out");
 
@@ -674,6 +826,34 @@
   const detailSub = $("detailSub");
 
   const telHint = $("telHint");
+  const toggleBtn = $("toggle");
+  const switchBtn = $("switchCam");
+  const filePick = $("filePick");
+
+  // Historial UI
+  const btnLoadHistorial = $("btnLoadHistorial");
+  const btnClearHistorial = $("btnClearHistorial");
+  const historialWrap = $("historialWrap");
+  const histTotalCompras = $("histTotalCompras");
+  const histKgAcumulados = $("histKgAcumulados");
+  const histUltimaCompra = $("histUltimaCompra");
+  const histFrecuencia = $("histFrecuencia");
+
+  // Resumen UI
+  const resumenPeriodo = $("resumenPeriodo");
+  const resumenRango = $("resumenRango");
+  const btnLoadResumen = $("btnLoadResumen");
+  const btnClearResumen = $("btnClearResumen");
+  const resumenWrap = $("resumenWrap");
+  const resTopPeriodo = $("resTopPeriodo");
+  const resPromCompra = $("resPromCompra");
+  const resTopProducto = $("resTopProducto");
+  const resTopProductoKg = $("resTopProductoKg");
+
+  // Detalle compras UI
+  const btnLoadDetalleCompras = $("btnLoadDetalleCompras");
+  const btnClearDetalleCompras = $("btnClearDetalleCompras");
+  const detalleComprasWrap = $("detalleComprasWrap");
 
   // Estado
   let currentClient = null;
@@ -683,30 +863,124 @@
   let running = false;
   let cameras = [];
   let camIndex = 0;
-
   let busy = false;
   const BUSY_COOLDOWN_MS = 900;
 
-  // items actuales ticket
-  let ticketItemsUi = [];   // [{producto, sku, kg, _kgTotal}]
-  let ticketItemsInv = [];  // [{sku, kg}]
+  let ticketItemsUi = [];
+  let ticketItemsInv = [];
   let lastClientQrUrl = "";
 
-  // =========================
-  // ✅ REGLAS CAJAS COMPLETAS
-  // =========================
+  let ventasClienteCache = [];
+  let ventasDetalleCache = [];
+
   const BOX_FULL_KG = 27.22;
 
+  // =========================
+  // Helpers
+  // =========================
   function normalizeLine(s){ return String(s||"").replace(/\s+/g," ").trim(); }
+
   function toNum(s){
     const v = Number(String(s ?? "").replace(",", ".").trim());
     return Number.isFinite(v) ? v : NaN;
   }
+
   function cleanPhone(s){ return String(s||"").replace(/\D/g,"").slice(-10); }
+
   function escapeHtml(s){
     return String(s||"")
-      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function ymdLocal(dateObj){
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth()+1).padStart(2,"0");
+    const d = String(dateObj.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function formatDateOnly(isoDate){
+    if(!isoDate) return "—";
+    if(/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate))){
+      const [y,m,d] = String(isoDate).split("-");
+      return `${d}/${m}/${y}`;
+    }
+    const dt = new Date(isoDate);
+    if(isNaN(dt)) return String(isoDate);
+    return new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(dt);
+    }
+
+  function formatTimeMx(iso){
+    if(!iso) return "—";
+    const d = new Date(iso);
+    if(isNaN(d)) return "—";
+    return new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Mexico_City",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    }).format(d);
+  }
+
+  function formatDateTimeFromVenta(v){
+    const fechaTxt = formatDateOnly(v.fecha);
+    const timeTxt = v._timeRef ? formatTimeMx(v._timeRef) : "—";
+    return `${fechaTxt} ${timeTxt}`;
+  }
+
+  function diffDaysFromDates(aDateStr, bDateStr){
+    if(!aDateStr || !bDateStr) return null;
+    const a = new Date(aDateStr + "T00:00:00");
+    const b = new Date(bDateStr + "T00:00:00");
+    const ms = b - a;
+    if(!Number.isFinite(ms) || ms < 0) return null;
+    return Math.ceil(ms / 86400000);
+  }
+
+  function startOfWeekFromDateStr(dateStr){
+    const d = new Date(dateStr + "T00:00:00");
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    d.setDate(d.getDate() + diff);
+    d.setHours(0,0,0,0);
+    return d;
+  }
+
+  function startOfMonthFromDateStr(dateStr){
+    const d = new Date(dateStr + "T00:00:00");
+    d.setDate(1);
+    d.setHours(0,0,0,0);
+    return d;
+  }
+
+  function formatPeriodoLabel(dateObj, modo){
+    if(modo === "semana"){
+      const ini = new Date(dateObj);
+      const fin = new Date(dateObj);
+      fin.setDate(fin.getDate() + 6);
+      return `${formatDateOnly(ymdLocal(ini))} al ${formatDateOnly(ymdLocal(fin))}`;
+    }
+    return new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "long"
+    }).format(dateObj);
+  }
+
+  function topMapEntry(map){
+    const arr = Array.from(map.entries());
+    if(!arr.length) return null;
+    arr.sort((a,b)=> Number(b[1]) - Number(a[1]));
+    return arr[0];
   }
 
   function logAdmin(txt, cls=""){
@@ -730,6 +1004,9 @@
     el.textContent = text;
   }
 
+  // =========================
+  // Status / roles
+  // =========================
   function renderStatus(){
     $("stCliente").innerHTML = `<span class="miniDot"></span>Cliente: ${escapeHtml(currentClient ? (currentClient.nombre || "—") : "—")}`;
     $("stPuntos").innerHTML  = `<span class="miniDot"></span>Puntos: ${escapeHtml(currentClient ? String(currentClient.puntos ?? "—") : "—")}`;
@@ -744,12 +1021,11 @@
     document.querySelectorAll(".adminOnly").forEach(el=> el.style.display = (role === "admin") ? "" : "none");
     document.querySelectorAll(".opOnly").forEach(el=> el.style.display = (role === "admin") ? "none" : "");
 
-    // ✅ Teléfono: operador lo oculta visualmente
     if(role === "admin"){
       $("tel").type = "text";
       if(telHint) telHint.textContent = "Admin puede ver y editar.";
     }else{
-      $("tel").type = "text"; // para capturar al crear
+      $("tel").type = "text";
       if(telHint) telHint.textContent = "Captura teléfono.";
     }
   }
@@ -757,10 +1033,7 @@
   function openModal(){ modalBg.style.display = "grid"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
   function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
 
-  btnCambiarUsuario.addEventListener("click", ()=>{
-    if(role !== "admin") return;
-    openModal();
-  });
+  btnCambiarUsuario.addEventListener("click", openModal);
   btnCloseModal.addEventListener("click", closeModal);
 
   btnSetOp.addEventListener("click", ()=>{
@@ -800,7 +1073,7 @@
   });
 
   // =========================
-  // ✅ URL base (para QR cliente)
+  // QR cliente
   // =========================
   function siteBaseUrl(){
     const u = new URL(window.location.href);
@@ -830,30 +1103,23 @@
     if(txt) txt.innerHTML = `URL en QR: <code>${url}</code>`;
   }
 
-  const btnCopiarUrl = $("btnCopiarUrl");
-  const btnAbrirUrl = $("btnAbrirUrl");
+  $("btnCopiarUrl").addEventListener("click", async ()=>{
+    if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
+    try{
+      await navigator.clipboard.writeText(lastClientQrUrl);
+      setMsg("ok","URL copiada ✅");
+    }catch{
+      setMsg("bad","No pude copiar (permiso del navegador).");
+    }
+  });
 
-  if(btnCopiarUrl){
-    btnCopiarUrl.addEventListener("click", async ()=>{
-      if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
-      try{
-        await navigator.clipboard.writeText(lastClientQrUrl);
-        setMsg("ok","URL copiada ✅");
-      }catch{
-        setMsg("bad","No pude copiar (permiso del navegador).");
-      }
-    });
-  }
-
-  if(btnAbrirUrl){
-    btnAbrirUrl.addEventListener("click", ()=>{
-      if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
-      window.open(lastClientQrUrl, "_blank");
-    });
-  }
+  $("btnAbrirUrl").addEventListener("click", ()=>{
+    if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
+    window.open(lastClientQrUrl, "_blank");
+  });
 
   // =========================
-  // ✅ SKU + cajas + ignorables
+  // Reglas ticket / scanner
   // =========================
   function canonSku(productoOriginal){
     let t = String(productoOriginal || "")
@@ -974,9 +1240,6 @@
     if(kgOp) kgOp.value = totalKg.toFixed(2);
   }
 
-  // =========================
-  // ✅ Compra detallada: totales por producto + minisuma frescos
-  // =========================
   function groupTicketBySku(itemsUi){
     const map = new Map();
     for(const it of (itemsUi || [])){
@@ -1070,12 +1333,485 @@
   function openDetalle(){ renderCompraDetallada(); detailBg.style.display = "grid"; }
   function closeDetalle(){ detailBg.style.display = "none"; }
 
-  $("btnVerDetalle").addEventListener("click", ()=>{ if(ticketItemsUi.length) openDetalle(); });
-  $("btnCerrarDetalle").addEventListener("click", closeDetalle);
+  btnVerDetalle.addEventListener("click", ()=>{ if(ticketItemsUi.length) openDetalle(); });
+  btnCerrarDetalle.addEventListener("click", closeDetalle);
   detailBg.addEventListener("click", (e)=>{ if(e.target === detailBg) closeDetalle(); });
 
   // =========================
-  // ✅ INVENTARIO + VENTA (RPCs)
+  // Scanner
+  // =========================
+  async function onScanSuccess(decodedText){ await handleDecoded(decodedText); }
+
+  async function refreshCameras(){
+    cameras = await Html5Qrcode.getCameras();
+    if(!Array.isArray(cameras)) cameras = [];
+    switchBtn.style.display = (cameras.length >= 2) ? "block" : "none";
+    const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
+    if(idxBack >= 0) camIndex = idxBack;
+  }
+
+  async function startWithCurrentCamera(){
+    if(!scanner) scanner = new Html5Qrcode("reader");
+    if(!cameras.length) await refreshCameras();
+
+    running = true;
+    toggleBtn.textContent = "Detener cámara";
+
+    const config = {
+      fps: 15,
+      qrbox: (vw, vh) => {
+        const size = Math.min(vw, vh) * 0.78;
+        return { width: Math.floor(size), height: Math.floor(size) };
+      },
+      disableFlip: true,
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    };
+
+    const constraints = cameras.length
+      ? { deviceId: { exact: cameras[camIndex].id } }
+      : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
+
+    try{
+      await scanner.start(constraints, config, onScanSuccess);
+      if(role === "admin") logAdmin("Cámara lista. Escanea un ticket.", "mutedTxt");
+      else showOpToast("ok", "Cámara lista", "Escanea el QR del ticket.");
+    }catch(e){
+      running = false;
+      toggleBtn.textContent = "Iniciar cámara";
+      if(role === "admin") logAdmin("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
+      else showOpToast("bad", "Cámara", "No pude abrir la cámara.");
+    }
+  }
+
+  async function start(){ if(running) return; await refreshCameras(); await startWithCurrentCamera(); }
+  async function stop(){
+    if(!running) return;
+    running = false;
+    toggleBtn.textContent = "Iniciar cámara";
+    try{ await scanner.stop(); }catch(e){}
+    if(role === "admin") logAdmin("Cámara detenida.", "mutedTxt");
+  }
+
+  async function switchCamera(){
+    if(cameras.length < 2){
+      if(role === "admin") logAdmin("Solo hay 1 cámara disponible.", "badTxt");
+      else showOpToast("bad", "Cámara", "Solo hay 1 cámara.");
+      return;
+    }
+    camIndex = (camIndex + 1) % cameras.length;
+    if(running){ await stop(); await start(); }
+  }
+
+  filePick.addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    try{
+      if(!scanner) scanner = new Html5Qrcode("reader");
+      if(role === "admin") logAdmin("Leyendo foto…", "mutedTxt");
+      else showOpToast("ok", "Leyendo foto…", "Procesando QR.");
+      const decodedText = await scanner.scanFile(file, true);
+      await handleDecoded(decodedText);
+    }catch(err){
+      console.error(err);
+      if(role === "admin") logAdmin("No pude leer la foto. QR grande, sin reflejo, más cerca.", "badTxt");
+      else showOpToast("bad", "No se pudo", "Toma la foto más cerca y sin reflejo.");
+    }finally{
+      filePick.value = "";
+    }
+  });
+
+  toggleBtn.addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
+  switchBtn.addEventListener('click', switchCamera);
+
+  // =========================
+  // Historial / Resumen / Detalle desde ventas
+  // =========================
+  async function loadVentasCliente(){
+    if(!currentClient?.id) return [];
+    const { data, error } = await sb
+      .from(T_VENTAS)
+      .select("id,fecha,tipo,cliente_id,total_kg")
+      .eq("cliente_id", currentClient.id)
+      .order("fecha", { ascending:false });
+
+    if(error){
+      console.error(error);
+      throw new Error("No pude leer ventas: " + error.message);
+    }
+    return data || [];
+  }
+
+  async function loadVentasDetalle(ids){
+    if(!ids?.length) return [];
+    const { data, error } = await sb
+      .from(T_VENTAS_ITEMS)
+      .select("id,venta_id,producto,kg,created_at")
+      .in("venta_id", ids);
+
+    if(error){
+      console.error(error);
+      throw new Error("No pude leer ventas_items: " + error.message);
+    }
+    return data || [];
+  }
+
+  function buildVentaMeta(detalleRows){
+    const map = new Map();
+    for(const d of (detalleRows || [])){
+      const key = String(d.venta_id);
+      if(!map.has(key)){
+        map.set(key, {
+          timeRef: d.created_at || null,
+          items:[]
+        });
+      }
+      const obj = map.get(key);
+      obj.items.push({
+        venta_id: d.venta_id,
+        producto: String(d.producto || "—"),
+        kg: Number(d.kg || 0),
+        created_at: d.created_at || null
+      });
+
+      if(d.created_at){
+        if(!obj.timeRef || new Date(d.created_at) < new Date(obj.timeRef)){
+          obj.timeRef = d.created_at;
+        }
+      }
+    }
+    return map;
+  }
+
+  async function ensureVentasData(){
+    if(!currentClient?.id){
+      ventasClienteCache = [];
+      ventasDetalleCache = [];
+      return;
+    }
+
+    const ventas = await loadVentasCliente();
+    const ids = ventas.map(v => v.id);
+    const detalle = await loadVentasDetalle(ids);
+
+    ventasClienteCache = ventas;
+    ventasDetalleCache = detalle;
+
+    const metaMap = buildVentaMeta(detalle);
+    ventasClienteCache = ventasClienteCache.map(v => {
+      const meta = metaMap.get(String(v.id));
+      return {
+        ...v,
+        _timeRef: meta?.timeRef || null,
+        _items: meta?.items || []
+      };
+    });
+  }
+
+  function clearHistorialUI(){
+    histTotalCompras.textContent = "0";
+    histKgAcumulados.textContent = "0.00 kg";
+    histUltimaCompra.textContent = "—";
+    histFrecuencia.textContent = "—";
+    historialWrap.innerHTML = `<div class="muted" style="padding:12px">Selecciona un cliente para ver su historial.</div>`;
+  }
+
+  function clearResumenUI(){
+    resTopPeriodo.textContent = "—";
+    resPromCompra.textContent = "—";
+    resTopProducto.textContent = "—";
+    resTopProductoKg.textContent = "—";
+    resumenWrap.innerHTML = `<div class="muted" style="padding:12px">Selecciona un cliente para ver su resumen.</div>`;
+  }
+
+  function clearDetalleComprasUI(){
+    detalleComprasWrap.innerHTML = `<div class="muted" style="padding:12px">Aquí aparecerá el detalle de productos por compra.</div>`;
+  }
+
+  function nextPurchaseLabel(currentDate, nextDate){
+    const d = diffDaysFromDates(currentDate, nextDate);
+    if(d == null) return { text:"Aún no vuelve", cls:"bad" };
+    if(d >= 6 && d <= 8) return { text:`Sí, volvió la sig. semana (${d} días)`, cls:"ok" };
+    if(d < 6) return { text:`Sí, volvió en ${d} día${d===1?"":"s"}`, cls:"ok" };
+    return { text:`Volvió en ${d} días`, cls:"warn" };
+  }
+
+  function calcAvgDays(ventasDesc){
+    if(!Array.isArray(ventasDesc) || ventasDesc.length < 2) return null;
+    const asc = [...ventasDesc].sort((a,b)=> String(a.fecha).localeCompare(String(b.fecha)));
+    const diffs = [];
+    for(let i=0;i<asc.length-1;i++){
+      const d = diffDaysFromDates(asc[i].fecha, asc[i+1].fecha);
+      if(Number.isFinite(d) && d >= 0) diffs.push(d);
+    }
+    if(!diffs.length) return null;
+    return diffs.reduce((s,n)=> s+n, 0) / diffs.length;
+  }
+
+  function renderHistorial(){
+    const rowsDesc = ventasClienteCache || [];
+
+    if(!rowsDesc.length){
+      histTotalCompras.textContent = "0";
+      histKgAcumulados.textContent = "0.00 kg";
+      histUltimaCompra.textContent = "—";
+      histFrecuencia.textContent = "—";
+      historialWrap.innerHTML = `<div class="muted" style="padding:12px">Este cliente todavía no tiene compras guardadas.</div>`;
+      return;
+    }
+
+    const totalCompras = rowsDesc.length;
+    const kgAcum = rowsDesc.reduce((s,r)=> s + (Number(r.total_kg)||0), 0);
+    const ultima = rowsDesc[0];
+    const avgDays = calcAvgDays(rowsDesc);
+
+    histTotalCompras.textContent = String(totalCompras);
+    histKgAcumulados.textContent = `${kgAcum.toFixed(2)} kg`;
+    histUltimaCompra.textContent = formatDateTimeFromVenta(ultima);
+    histFrecuencia.textContent = avgDays == null ? "Solo 1 compra" : `Cada ${avgDays.toFixed(1)} días`;
+
+    const rowsAsc = [...rowsDesc].sort((a,b)=> String(a.fecha).localeCompare(String(b.fecha)));
+    const nextMap = new Map();
+    for(let i=0;i<rowsAsc.length;i++){
+      const curr = rowsAsc[i];
+      const next = rowsAsc[i+1] || null;
+      nextMap.set(curr.id, next ? next.fecha : null);
+    }
+
+    const body = rowsDesc.map((r)=>{
+      const nextDate = nextMap.get(r.id);
+      const nextLbl = nextPurchaseLabel(r.fecha, nextDate);
+      return `
+        <tr>
+          <td>${escapeHtml(formatDateOnly(r.fecha))}</td>
+          <td>${escapeHtml(r._timeRef ? formatTimeMx(r._timeRef) : "—")}</td>
+          <td class="right" style="font-weight:1200">${Number(r.total_kg || 0).toFixed(2)}</td>
+          <td>${escapeHtml(r.tipo || "—")}</td>
+          <td><span class="tag ${nextLbl.cls}">${escapeHtml(nextLbl.text)}</span></td>
+        </tr>
+      `;
+    }).join("");
+
+    historialWrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th class="right">Kg</th>
+            <th>Tipo</th>
+            <th>¿Regresó después?</th>
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    `;
+  }
+
+  function buildResumenPeriodos(modo, maxPeriodos){
+    const ventas = ventasClienteCache || [];
+    const periodMap = new Map();
+    const productFreq = new Map();
+    const productKg = new Map();
+
+    for(const v of ventas){
+      const keyDate = modo === "semana" ? startOfWeekFromDateStr(v.fecha) : startOfMonthFromDateStr(v.fecha);
+      const key = ymdLocal(keyDate);
+
+      if(!periodMap.has(key)){
+        periodMap.set(key, {
+          key,
+          date: keyDate,
+          compras: 0,
+          kg: 0,
+          ultimaCompra: null
+        });
+      }
+
+      const obj = periodMap.get(key);
+      obj.compras += 1;
+      obj.kg += Number(v.total_kg || 0);
+
+      if(!obj.ultimaCompra || String(v.fecha) > String(obj.ultimaCompra.fecha)){
+        obj.ultimaCompra = v;
+      }
+
+      for(const line of (v._items || [])){
+        const nombre = String(line.producto || "—");
+        const kg = Number(line.kg || 0);
+        productFreq.set(nombre, (productFreq.get(nombre) || 0) + 1);
+        productKg.set(nombre, (productKg.get(nombre) || 0) + kg);
+      }
+    }
+
+    const periodos = Array.from(periodMap.values())
+      .sort((a,b)=> b.date - a.date)
+      .slice(0, Number(maxPeriodos || 12));
+
+    return { periodos, productFreq, productKg };
+  }
+
+  function renderResumenPeriodos(){
+    if(!ventasClienteCache.length){
+      clearResumenUI();
+      resumenWrap.innerHTML = `<div class="muted" style="padding:12px">Este cliente no tiene compras guardadas.</div>`;
+      return;
+    }
+
+    const modo = resumenPeriodo.value;
+    const rango = Number(resumenRango.value || 12);
+    const { periodos, productFreq, productKg } = buildResumenPeriodos(modo, rango);
+
+    const totalCompras = ventasClienteCache.length;
+    const totalKg = ventasClienteCache.reduce((s,v)=> s + Number(v.total_kg || 0), 0);
+    const promCompra = totalCompras ? (totalKg / totalCompras) : 0;
+
+    const topPeriodo = [...periodos].sort((a,b)=> b.kg - a.kg)[0] || null;
+    const topProducto = topMapEntry(productFreq);
+    const topProductoKg = topMapEntry(productKg);
+
+    resTopPeriodo.textContent = topPeriodo
+      ? `${formatPeriodoLabel(topPeriodo.date, modo)} (${topPeriodo.kg.toFixed(2)} kg)`
+      : "—";
+
+    resPromCompra.textContent = totalCompras ? `${promCompra.toFixed(2)} kg` : "—";
+    resTopProducto.textContent = topProducto ? `${topProducto[0]} (${topProducto[1]} mov.)` : "—";
+    resTopProductoKg.textContent = topProductoKg ? `${topProductoKg[0]} (${Number(topProductoKg[1]).toFixed(2)} kg)` : "—";
+
+    if(!periodos.length){
+      resumenWrap.innerHTML = `<div class="muted" style="padding:12px">No hay periodos para mostrar.</div>`;
+      return;
+    }
+
+    const rows = periodos.map(p => `
+      <tr>
+        <td>${escapeHtml(formatPeriodoLabel(p.date, modo))}</td>
+        <td class="right">${p.compras}</td>
+        <td class="right">${Number(p.kg).toFixed(2)}</td>
+        <td class="right">${p.compras ? (p.kg / p.compras).toFixed(2) : "0.00"}</td>
+        <td>${escapeHtml(p.ultimaCompra ? formatDateTimeFromVenta(p.ultimaCompra) : "—")}</td>
+      </tr>
+    `).join("");
+
+    resumenWrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>${modo === "semana" ? "Semana" : "Mes"}</th>
+            <th class="right">Compras</th>
+            <th class="right">Kg</th>
+            <th class="right">Prom. compra</th>
+            <th>Última compra</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function renderDetalleCompras(){
+    if(!ventasClienteCache.length){
+      detalleComprasWrap.innerHTML = `<div class="muted" style="padding:12px">Este cliente no tiene compras guardadas.</div>`;
+      return;
+    }
+
+    const html = ventasClienteCache.map(v => {
+      const detalle = v._items || [];
+      const rows = detalle.length
+        ? detalle
+            .sort((a,b)=> String(a.producto).localeCompare(String(b.producto)))
+            .map(d => `
+              <tr>
+                <td>${escapeHtml(d.producto)}</td>
+                <td class="right">${Number(d.kg).toFixed(3)}</td>
+              </tr>
+            `).join("")
+        : `<tr><td colspan="2" class="muted">Sin detalle guardado para esta compra.</td></tr>`;
+
+      return `
+        <div class="ventaCard">
+          <div class="ventaHeader">
+            <div>
+              <div style="font-weight:1100">${escapeHtml(formatDateTimeFromVenta(v))}</div>
+              <div class="muted">Tipo: ${escapeHtml(v.tipo || "—")}</div>
+            </div>
+            <div class="tag ok">${Number(v.total_kg || 0).toFixed(2)} kg</div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th class="right">Kg</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }).join("");
+
+    detalleComprasWrap.innerHTML = html;
+  }
+
+  async function refreshAnalyticsForClient(){
+    if(!currentClient?.id){
+      clearHistorialUI();
+      clearResumenUI();
+      clearDetalleComprasUI();
+      return;
+    }
+
+    await ensureVentasData();
+    renderHistorial();
+    renderResumenPeriodos();
+    renderDetalleCompras();
+  }
+
+  btnLoadHistorial.addEventListener("click", async ()=>{
+    try{
+      await ensureVentasData();
+      renderHistorial();
+    }catch(e){
+      console.error(e);
+      historialWrap.innerHTML = `<div class="muted" style="padding:12px">${escapeHtml(e.message || "Error cargando historial.")}</div>`;
+    }
+  });
+
+  btnClearHistorial.addEventListener("click", clearHistorialUI);
+
+  btnLoadResumen.addEventListener("click", async ()=>{
+    try{
+      await ensureVentasData();
+      renderResumenPeriodos();
+    }catch(e){
+      console.error(e);
+      resumenWrap.innerHTML = `<div class="muted" style="padding:12px">${escapeHtml(e.message || "Error cargando resumen.")}</div>`;
+    }
+  });
+
+  btnClearResumen.addEventListener("click", clearResumenUI);
+
+  resumenPeriodo.addEventListener("change", ()=>{
+    if(ventasClienteCache.length) renderResumenPeriodos();
+  });
+  resumenRango.addEventListener("change", ()=>{
+    if(ventasClienteCache.length) renderResumenPeriodos();
+  });
+
+  btnLoadDetalleCompras.addEventListener("click", async ()=>{
+    try{
+      await ensureVentasData();
+      renderDetalleCompras();
+    }catch(e){
+      console.error(e);
+      detalleComprasWrap.innerHTML = `<div class="muted" style="padding:12px">${escapeHtml(e.message || "Error cargando detalle.")}</div>`;
+    }
+  });
+
+  btnClearDetalleCompras.addEventListener("click", clearDetalleComprasUI);
+
+  // =========================
+  // Inventario + venta
   // =========================
   async function descontarInventarioConRPC(payload, fingerprint){
     const { data, error } = await sb.rpc('procesar_venta_qr', {
@@ -1092,10 +1828,9 @@
     if(!currentClient) throw new Error("Primero selecciona un cliente.");
 
     const tipo = $("tipo").value;
-
     const kgAdmin = $("kgAuto");
     const kgOp = $("kgAutoOp");
-    const kg = toNum( (kgAdmin && role==="admin") ? kgAdmin.value : (kgOp ? kgOp.value : "") );
+    const kg = toNum((kgAdmin && role==="admin") ? kgAdmin.value : (kgOp ? kgOp.value : ""));
     if(!Number.isFinite(kg) || kg <= 0) throw new Error("Total kg inválido.");
 
     const items = (ticketItemsInv || [])
@@ -1128,6 +1863,7 @@
 
     renderStatus();
     await renderClientQR();
+    await refreshAnalyticsForClient();
 
     return { venta_id: data.venta_id, puntosGanados: Number(data.puntos_ganados||0), itemsCount: items.length };
   }
@@ -1160,10 +1896,9 @@
       updateTotalsUI(payload, fingerprint);
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
+      btnVerDetalle.disabled = ticketItemsUi.length === 0;
 
-      $("btnVerDetalle").disabled = ticketItemsUi.length === 0;
-
-      if(role === "admin") logAdmin("1) Descontando inventario…", "muted");
+      if(role === "admin") logAdmin("1) Descontando inventario…", "mutedTxt");
       else showOpToast("ok", "Procesando…", "Aplicando inventario y guardando compra.");
 
       const invRes = await descontarInventarioConRPC(payload, fingerprint);
@@ -1179,7 +1914,7 @@
         return;
       }
 
-      if(role === "admin") logAdmin("2) Guardando venta del cliente…", "muted");
+      if(role === "admin") logAdmin("2) Guardando venta del cliente…", "mutedTxt");
 
       const saveRes = await guardarVentaClienteDesdeQR(decodedText, fingerprint);
 
@@ -1205,97 +1940,13 @@
   }
 
   // =========================
-  // Scanner
-  // =========================
-  async function onScanSuccess(decodedText){ await handleDecoded(decodedText); }
-
-  async function refreshCameras(){
-    cameras = await Html5Qrcode.getCameras();
-    if(!Array.isArray(cameras)) cameras = [];
-    $("switchCam").style.display = (cameras.length >= 2) ? "block" : "none";
-    const idxBack = cameras.findIndex(c => /back|rear|environment|trasera/i.test(c.label || ""));
-    if(idxBack >= 0) camIndex = idxBack;
-  }
-
-  async function startWithCurrentCamera(){
-    if(!scanner) scanner = new Html5Qrcode("reader");
-    if(!cameras.length) await refreshCameras();
-
-    running = true;
-    $("toggle").textContent = "Detener cámara";
-
-    const config = {
-      fps: 15,
-      qrbox: (vw, vh) => {
-        const size = Math.min(vw, vh) * 0.78;
-        return { width: Math.floor(size), height: Math.floor(size) };
-      },
-      disableFlip: true,
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-    };
-
-    const constraints = cameras.length
-      ? { deviceId: { exact: cameras[camIndex].id } }
-      : { facingMode: { ideal: "environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } };
-
-    try{
-      await scanner.start(constraints, config, onScanSuccess);
-      if(role === "admin") logAdmin("Cámara lista. Escanea un ticket.", "muted");
-      else showOpToast("ok", "Cámara lista", "Escanea el QR del ticket.");
-    }catch(e){
-      running = false;
-      $("toggle").textContent = "Iniciar cámara";
-      if(role === "admin") logAdmin("No pude iniciar cámara. Revisa permisos y HTTPS.", "badTxt");
-      else showOpToast("bad", "Cámara", "No pude abrir la cámara.");
-    }
-  }
-
-  async function start(){ if(running) return; await refreshCameras(); await startWithCurrentCamera(); }
-  async function stop(){
-    if(!running) return;
-    running = false;
-    $("toggle").textContent = "Iniciar cámara";
-    try{ await scanner.stop(); }catch(e){}
-    if(role === "admin") logAdmin("Cámara detenida.", "muted");
-  }
-  async function switchCamera(){
-    if(cameras.length < 2){
-      if(role === "admin") logAdmin("Solo hay 1 cámara disponible.", "badTxt");
-      else showOpToast("bad", "Cámara", "Solo hay 1 cámara.");
-      return;
-    }
-    camIndex = (camIndex + 1) % cameras.length;
-    if(running){ await stop(); await start(); }
-  }
-
-  filePick.addEventListener('change', async (e)=>{
-    const file = e.target.files?.[0];
-    if(!file) return;
-    try{
-      if(!scanner) scanner = new Html5Qrcode("reader");
-      if(role === "admin") logAdmin("Leyendo foto…", "muted");
-      else showOpToast("ok", "Leyendo foto…", "Procesando QR.");
-      const decodedText = await scanner.scanFile(file, true);
-      await handleDecoded(decodedText);
-    }catch(err){
-      console.error(err);
-      if(role === "admin") logAdmin("No pude leer la foto. QR grande, sin reflejo, más cerca.", "badTxt");
-      else showOpToast("bad", "No se pudo", "Toma la foto más cerca y sin reflejo.");
-    }finally{
-      filePick.value = "";
-    }
-  });
-
-  $("toggle").addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
-  $("switchCam").addEventListener('click', switchCamera);
-
-  // =========================
-  // ✅ COMBO CLIENTES + privacidad teléfono (solo UI)
+  // Combo clientes
   // =========================
   function openCombo(showAll=false){
     comboList.classList.add("open");
     renderComboList(showAll ? "" : ($("nombre").value || ""));
   }
+
   function closeCombo(){ comboList.classList.remove("open"); }
 
   function renderComboList(filterText){
@@ -1344,6 +1995,7 @@
 
         renderStatus();
         await renderClientQR();
+        await refreshAnalyticsForClient();
         setMsg("ok","Cliente cargado ✅");
         closeCombo();
       });
@@ -1372,7 +2024,7 @@
   });
 
   // =========================
-  // Clientes: CRUD + cargar por ?cid=
+  // Clientes CRUD
   // =========================
   async function loadNameDatalist(){
     const { data, error } = await sb
@@ -1411,6 +2063,7 @@
 
       renderStatus();
       await renderClientQR();
+      await refreshAnalyticsForClient();
       setMsg("ok","Cliente encontrado ✅");
       closeCombo();
       return;
@@ -1436,7 +2089,7 @@
 
     renderStatus();
     await renderClientQR();
-
+    await refreshAnalyticsForClient();
     setMsg("ok", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
   }
 
@@ -1466,6 +2119,7 @@
 
     renderStatus();
     await renderClientQR();
+    await refreshAnalyticsForClient();
     setMsg("ok", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
     closeCombo();
@@ -1516,40 +2170,43 @@
 
     renderStatus();
     await renderClientQR();
+    await refreshAnalyticsForClient();
     setMsg("ok", "Cliente cargado desde QR ✅");
     closeCombo();
   }
 
-  // ===== Botones debug (pegado/manual) =====
-  const btnProcesarPegado = $("btnProcesarPegado");
-  const btnLimpiar = $("btnLimpiar");
+  // =========================
+  // Debug ticket
+  // =========================
+  $("btnProcesarPegado").addEventListener("click", async ()=>{
+    const t = $("qrPayload")?.value || "";
+    if(!t.trim()) return showOpToast("bad","Vacío","Pega el JSON del QR primero.");
+    await handleDecoded(t);
+  });
 
-  if(btnProcesarPegado){
-    btnProcesarPegado.addEventListener("click", async ()=>{
-      const t = $("qrPayload")?.value || "";
-      if(!t.trim()) return showOpToast("bad","Vacío","Pega el JSON del QR primero.");
-      await handleDecoded(t);
-    });
-  }
-  if(btnLimpiar){
-    btnLimpiar.addEventListener("click", ()=>{
-      if($("qrPayload")) $("qrPayload").value = "";
-      ticketItemsUi = [];
-      ticketItemsInv = [];
-      totalKgEl.textContent = "0.00";
-      if(countLinesEl) countLinesEl.textContent = "0";
-      if(fpShortEl) fpShortEl.textContent = "—";
-      btnVerDetalle.disabled = true;
-      const kgAdmin = $("kgAuto"); if(kgAdmin) kgAdmin.value = "";
-      const kgOp = $("kgAutoOp"); if(kgOp) kgOp.value = "";
-      showOpToast("ok","Listo","Limpio ✅");
-    });
-  }
+  $("btnLimpiar").addEventListener("click", ()=>{
+    if($("qrPayload")) $("qrPayload").value = "";
+    ticketItemsUi = [];
+    ticketItemsInv = [];
+    totalKgEl.textContent = "0.00";
+    if(countLinesEl) countLinesEl.textContent = "0";
+    if(fpShortEl) fpShortEl.textContent = "—";
+    btnVerDetalle.disabled = true;
+    const kgAdmin = $("kgAuto"); if(kgAdmin) kgAdmin.value = "";
+    const kgOp = $("kgAutoOp"); if(kgOp) kgOp.value = "";
+    showOpToast("ok","Listo","Limpio ✅");
+  });
 
-  // init
+  // =========================
+  // Init
+  // =========================
   (async function init(){
     applyRoleUI();
     renderStatus();
+    clearHistorialUI();
+    clearResumenUI();
+    clearDetalleComprasUI();
+
     await loadNameDatalist();
     await cargarClientePorQuery();
     await refreshCameras();
@@ -1557,7 +2214,7 @@
     btnVerDetalle.disabled = true;
 
     if(role === "admin"){
-      logAdmin("Listo. Selecciona cliente y escanea QR del ticket.", "muted");
+      logAdmin("Listo. Selecciona cliente y escanea QR del ticket.", "mutedTxt");
     }else{
       showOpToast("ok", "Listo", "Selecciona cliente y escanea el QR del ticket.");
       $("tel").type = "text";
@@ -1565,6 +2222,5 @@
     }
   })();
 </script>
-
 </body>
 </html>
