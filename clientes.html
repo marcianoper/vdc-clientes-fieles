@@ -288,31 +288,6 @@
     .histHeader .row{max-width:620px}
     .histBox{display:none}
 
-    .tag{
-      display:inline-block;
-      padding:4px 8px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:900;
-      border:1px solid var(--line);
-      background:var(--paper2);
-    }
-    .tag.ok{
-      background:rgba(34,197,94,.10);
-      border-color:rgba(34,197,94,.25);
-      color:#166534;
-    }
-    .tag.warn{
-      background:rgba(245,158,11,.12);
-      border-color:rgba(245,158,11,.25);
-      color:#92400e;
-    }
-    .tag.bad{
-      background:rgba(239,68,68,.10);
-      border-color:rgba(239,68,68,.22);
-      color:#991b1b;
-    }
-
     .printDoc{
       display:grid;
       gap:16px;
@@ -330,7 +305,7 @@
   <div class="headRow">
     <div>
       <b>VDC360° — Clientes</b>
-      <div class="muted" style="color:rgba(255,255,255,.85)">Guardar compras + análisis</div>
+      <div class="muted" style="color:rgba(255,255,255,.85)">Guardar compras + documento general</div>
     </div>
     <div class="row" style="max-width:520px;align-items:center">
       <span class="chip" id="roleChip">Modo: —</span>
@@ -537,51 +512,66 @@
     </div>
   </section>
 
-  <!-- 4) Documento de análisis -->
+  <!-- 4) Documento general de compras -->
   <section class="card">
     <div class="titleRow">
       <div>
-        <h3>4) Documento de análisis de clientes</h3>
-        <div class="sub">Genera un documento con clientes frecuentes, constantes, dormidos y de una sola compra.</div>
+        <h3>4) Documento de todas las compras</h3>
+        <div class="sub">Muestra todas las compras registradas de todos los clientes con fecha exacta.</div>
       </div>
-      <div class="row" style="max-width:620px">
-        <button id="btnGenerarAnalisis" type="button">Generar documento</button>
-        <button id="btnVerAnalisis" class="ghost" type="button">Ver en pantalla</button>
-        <button id="btnImprimirAnalisis" class="secondary" type="button">Imprimir / Guardar PDF</button>
+      <div class="row" style="max-width:720px">
+        <button id="btnGenerarDocCompras" type="button">Generar documento</button>
+        <button id="btnVerDocCompras" class="ghost" type="button">Ver en pantalla</button>
+        <button id="btnImprimirDocCompras" class="secondary" type="button">Imprimir / Guardar PDF</button>
       </div>
     </div>
 
     <div class="grid" style="margin-top:10px">
       <div>
-        <label>Días para considerar cliente dormido</label>
-        <input id="diasDormido" type="number" min="7" step="1" value="21" />
+        <label>Filtrar por cliente</label>
+        <input id="docFiltroCliente" placeholder="Ej. Don Chuy o teléfono..." />
       </div>
       <div>
-        <label>Días para considerar cliente constante</label>
-        <input id="diasConstante" type="number" min="7" step="1" value="14" />
+        <label>Filtrar desde fecha</label>
+        <input id="docFechaDesde" type="date" />
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:10px">
+      <div>
+        <label>Filtrar hasta fecha</label>
+        <input id="docFechaHasta" type="date" />
+      </div>
+      <div>
+        <label>Tipo</label>
+        <select id="docTipoVenta">
+          <option value="">Todos</option>
+          <option value="mostrador">Mostrador</option>
+          <option value="credito">Crédito</option>
+        </select>
       </div>
     </div>
 
     <div class="miniGrid" style="margin-top:12px">
       <div class="miniCard">
-        <b>Total clientes analizados</b>
-        <div class="val" id="anTotalClientes">0</div>
+        <b>Total compras</b>
+        <div class="val" id="docTotalCompras">0</div>
       </div>
       <div class="miniCard">
-        <b>Clientes constantes</b>
-        <div class="val" id="anConstantes">0</div>
+        <b>Total kg</b>
+        <div class="val" id="docTotalKg">0.00</div>
       </div>
       <div class="miniCard">
-        <b>Clientes dormidos</b>
-        <div class="val" id="anDormidos">0</div>
+        <b>Clientes distintos</b>
+        <div class="val" id="docTotalClientes">0</div>
       </div>
       <div class="miniCard">
-        <b>Solo una compra</b>
-        <div class="val" id="anUnaVez">0</div>
+        <b>Promedio por compra</b>
+        <div class="val" id="docPromedioKg">0.00</div>
       </div>
     </div>
 
-    <div id="analisisPreview" class="histWrap" style="display:none;margin-top:12px;padding:12px"></div>
+    <div id="docComprasPreview" class="histWrap" style="display:none;margin-top:12px;padding:12px"></div>
   </section>
 
   <!-- 5) Log (admin) -->
@@ -632,6 +622,7 @@
   // =========================
   const T_CLIENTES = "clientes";
   const T_VENTAS = "ventas";
+  const T_VENTAS_ITEMS = "ventas_items";
   const VIEW_HIST = "v_cliente_compras_resumen";
 
   // =========================
@@ -667,17 +658,20 @@
   const opToast = $("opToast");
   const out = $("out");
 
-  const btnGenerarAnalisis = $("btnGenerarAnalisis");
-  const btnVerAnalisis = $("btnVerAnalisis");
-  const btnImprimirAnalisis = $("btnImprimirAnalisis");
-  const diasDormido = $("diasDormido");
-  const diasConstante = $("diasConstante");
-  const analisisPreview = $("analisisPreview");
+  const btnGenerarDocCompras = $("btnGenerarDocCompras");
+  const btnVerDocCompras = $("btnVerDocCompras");
+  const btnImprimirDocCompras = $("btnImprimirDocCompras");
 
-  const anTotalClientes = $("anTotalClientes");
-  const anConstantes = $("anConstantes");
-  const anDormidos = $("anDormidos");
-  const anUnaVez = $("anUnaVez");
+  const docFiltroCliente = $("docFiltroCliente");
+  const docFechaDesde = $("docFechaDesde");
+  const docFechaHasta = $("docFechaHasta");
+  const docTipoVenta = $("docTipoVenta");
+
+  const docTotalCompras = $("docTotalCompras");
+  const docTotalKg = $("docTotalKg");
+  const docTotalClientes = $("docTotalClientes");
+  const docPromedioKg = $("docPromedioKg");
+  const docComprasPreview = $("docComprasPreview");
 
   // =========================
   // Estado
@@ -786,40 +780,6 @@
     }catch{
       return String(d);
     }
-  }
-
-  function daysBetweenDates(a, b){
-    if(!a || !b) return null;
-    const da = new Date(a + "T00:00:00");
-    const db = new Date(b + "T00:00:00");
-    const diff = db - da;
-    return Math.round(diff / 86400000);
-  }
-
-  function todayYmd(){
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-
-  function avgGapDays(fechas){
-    if(!Array.isArray(fechas) || fechas.length < 2) return null;
-    const sorted = [...fechas].sort();
-    const diffs = [];
-    for(let i=0;i<sorted.length-1;i++){
-      const d = daysBetweenDates(sorted[i], sorted[i+1]);
-      if(Number.isFinite(d)) diffs.push(d);
-    }
-    if(!diffs.length) return null;
-    return diffs.reduce((a,b)=>a+b,0) / diffs.length;
-  }
-
-  function topN(rows, n, key){
-    return [...rows]
-      .sort((a,b)=> Number(b[key] || 0) - Number(a[key] || 0))
-      .slice(0, n);
   }
 
   // =========================
@@ -1001,262 +961,210 @@
   $("histSearch")?.addEventListener("input", applyHistFilter);
 
   // =========================
-  // Análisis global de clientes
+  // Documento general de compras
   // =========================
-  async function cargarVentasParaAnalisis(){
+  async function cargarTodasLasComprasDocumento(){
     const { data, error } = await sb
       .from(T_VENTAS)
       .select("id, fecha, tipo, cliente_id, total_kg")
       .order("fecha", { ascending:false })
-      .limit(10000);
+      .limit(20000);
 
     if(error) throw new Error("No pude leer ventas: " + error.message);
     return data || [];
   }
 
-  function agruparVentasPorCliente(ventas){
+  async function cargarItemsComprasDocumento(ids){
+    if(!ids?.length) return [];
+
+    const { data, error } = await sb
+      .from(T_VENTAS_ITEMS)
+      .select("venta_id, producto, kg, created_at")
+      .in("venta_id", ids)
+      .limit(50000);
+
+    if(error) throw new Error("No pude leer ventas_items: " + error.message);
+    return data || [];
+  }
+
+  function agruparItemsPorVenta(items){
     const map = new Map();
 
-    for(const v of (ventas || [])){
-      const cid = String(v.cliente_id || "");
-      if(!cid) continue;
+    for(const it of (items || [])){
+      const key = String(it.venta_id || "");
+      if(!key) continue;
 
-      if(!map.has(cid)){
-        const c = clientsCache.find(x => String(x.id) === cid);
-        map.set(cid, {
-          cliente_id: cid,
-          nombre: c?.nombre || "Cliente sin nombre",
-          telefono: c?.telefono || "",
-          visitas: 0,
-          kg_total: 0,
-          fechas: [],
-          primera_compra: null,
-          ultima_compra: null,
-          tipos: new Set()
-        });
+      if(!map.has(key)){
+        map.set(key, []);
       }
 
-      const obj = map.get(cid);
-      obj.visitas += 1;
-      obj.kg_total += Number(v.total_kg || 0);
-      obj.fechas.push(String(v.fecha));
-      obj.tipos.add(String(v.tipo || ""));
-
-      if(!obj.primera_compra || String(v.fecha) < obj.primera_compra){
-        obj.primera_compra = String(v.fecha);
-      }
-      if(!obj.ultima_compra || String(v.fecha) > obj.ultima_compra){
-        obj.ultima_compra = String(v.fecha);
-      }
+      map.get(key).push({
+        producto: String(it.producto || "—"),
+        kg: Number(it.kg || 0),
+        created_at: it.created_at || null
+      });
     }
 
-    const hoy = todayYmd();
-    const dormidoDias = Number(diasDormido.value || 21);
-    const constanteDias = Number(diasConstante.value || 14);
+    return map;
+  }
 
-    const rows = Array.from(map.values()).map(r => {
-      r.fechas = [...new Set(r.fechas)].sort();
-      r.promedio_gap = avgGapDays(r.fechas);
-      r.dias_desde_ultima = daysBetweenDates(r.ultima_compra, hoy);
-      r.tipos = Array.from(r.tipos).filter(Boolean);
+  function resumirProductos(items){
+    if(!items?.length) return "—";
 
-      r.clasificacion = "ocasional";
+    const grouped = new Map();
 
-      if(r.visitas === 1){
-        r.clasificacion = (r.dias_desde_ultima !== null && r.dias_desde_ultima > dormidoDias)
-          ? "una_vez_y_se_fue"
-          : "nuevo";
-      }else if(
-        r.visitas >= 4 &&
-        r.promedio_gap !== null &&
-        r.promedio_gap <= constanteDias &&
-        r.dias_desde_ultima !== null &&
-        r.dias_desde_ultima <= dormidoDias
-      ){
-        r.clasificacion = "constante";
-      }else if(
-        r.visitas >= 2 &&
-        r.dias_desde_ultima !== null &&
-        r.dias_desde_ultima > dormidoDias
-      ){
-        r.clasificacion = "dormido";
-      }else if(
-        r.visitas >= 2 &&
-        r.dias_desde_ultima !== null &&
-        r.dias_desde_ultima <= dormidoDias
-      ){
-        r.clasificacion = "activo";
-      }
+    for(const it of items){
+      const name = String(it.producto || "—");
+      const kg = Number(it.kg || 0);
+      grouped.set(name, (grouped.get(name) || 0) + kg);
+    }
 
-      return r;
+    return Array.from(grouped.entries())
+      .sort((a,b)=> b[1] - a[1])
+      .map(([prod, kg]) => `${prod} (${kg.toFixed(2)} kg)`)
+      .join(", ");
+  }
+
+  function getApproxTimeFromItems(items){
+    if(!items?.length) return "—";
+    const valid = items
+      .map(x => x.created_at)
+      .filter(Boolean)
+      .sort();
+
+    if(!valid.length) return "—";
+    return fmtDate(valid[0]);
+  }
+
+  function aplicarFiltrosDocumentoCompras(rows){
+    const q = normalizeLine(docFiltroCliente?.value || "").toLowerCase();
+    const desde = docFechaDesde?.value || "";
+    const hasta = docFechaHasta?.value || "";
+    const tipo = docTipoVenta?.value || "";
+
+    return (rows || []).filter(r => {
+      const nombre = String(r.nombre || "").toLowerCase();
+      const tel = String(r.telefono || "").toLowerCase();
+      const fecha = String(r.fecha || "");
+      const tv = String(r.tipo || "");
+
+      if(q && !(nombre.includes(q) || tel.includes(q))) return false;
+      if(desde && fecha < desde) return false;
+      if(hasta && fecha > hasta) return false;
+      if(tipo && tv !== tipo) return false;
+
+      return true;
     });
-
-    return rows;
   }
 
-  function renderMiniListado(rows, mode="kg"){
-    if(!rows.length) return `<div class="muted">Sin datos.</div>`;
+  function construirDocumentoComprasHtml(rows){
+    const filtradas = aplicarFiltrosDocumentoCompras(rows);
 
-    return `
-      <table>
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th class="right">${mode === "kg" ? "Kg" : "Visitas"}</th>
-            <th>Última compra</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(r => `
-            <tr>
-              <td>
-                <b>${escapeHtml(r.nombre)}</b>
-                <div class="muted">${escapeHtml(r.telefono || "")}</div>
-              </td>
-              <td class="right">
-                ${mode === "kg"
-                  ? Number(r.kg_total || 0).toFixed(2)
-                  : Number(r.visitas || 0)}
-              </td>
-              <td>${escapeHtml(formatDateOnly(r.ultima_compra || ""))}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    `;
-  }
+    const totalCompras = filtradas.length;
+    const totalKg = filtradas.reduce((s,r)=> s + Number(r.total_kg || 0), 0);
+    const clientesDistintos = new Set(filtradas.map(r => String(r.cliente_id || ""))).size;
+    const promedio = totalCompras ? (totalKg / totalCompras) : 0;
 
-  function construirHtmlAnalisis(rows){
-    const constantes = rows.filter(r => r.clasificacion === "constante");
-    const dormidos = rows.filter(r => r.clasificacion === "dormido");
-    const unaVez = rows.filter(r => r.clasificacion === "una_vez_y_se_fue");
-    const activos = rows.filter(r => r.clasificacion === "activo");
-    const nuevos = rows.filter(r => r.clasificacion === "nuevo");
+    docTotalCompras.textContent = String(totalCompras);
+    docTotalKg.textContent = totalKg.toFixed(2);
+    docTotalClientes.textContent = String(clientesDistintos);
+    docPromedioKg.textContent = promedio.toFixed(2);
 
-    const topKg = topN(rows, 10, "kg_total");
-    const topVisitas = topN(rows, 10, "visitas");
-
-    anTotalClientes.textContent = String(rows.length);
-    anConstantes.textContent = String(constantes.length);
-    anDormidos.textContent = String(dormidos.length);
-    anUnaVez.textContent = String(unaVez.length);
+    if(!filtradas.length){
+      return `
+        <div class="printDoc">
+          <h3>Documento general de compras</h3>
+          <div class="muted">No hay compras para los filtros seleccionados.</div>
+        </div>
+      `;
+    }
 
     return `
       <div class="printDoc">
         <div>
-          <h3 style="margin:0">Documento de análisis de clientes</h3>
+          <h3 style="margin:0">Documento general de compras de clientes</h3>
           <div class="muted">Generado: ${escapeHtml(new Date().toLocaleString("es-MX"))}</div>
         </div>
 
         <div class="miniGrid">
           <div class="miniCard">
-            <b>Total clientes analizados</b>
-            <div class="val">${rows.length}</div>
+            <b>Total compras</b>
+            <div class="val">${totalCompras}</div>
           </div>
           <div class="miniCard">
-            <b>Clientes constantes</b>
-            <div class="val">${constantes.length}</div>
+            <b>Total kg</b>
+            <div class="val">${totalKg.toFixed(2)}</div>
           </div>
           <div class="miniCard">
-            <b>Clientes dormidos</b>
-            <div class="val">${dormidos.length}</div>
+            <b>Clientes distintos</b>
+            <div class="val">${clientesDistintos}</div>
           </div>
           <div class="miniCard">
-            <b>Clientes de una sola compra</b>
-            <div class="val">${unaVez.length}</div>
+            <b>Promedio por compra</b>
+            <div class="val">${promedio.toFixed(2)}</div>
           </div>
         </div>
 
-        <div>
-          <h4 style="margin:0 0 8px">1. Clientes que más vinieron</h4>
-          ${renderMiniListado(topVisitas, "visitas")}
-        </div>
-
-        <div>
-          <h4 style="margin:0 0 8px">2. Clientes con más kilos comprados</h4>
-          ${renderMiniListado(topKg, "kg")}
-        </div>
-
-        <div>
-          <h4 style="margin:0 0 8px">3. Clientes constantes</h4>
-          <div class="muted" style="margin-bottom:8px">Son clientes con varias visitas, frecuencia corta y compra reciente.</div>
-          ${renderMiniListado(constantes, "visitas")}
-        </div>
-
-        <div>
-          <h4 style="margin:0 0 8px">4. Clientes activos</h4>
-          <div class="muted" style="margin-bottom:8px">Han regresado recientemente, aunque no siempre con patrón tan fijo.</div>
-          ${renderMiniListado(activos, "visitas")}
-        </div>
-
-        <div>
-          <h4 style="margin:0 0 8px">5. Clientes dormidos</h4>
-          <div class="muted" style="margin-bottom:8px">Compraban, pero ya no han regresado en el tiempo definido.</div>
-          ${renderMiniListado(dormidos, "visitas")}
-        </div>
-
-        <div>
-          <h4 style="margin:0 0 8px">6. Clientes que vinieron una vez y dejaron de venir</h4>
-          <div class="muted" style="margin-bottom:8px">Clientes con una sola compra y sin regreso posterior.</div>
-          ${renderMiniListado(unaVez, "visitas")}
-        </div>
-
-        <div>
-          <h4 style="margin:0 0 8px">7. Clientes nuevos con potencial</h4>
-          <div class="muted" style="margin-bottom:8px">Clientes recientes que todavía no se pueden clasificar como constantes.</div>
-          ${renderMiniListado(nuevos, "visitas")}
-        </div>
-
-        <div>
-          <h4 style="margin:0 0 8px">8. Detalle general por cliente</h4>
-          <table>
-            <thead>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha exacta</th>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Tipo</th>
+              <th class="right">Kg</th>
+              <th>Productos</th>
+              <th>Referencia de captura</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtradas.map(r => `
               <tr>
-                <th>Cliente</th>
-                <th class="right">Visitas</th>
-                <th class="right">Kg</th>
-                <th>Primera compra</th>
-                <th>Última compra</th>
-                <th class="right">Días sin venir</th>
-                <th class="right">Promedio entre compras</th>
-                <th>Clasificación</th>
+                <td><b>${escapeHtml(formatDateOnly(r.fecha))}</b></td>
+                <td>${escapeHtml(r.nombre || "Cliente sin nombre")}</td>
+                <td>${escapeHtml(r.telefono || "—")}</td>
+                <td>${escapeHtml(r.tipo || "—")}</td>
+                <td class="right">${Number(r.total_kg || 0).toFixed(2)}</td>
+                <td>${escapeHtml(r.productos_resumen || "—")}</td>
+                <td>${escapeHtml(r.hora_ref || "—")}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${rows
-                .sort((a,b)=> Number(b.visitas||0) - Number(a.visitas||0))
-                .map(r => `
-                  <tr>
-                    <td>
-                      <b>${escapeHtml(r.nombre)}</b>
-                      <div class="muted">${escapeHtml(r.telefono || "")}</div>
-                    </td>
-                    <td class="right">${Number(r.visitas || 0)}</td>
-                    <td class="right">${Number(r.kg_total || 0).toFixed(2)}</td>
-                    <td>${escapeHtml(formatDateOnly(r.primera_compra || ""))}</td>
-                    <td>${escapeHtml(formatDateOnly(r.ultima_compra || ""))}</td>
-                    <td class="right">${r.dias_desde_ultima ?? "—"}</td>
-                    <td class="right">${r.promedio_gap != null ? Number(r.promedio_gap).toFixed(1) : "—"}</td>
-                    <td>${escapeHtml(r.clasificacion)}</td>
-                  </tr>
-                `).join("")}
-            </tbody>
-          </table>
-        </div>
+            `).join("")}
+          </tbody>
+        </table>
       </div>
     `;
   }
 
-  async function generarAnalisisClientes(){
-    const ventas = await cargarVentasParaAnalisis();
-    const rows = agruparVentasPorCliente(ventas);
-    const html = construirHtmlAnalisis(rows);
-    analisisPreview.innerHTML = html;
-    analisisPreview.style.display = "block";
+  async function generarDocumentoCompras(){
+    const ventas = await cargarTodasLasComprasDocumento();
+    const ids = ventas.map(v => v.id);
+    const items = await cargarItemsComprasDocumento(ids);
+    const itemsMap = agruparItemsPorVenta(items);
+
+    const rows = ventas.map(v => {
+      const cli = clientsCache.find(c => String(c.id) === String(v.cliente_id));
+      const its = itemsMap.get(String(v.id)) || [];
+
+      return {
+        id: v.id,
+        cliente_id: v.cliente_id,
+        nombre: cli?.nombre || "Cliente sin nombre",
+        telefono: cli?.telefono || "",
+        fecha: v.fecha,
+        tipo: v.tipo,
+        total_kg: Number(v.total_kg || 0),
+        productos_resumen: resumirProductos(its),
+        hora_ref: getApproxTimeFromItems(its)
+      };
+    });
+
+    const html = construirDocumentoComprasHtml(rows);
+    docComprasPreview.innerHTML = html;
+    docComprasPreview.style.display = "block";
     return html;
   }
 
-  function abrirDocumentoImprimible(htmlInterno){
+  function abrirDocumentoComprasImprimible(htmlInterno){
     const win = window.open("", "_blank");
     if(!win) return null;
 
@@ -1265,7 +1173,7 @@
       <html lang="es">
       <head>
         <meta charset="utf-8"/>
-        <title>Documento análisis de clientes</title>
+        <title>Documento general de compras</title>
         <style>
           body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#111}
           h3,h4{margin:0 0 10px}
@@ -1280,8 +1188,6 @@
           .right{text-align:right}
           @media print{
             body{margin:10mm}
-            .miniCard{break-inside:avoid}
-            table{break-inside:auto}
             tr{break-inside:avoid}
           }
         </style>
@@ -1295,35 +1201,56 @@
     return win;
   }
 
-  btnGenerarAnalisis?.addEventListener("click", async ()=>{
+  btnGenerarDocCompras?.addEventListener("click", async ()=>{
     try{
-      await generarAnalisisClientes();
-      showOpToast("ok", "Documento listo", "Se generó el análisis de clientes.");
+      await generarDocumentoCompras();
+      showOpToast("ok", "Documento listo", "Se generó el documento general de compras.");
     }catch(e){
       console.error(e);
       showOpToast("bad", "Error", e.message || "No se pudo generar el documento.");
     }
   });
 
-  btnVerAnalisis?.addEventListener("click", async ()=>{
+  btnVerDocCompras?.addEventListener("click", async ()=>{
     try{
-      await generarAnalisisClientes();
-      analisisPreview.scrollIntoView({ behavior:"smooth", block:"start" });
+      await generarDocumentoCompras();
+      docComprasPreview.scrollIntoView({ behavior:"smooth", block:"start" });
     }catch(e){
       console.error(e);
       showOpToast("bad", "Error", e.message || "No se pudo generar el documento.");
     }
   });
 
-  btnImprimirAnalisis?.addEventListener("click", async ()=>{
+  btnImprimirDocCompras?.addEventListener("click", async ()=>{
     try{
-      const html = await generarAnalisisClientes();
-      const win = abrirDocumentoImprimible(html);
+      const html = await generarDocumentoCompras();
+      const win = abrirDocumentoComprasImprimible(html);
       if(win) win.print();
     }catch(e){
       console.error(e);
       showOpToast("bad", "Error", e.message || "No se pudo imprimir el documento.");
     }
+  });
+
+  [docFiltroCliente, docFechaDesde, docFechaHasta, docTipoVenta].forEach(el=>{
+    el?.addEventListener("input", async ()=>{
+      if(docComprasPreview.style.display === "block"){
+        try{
+          await generarDocumentoCompras();
+        }catch(e){
+          console.error(e);
+        }
+      }
+    });
+    el?.addEventListener("change", async ()=>{
+      if(docComprasPreview.style.display === "block"){
+        try{
+          await generarDocumentoCompras();
+        }catch(e){
+          console.error(e);
+        }
+      }
+    });
   });
 
   // =========================
@@ -1507,6 +1434,9 @@
     }
   }
 
+  // =========================
+  // Scanner
+  // =========================
   async function onScanSuccess(decodedText){
     await handleDecoded(decodedText);
   }
@@ -1565,7 +1495,7 @@
     }
   }
 
-  filePick.addEventListener('change', async (e)=>{
+  filePick.addEventListener("change", async (e)=>{
     const file = e.target.files?.[0];
     if(!file) return;
     try{
@@ -1580,15 +1510,15 @@
     }
   });
 
-  toggleBtn.addEventListener('click', async ()=>{
+  toggleBtn.addEventListener("click", async ()=>{
     if(!running) await start();
     else await stop();
   });
 
-  switchBtn.addEventListener('click', switchCamera);
+  switchBtn.addEventListener("click", switchCamera);
 
   // =========================
-  // Clientes: datalist + CRUD + cargar por ?cid=
+  // Clientes: datalist + CRUD + ?cid
   // =========================
   async function loadNameDatalist(){
     const dl = $("nombreList");
@@ -1604,8 +1534,8 @@
     }
 
     clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
-
     dl.innerHTML = "";
+
     for(const c of clientsCache){
       const opt = document.createElement("option");
       opt.value = c.nombre;
