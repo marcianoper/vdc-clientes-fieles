@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>VDC360° — Clientes </title>
+  <title>VDC360° — Clientes</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -31,9 +31,10 @@
     body{
       margin:0;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      background: radial-gradient(1200px 520px at 10% -10%, rgba(34,197,94,.12), transparent 60%),
-                  radial-gradient(1000px 520px at 90% 10%, rgba(245,158,11,.10), transparent 60%),
-                  var(--bg);
+      background:
+        radial-gradient(1200px 520px at 10% -10%, rgba(34,197,94,.12), transparent 60%),
+        radial-gradient(1000px 520px at 90% 10%, rgba(245,158,11,.10), transparent 60%),
+        var(--bg);
       color:var(--ink);
     }
 
@@ -44,16 +45,32 @@
       border-bottom:1px solid rgba(255,255,255,.18);
       position:sticky; top:0; z-index:5;
     }
-    .headRow{max-width:1040px;margin:0 auto;display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .headRow{
+      max-width:1040px;
+      margin:0 auto;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
     header b{font-weight:1000}
     header .chip{
       background:rgba(255,255,255,.16);
       border:1px solid rgba(255,255,255,.22);
-      padding:6px 10px;border-radius:999px;
-      font-weight:900;font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:12px;
     }
 
-    .wrap{max-width:1040px;margin:0 auto;padding:14px 16px;display:grid;gap:12px}
+    .wrap{
+      max-width:1040px;
+      margin:0 auto;
+      padding:14px 16px;
+      display:grid;
+      gap:12px;
+    }
 
     .card{
       background:var(--paper);
@@ -63,8 +80,14 @@
       box-shadow:var(--shadow);
     }
 
-    .titleRow{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
-    h3{margin:0}
+    .titleRow{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    h3,h4{margin:0}
     .sub{color:var(--muted);font-size:12px;margin-top:4px}
 
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -82,7 +105,10 @@
       outline:none;
     }
     textarea{min-height:110px;resize:vertical}
-    input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(34,197,94,.14);border-color:rgba(34,197,94,.55)}
+    input:focus,select:focus,textarea:focus{
+      box-shadow:0 0 0 4px rgba(34,197,94,.14);
+      border-color:rgba(34,197,94,.55);
+    }
 
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .row > *{flex:1}
@@ -106,8 +132,15 @@
       border:1px solid var(--line);
       box-shadow:none;
     }
-    button.warn{background:var(--warn);color:#1f1300;box-shadow:none}
-    button:disabled{opacity:.5;cursor:not-allowed}
+    button.warn{
+      background:var(--warn);
+      color:#1f1300;
+      box-shadow:none;
+    }
+    button:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+    }
 
     .muted{color:var(--muted);font-size:12px}
     .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -123,7 +156,8 @@
     }
 
     #qrClienteBox{
-      display:grid;place-items:center;
+      display:grid;
+      place-items:center;
       border:1px dashed #cbd5e1;
       border-radius:16px;
       min-height:240px;
@@ -131,8 +165,19 @@
       padding:12px;
       background:linear-gradient(180deg, rgba(34,197,94,.06), transparent);
     }
-    #qrClienteBox img{width:220px;height:220px;border-radius:12px;background:#fff}
-    code{background:rgba(2,6,23,.06);padding:2px 6px;border-radius:10px;border:1px solid rgba(2,6,23,.08)}
+    #qrClienteBox img{
+      width:220px;
+      height:220px;
+      border-radius:12px;
+      background:#fff;
+    }
+
+    code{
+      background:rgba(2,6,23,.06);
+      padding:2px 6px;
+      border-radius:10px;
+      border:1px solid rgba(2,6,23,.08);
+    }
 
     .totals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
     .bigTotal{
@@ -145,19 +190,37 @@
     .bigTotal .t1{opacity:.85;font-weight:1000}
     .bigTotal .t2{font-size:44px;line-height:1;margin-top:8px;font-weight:1100;color:var(--brand)}
     .bigTotal .t3{opacity:.85;font-weight:1000;margin-top:6px}
+
     .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width:720px){ .miniGrid{grid-template-columns:1fr;} }
+    @media (max-width:720px){ .miniGrid{grid-template-columns:1fr; } }
     .miniCard{
       background:var(--paper2);
       border:1px solid var(--line);
       border-radius:16px;
       padding:12px;
     }
-    .miniCard b{display:block;font-size:12px;color:var(--muted)}
-    .miniCard .val{font-size:18px;font-weight:1100;margin-top:6px}
+    .miniCard b{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .miniCard .val{
+      font-size:18px;
+      font-weight:1100;
+      margin-top:6px;
+    }
 
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+    }
+    th,td{
+      border:1px solid var(--line);
+      padding:8px;
+      text-align:left;
+      vertical-align:top;
+    }
     th{background:var(--paper2)}
     .right{text-align:right}
 
@@ -204,15 +267,61 @@
     .modal h4{margin:0 0 6px}
     .modal .sub{margin:0 0 10px}
     .seg{
-      display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
     }
-    .seg button{flex:1; min-width:140px}
+    .seg button{
+      flex:1;
+      min-width:140px;
+    }
 
-    /* Historial */
     .histWrap{margin-top:10px}
-    .histHeader{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .histHeader .row{max-width:520px}
+    .histHeader{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .histHeader .row{max-width:620px}
     .histBox{display:none}
+
+    .tag{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+      border:1px solid var(--line);
+      background:var(--paper2);
+    }
+    .tag.ok{
+      background:rgba(34,197,94,.10);
+      border-color:rgba(34,197,94,.25);
+      color:#166534;
+    }
+    .tag.warn{
+      background:rgba(245,158,11,.12);
+      border-color:rgba(245,158,11,.25);
+      color:#92400e;
+    }
+    .tag.bad{
+      background:rgba(239,68,68,.10);
+      border-color:rgba(239,68,68,.22);
+      color:#991b1b;
+    }
+
+    .printDoc{
+      display:grid;
+      gap:16px;
+    }
+
+    .log{
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
   </style>
 </head>
 
@@ -220,8 +329,8 @@
 <header>
   <div class="headRow">
     <div>
-      <b>VDC360° — Clientes </b>
-      <div class="muted" style="color:rgba(255,255,255,.85)">Guardar Compras </div>
+      <b>VDC360° — Clientes</b>
+      <div class="muted" style="color:rgba(255,255,255,.85)">Guardar compras + análisis</div>
     </div>
     <div class="row" style="max-width:520px;align-items:center">
       <span class="chip" id="roleChip">Modo: —</span>
@@ -378,11 +487,10 @@
     </div>
 
     <div id="detalleBox" class="adminOnly muted" style="margin-top:10px">—</div>
-
     <div id="opToast" class="toast" aria-live="polite"></div>
   </section>
 
-  <!-- ✅ 3) Historial (nuevo) -->
+  <!-- 3) Historial -->
   <section class="card">
     <div class="histHeader">
       <div>
@@ -429,7 +537,54 @@
     </div>
   </section>
 
-  <!-- 4) Log (admin) -->
+  <!-- 4) Documento de análisis -->
+  <section class="card">
+    <div class="titleRow">
+      <div>
+        <h3>4) Documento de análisis de clientes</h3>
+        <div class="sub">Genera un documento con clientes frecuentes, constantes, dormidos y de una sola compra.</div>
+      </div>
+      <div class="row" style="max-width:620px">
+        <button id="btnGenerarAnalisis" type="button">Generar documento</button>
+        <button id="btnVerAnalisis" class="ghost" type="button">Ver en pantalla</button>
+        <button id="btnImprimirAnalisis" class="secondary" type="button">Imprimir / Guardar PDF</button>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:10px">
+      <div>
+        <label>Días para considerar cliente dormido</label>
+        <input id="diasDormido" type="number" min="7" step="1" value="21" />
+      </div>
+      <div>
+        <label>Días para considerar cliente constante</label>
+        <input id="diasConstante" type="number" min="7" step="1" value="14" />
+      </div>
+    </div>
+
+    <div class="miniGrid" style="margin-top:12px">
+      <div class="miniCard">
+        <b>Total clientes analizados</b>
+        <div class="val" id="anTotalClientes">0</div>
+      </div>
+      <div class="miniCard">
+        <b>Clientes constantes</b>
+        <div class="val" id="anConstantes">0</div>
+      </div>
+      <div class="miniCard">
+        <b>Clientes dormidos</b>
+        <div class="val" id="anDormidos">0</div>
+      </div>
+      <div class="miniCard">
+        <b>Solo una compra</b>
+        <div class="val" id="anUnaVez">0</div>
+      </div>
+    </div>
+
+    <div id="analisisPreview" class="histWrap" style="display:none;margin-top:12px;padding:12px"></div>
+  </section>
+
+  <!-- 5) Log (admin) -->
   <section class="card adminOnly">
     <div class="muted">Resultado (técnico):</div>
     <div id="out" class="log">Listo.</div>
@@ -466,20 +621,21 @@
 
 <script>
   // =========================
-  // === Credenciales ===
+  // Credenciales
   // =========================
   const SUPABASE_URL = "https://eqynjddcosvdqjzztznn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxeW5qZGRjb3N2ZHFqenp0em5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzYwMzIsImV4cCI6MjA3MTcxMjAzMn0.Q51wsGelUvxRfqsMYRY5JduCGyZ7s6AzOhqsRf3kOhk";
   const sb = window.sb || (window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
   // =========================
-  // === Tablas ===
+  // Tablas / views
   // =========================
   const T_CLIENTES = "clientes";
-  const VIEW_HIST = "v_cliente_compras_resumen"; // ✅ nueva view
+  const T_VENTAS = "ventas";
+  const VIEW_HIST = "v_cliente_compras_resumen";
 
   // =========================
-  // === Roles UI ===
+  // Roles UI
   // =========================
   const ADMIN_PIN = "1234";
   const ROLE_KEY = "vdc_role_ui";
@@ -511,8 +667,20 @@
   const opToast = $("opToast");
   const out = $("out");
 
+  const btnGenerarAnalisis = $("btnGenerarAnalisis");
+  const btnVerAnalisis = $("btnVerAnalisis");
+  const btnImprimirAnalisis = $("btnImprimirAnalisis");
+  const diasDormido = $("diasDormido");
+  const diasConstante = $("diasConstante");
+  const analisisPreview = $("analisisPreview");
+
+  const anTotalClientes = $("anTotalClientes");
+  const anConstantes = $("anConstantes");
+  const anDormidos = $("anDormidos");
+  const anUnaVez = $("anUnaVez");
+
   // =========================
-  // === Estado ===
+  // Estado
   // =========================
   let currentClient = null;
   let clientsCache = [];
@@ -529,31 +697,47 @@
   let ticketItemsInv = [];
   let lastClientQrUrl = "";
 
-  // Historial cache
   let histRows = [];
 
   // =========================
   // Utils
   // =========================
-  function normalizeLine(s){ return String(s||"").replace(/\s+/g," ").trim(); }
+  function normalizeLine(s){
+    return String(s||"").replace(/\s+/g," ").trim();
+  }
+
   function toNum(s){
     const v = Number(String(s ?? "").replace(",", ".").trim());
     return Number.isFinite(v) ? v : NaN;
   }
-  function cleanPhone(s){ return String(s||"").replace(/\D/g,"").slice(-10); }
+
+  function cleanPhone(s){
+    return String(s||"").replace(/\D/g,"").slice(-10);
+  }
+
   function escapeHtml(s){
     return String(s||"")
-      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-      .replaceAll('"',"quot;").replaceAll("'","&#039;");
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
   }
-  function logAdmin(txt){ if(out) out.textContent = txt; }
+
+  function logAdmin(txt){
+    if(out) out.textContent = txt;
+  }
+
   function showOpToast(type, title, details){
     opToast.style.display = "block";
     opToast.className = "toast " + (type === "ok" ? "ok" : "bad");
-    opToast.innerHTML = `<div class="t">${title}</div><div class="d">${details}</div>`;
+    opToast.innerHTML = `<div class="t">${escapeHtml(title)}</div><div class="d">${escapeHtml(details)}</div>`;
     setTimeout(()=>{ opToast.style.display = "none"; }, 4500);
   }
-  function setMsg(_, text){ $("msg").textContent = text; }
+
+  function setMsg(_, text){
+    $("msg").textContent = text;
+  }
 
   function renderStatus(){
     $("stCliente").textContent = "Cliente: " + (currentClient ? (currentClient.nombre || currentClient.telefono) : "—");
@@ -574,25 +758,125 @@
     });
   }
 
+  function formatDateOnly(dateStr){
+    if(!dateStr) return "—";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr))) {
+      const [y,m,d] = String(dateStr).split("-");
+      return `${d}/${m}/${y}`;
+    }
+    try{
+      const dt = new Date(dateStr);
+      return dt.toLocaleDateString("es-MX");
+    }catch{
+      return String(dateStr);
+    }
+  }
+
+  function fmtDate(d){
+    if(!d) return "—";
+    try{
+      const dt = new Date(d);
+      return dt.toLocaleString("es-MX", {
+        year:"numeric",
+        month:"2-digit",
+        day:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      });
+    }catch{
+      return String(d);
+    }
+  }
+
+  function daysBetweenDates(a, b){
+    if(!a || !b) return null;
+    const da = new Date(a + "T00:00:00");
+    const db = new Date(b + "T00:00:00");
+    const diff = db - da;
+    return Math.round(diff / 86400000);
+  }
+
+  function todayYmd(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function avgGapDays(fechas){
+    if(!Array.isArray(fechas) || fechas.length < 2) return null;
+    const sorted = [...fechas].sort();
+    const diffs = [];
+    for(let i=0;i<sorted.length-1;i++){
+      const d = daysBetweenDates(sorted[i], sorted[i+1]);
+      if(Number.isFinite(d)) diffs.push(d);
+    }
+    if(!diffs.length) return null;
+    return diffs.reduce((a,b)=>a+b,0) / diffs.length;
+  }
+
+  function topN(rows, n, key){
+    return [...rows]
+      .sort((a,b)=> Number(b[key] || 0) - Number(a[key] || 0))
+      .slice(0, n);
+  }
+
+  // =========================
   // Modal
-  function openModal(){ modalBg.style.display = "grid"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
-  function closeModal(){ modalBg.style.display = "none"; pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; }
-  btnCambiarUsuario.addEventListener("click", ()=>{ if(role==="admin") openModal(); });
+  // =========================
+  function openModal(){
+    modalBg.style.display = "grid";
+    pinBox.style.display="none";
+    pinMsg.textContent="";
+    adminPin.value="";
+  }
+
+  function closeModal(){
+    modalBg.style.display = "none";
+    pinBox.style.display="none";
+    pinMsg.textContent="";
+    adminPin.value="";
+  }
+
+  btnCambiarUsuario.addEventListener("click", ()=>{
+    if(role === "admin") openModal();
+  });
+
   btnCloseModal.addEventListener("click", closeModal);
 
   btnSetOp.addEventListener("click", ()=>{
-    role = "op"; localStorage.setItem(ROLE_KEY, role); applyRoleUI(); closeModal();
+    role = "op";
+    localStorage.setItem(ROLE_KEY, role);
+    applyRoleUI();
+    closeModal();
   });
-  btnSetAdmin.addEventListener("click", ()=>{ pinBox.style.display="block"; adminPin.focus(); });
-  btnCancelPin.addEventListener("click", ()=>{ pinBox.style.display="none"; pinMsg.textContent=""; adminPin.value=""; });
+
+  btnSetAdmin.addEventListener("click", ()=>{
+    pinBox.style.display="block";
+    adminPin.focus();
+  });
+
+  btnCancelPin.addEventListener("click", ()=>{
+    pinBox.style.display="none";
+    pinMsg.textContent="";
+    adminPin.value="";
+  });
+
   btnOkPin.addEventListener("click", ()=>{
     if(String(adminPin.value||"").trim() === ADMIN_PIN){
-      role = "admin"; localStorage.setItem(ROLE_KEY, role); applyRoleUI(); closeModal();
+      role = "admin";
+      localStorage.setItem(ROLE_KEY, role);
+      applyRoleUI();
+      closeModal();
     }else{
       pinMsg.textContent = "PIN incorrecto.";
     }
   });
-  modalBg.addEventListener("click", (e)=>{ if(e.target===modalBg) closeModal(); });
+
+  modalBg.addEventListener("click", (e)=>{
+    if(e.target===modalBg) closeModal();
+  });
 
   // =========================
   // QR Cliente URL
@@ -627,8 +911,12 @@
 
   $("btnCopiarUrl")?.addEventListener("click", async ()=>{
     if(!lastClientQrUrl) return setMsg("bad","No hay URL. Selecciona cliente primero.");
-    await navigator.clipboard.writeText(lastClientQrUrl);
-    setMsg("ok","URL copiada ✅");
+    try{
+      await navigator.clipboard.writeText(lastClientQrUrl);
+      setMsg("ok","URL copiada ✅");
+    }catch{
+      setMsg("bad","No se pudo copiar la URL.");
+    }
   });
 
   $("btnAbrirUrl")?.addEventListener("click", ()=>{
@@ -637,16 +925,8 @@
   });
 
   // =========================
-  // ✅ HISTORIAL (nuevo)
+  // Historial por cliente
   // =========================
-  function fmtDate(d){
-    if(!d) return "—";
-    try{
-      const dt = new Date(d);
-      return dt.toLocaleString("es-MX", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
-    }catch{ return String(d); }
-  }
-
   function renderHist(rows){
     const tb = $("histTbody");
     if(!tb) return;
@@ -686,7 +966,7 @@
 
     const { data, error } = await sb
       .from(VIEW_HIST)
-      .select("producto,total_kg,movimientos,ultima_compra")
+      .select("cliente_id,producto,total_kg,movimientos,ultima_compra")
       .eq("cliente_id", currentClient.id)
       .order("total_kg", { ascending:false })
       .limit(5000);
@@ -721,7 +1001,333 @@
   $("histSearch")?.addEventListener("input", applyHistFilter);
 
   // =========================
-  // QR Ticket (tu lógica original)
+  // Análisis global de clientes
+  // =========================
+  async function cargarVentasParaAnalisis(){
+    const { data, error } = await sb
+      .from(T_VENTAS)
+      .select("id, fecha, tipo, cliente_id, total_kg")
+      .order("fecha", { ascending:false })
+      .limit(10000);
+
+    if(error) throw new Error("No pude leer ventas: " + error.message);
+    return data || [];
+  }
+
+  function agruparVentasPorCliente(ventas){
+    const map = new Map();
+
+    for(const v of (ventas || [])){
+      const cid = String(v.cliente_id || "");
+      if(!cid) continue;
+
+      if(!map.has(cid)){
+        const c = clientsCache.find(x => String(x.id) === cid);
+        map.set(cid, {
+          cliente_id: cid,
+          nombre: c?.nombre || "Cliente sin nombre",
+          telefono: c?.telefono || "",
+          visitas: 0,
+          kg_total: 0,
+          fechas: [],
+          primera_compra: null,
+          ultima_compra: null,
+          tipos: new Set()
+        });
+      }
+
+      const obj = map.get(cid);
+      obj.visitas += 1;
+      obj.kg_total += Number(v.total_kg || 0);
+      obj.fechas.push(String(v.fecha));
+      obj.tipos.add(String(v.tipo || ""));
+
+      if(!obj.primera_compra || String(v.fecha) < obj.primera_compra){
+        obj.primera_compra = String(v.fecha);
+      }
+      if(!obj.ultima_compra || String(v.fecha) > obj.ultima_compra){
+        obj.ultima_compra = String(v.fecha);
+      }
+    }
+
+    const hoy = todayYmd();
+    const dormidoDias = Number(diasDormido.value || 21);
+    const constanteDias = Number(diasConstante.value || 14);
+
+    const rows = Array.from(map.values()).map(r => {
+      r.fechas = [...new Set(r.fechas)].sort();
+      r.promedio_gap = avgGapDays(r.fechas);
+      r.dias_desde_ultima = daysBetweenDates(r.ultima_compra, hoy);
+      r.tipos = Array.from(r.tipos).filter(Boolean);
+
+      r.clasificacion = "ocasional";
+
+      if(r.visitas === 1){
+        r.clasificacion = (r.dias_desde_ultima !== null && r.dias_desde_ultima > dormidoDias)
+          ? "una_vez_y_se_fue"
+          : "nuevo";
+      }else if(
+        r.visitas >= 4 &&
+        r.promedio_gap !== null &&
+        r.promedio_gap <= constanteDias &&
+        r.dias_desde_ultima !== null &&
+        r.dias_desde_ultima <= dormidoDias
+      ){
+        r.clasificacion = "constante";
+      }else if(
+        r.visitas >= 2 &&
+        r.dias_desde_ultima !== null &&
+        r.dias_desde_ultima > dormidoDias
+      ){
+        r.clasificacion = "dormido";
+      }else if(
+        r.visitas >= 2 &&
+        r.dias_desde_ultima !== null &&
+        r.dias_desde_ultima <= dormidoDias
+      ){
+        r.clasificacion = "activo";
+      }
+
+      return r;
+    });
+
+    return rows;
+  }
+
+  function renderMiniListado(rows, mode="kg"){
+    if(!rows.length) return `<div class="muted">Sin datos.</div>`;
+
+    return `
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th class="right">${mode === "kg" ? "Kg" : "Visitas"}</th>
+            <th>Última compra</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>
+                <b>${escapeHtml(r.nombre)}</b>
+                <div class="muted">${escapeHtml(r.telefono || "")}</div>
+              </td>
+              <td class="right">
+                ${mode === "kg"
+                  ? Number(r.kg_total || 0).toFixed(2)
+                  : Number(r.visitas || 0)}
+              </td>
+              <td>${escapeHtml(formatDateOnly(r.ultima_compra || ""))}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function construirHtmlAnalisis(rows){
+    const constantes = rows.filter(r => r.clasificacion === "constante");
+    const dormidos = rows.filter(r => r.clasificacion === "dormido");
+    const unaVez = rows.filter(r => r.clasificacion === "una_vez_y_se_fue");
+    const activos = rows.filter(r => r.clasificacion === "activo");
+    const nuevos = rows.filter(r => r.clasificacion === "nuevo");
+
+    const topKg = topN(rows, 10, "kg_total");
+    const topVisitas = topN(rows, 10, "visitas");
+
+    anTotalClientes.textContent = String(rows.length);
+    anConstantes.textContent = String(constantes.length);
+    anDormidos.textContent = String(dormidos.length);
+    anUnaVez.textContent = String(unaVez.length);
+
+    return `
+      <div class="printDoc">
+        <div>
+          <h3 style="margin:0">Documento de análisis de clientes</h3>
+          <div class="muted">Generado: ${escapeHtml(new Date().toLocaleString("es-MX"))}</div>
+        </div>
+
+        <div class="miniGrid">
+          <div class="miniCard">
+            <b>Total clientes analizados</b>
+            <div class="val">${rows.length}</div>
+          </div>
+          <div class="miniCard">
+            <b>Clientes constantes</b>
+            <div class="val">${constantes.length}</div>
+          </div>
+          <div class="miniCard">
+            <b>Clientes dormidos</b>
+            <div class="val">${dormidos.length}</div>
+          </div>
+          <div class="miniCard">
+            <b>Clientes de una sola compra</b>
+            <div class="val">${unaVez.length}</div>
+          </div>
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">1. Clientes que más vinieron</h4>
+          ${renderMiniListado(topVisitas, "visitas")}
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">2. Clientes con más kilos comprados</h4>
+          ${renderMiniListado(topKg, "kg")}
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">3. Clientes constantes</h4>
+          <div class="muted" style="margin-bottom:8px">Son clientes con varias visitas, frecuencia corta y compra reciente.</div>
+          ${renderMiniListado(constantes, "visitas")}
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">4. Clientes activos</h4>
+          <div class="muted" style="margin-bottom:8px">Han regresado recientemente, aunque no siempre con patrón tan fijo.</div>
+          ${renderMiniListado(activos, "visitas")}
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">5. Clientes dormidos</h4>
+          <div class="muted" style="margin-bottom:8px">Compraban, pero ya no han regresado en el tiempo definido.</div>
+          ${renderMiniListado(dormidos, "visitas")}
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">6. Clientes que vinieron una vez y dejaron de venir</h4>
+          <div class="muted" style="margin-bottom:8px">Clientes con una sola compra y sin regreso posterior.</div>
+          ${renderMiniListado(unaVez, "visitas")}
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">7. Clientes nuevos con potencial</h4>
+          <div class="muted" style="margin-bottom:8px">Clientes recientes que todavía no se pueden clasificar como constantes.</div>
+          ${renderMiniListado(nuevos, "visitas")}
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">8. Detalle general por cliente</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th class="right">Visitas</th>
+                <th class="right">Kg</th>
+                <th>Primera compra</th>
+                <th>Última compra</th>
+                <th class="right">Días sin venir</th>
+                <th class="right">Promedio entre compras</th>
+                <th>Clasificación</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows
+                .sort((a,b)=> Number(b.visitas||0) - Number(a.visitas||0))
+                .map(r => `
+                  <tr>
+                    <td>
+                      <b>${escapeHtml(r.nombre)}</b>
+                      <div class="muted">${escapeHtml(r.telefono || "")}</div>
+                    </td>
+                    <td class="right">${Number(r.visitas || 0)}</td>
+                    <td class="right">${Number(r.kg_total || 0).toFixed(2)}</td>
+                    <td>${escapeHtml(formatDateOnly(r.primera_compra || ""))}</td>
+                    <td>${escapeHtml(formatDateOnly(r.ultima_compra || ""))}</td>
+                    <td class="right">${r.dias_desde_ultima ?? "—"}</td>
+                    <td class="right">${r.promedio_gap != null ? Number(r.promedio_gap).toFixed(1) : "—"}</td>
+                    <td>${escapeHtml(r.clasificacion)}</td>
+                  </tr>
+                `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  async function generarAnalisisClientes(){
+    const ventas = await cargarVentasParaAnalisis();
+    const rows = agruparVentasPorCliente(ventas);
+    const html = construirHtmlAnalisis(rows);
+    analisisPreview.innerHTML = html;
+    analisisPreview.style.display = "block";
+    return html;
+  }
+
+  function abrirDocumentoImprimible(htmlInterno){
+    const win = window.open("", "_blank");
+    if(!win) return null;
+
+    win.document.write(`
+      <!doctype html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8"/>
+        <title>Documento análisis de clientes</title>
+        <style>
+          body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#111}
+          h3,h4{margin:0 0 10px}
+          .muted{color:#555;font-size:12px}
+          .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+          .miniCard{border:1px solid #ddd;border-radius:12px;padding:12px}
+          .miniCard b{display:block;font-size:12px;color:#666}
+          .miniCard .val{font-size:22px;font-weight:700;margin-top:6px}
+          table{width:100%;border-collapse:collapse;margin-top:10px}
+          th,td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+          th{background:#f5f5f5}
+          .right{text-align:right}
+          @media print{
+            body{margin:10mm}
+            .miniCard{break-inside:avoid}
+            table{break-inside:auto}
+            tr{break-inside:avoid}
+          }
+        </style>
+      </head>
+      <body>
+        ${htmlInterno}
+      </body>
+      </html>
+    `);
+    win.document.close();
+    return win;
+  }
+
+  btnGenerarAnalisis?.addEventListener("click", async ()=>{
+    try{
+      await generarAnalisisClientes();
+      showOpToast("ok", "Documento listo", "Se generó el análisis de clientes.");
+    }catch(e){
+      console.error(e);
+      showOpToast("bad", "Error", e.message || "No se pudo generar el documento.");
+    }
+  });
+
+  btnVerAnalisis?.addEventListener("click", async ()=>{
+    try{
+      await generarAnalisisClientes();
+      analisisPreview.scrollIntoView({ behavior:"smooth", block:"start" });
+    }catch(e){
+      console.error(e);
+      showOpToast("bad", "Error", e.message || "No se pudo generar el documento.");
+    }
+  });
+
+  btnImprimirAnalisis?.addEventListener("click", async ()=>{
+    try{
+      const html = await generarAnalisisClientes();
+      const win = abrirDocumentoImprimible(html);
+      if(win) win.print();
+    }catch(e){
+      console.error(e);
+      showOpToast("bad", "Error", e.message || "No se pudo imprimir el documento.");
+    }
+  });
+
+  // =========================
+  // QR Ticket
   // =========================
   function hashQr(str){
     let h = 2166136261;
@@ -731,9 +1337,11 @@
     }
     return "QR_" + (h >>> 0).toString(16);
   }
-  function safeParseJson(text){ return JSON.parse((text||"").trim()); }
 
-  // Simplificado: aquí usa tu normalizePayload real si lo ocupas
+  function safeParseJson(text){
+    return JSON.parse((text||"").trim());
+  }
+
   function normalizePayload(raw, decodedText){
     if(!Array.isArray(raw)) return null;
 
@@ -744,7 +1352,7 @@
         kg: Number(x.cantidad||0),
         _kgTotal: Number(x.cantidad||0)
       }))
-      .filter(it => it.producto && Number.isFinite(it.kg) && it.kg>0);
+      .filter(it => it.producto && Number.isFinite(it.kg) && it.kg > 0);
 
     const itemsForRpc = itemsUi.map(({sku, kg}) => ({ sku, kg }));
     return { qr_id: hashQr(decodedText), items: itemsForRpc, _itemsUi: itemsUi };
@@ -769,8 +1377,14 @@
 
     const kgAdmin = $("kgAuto");
     if(kgAdmin) kgAdmin.value = totalKg.toFixed(2);
+
     const kgOp = $("kgAutoOp");
     if(kgOp) kgOp.value = totalKg.toFixed(2);
+
+    const detalleBox = $("detalleBox");
+    if(detalleBox){
+      detalleBox.textContent = itemsUi.map(it => `${it.producto}: ${Number(it.kg).toFixed(3)} kg`).join(" | ");
+    }
   }
 
   async function descontarInventarioConRPC(payload, fingerprint){
@@ -778,6 +1392,7 @@
       payload: { qr_id: payload.qr_id, items: payload.items },
       p_fingerprint: fingerprint
     });
+
     if(error) return { ok:false, error: error.message };
     if(data?.code === 'DUPLICATE') return { ok:false, duplicate:true, data };
     if(!data?.ok) return { ok:false, error: "NO OK:\n" + JSON.stringify(data, null, 2), data };
@@ -788,7 +1403,6 @@
     if(!currentClient) throw new Error("Primero selecciona un cliente.");
 
     const tipo = $("tipo").value;
-
     const kgAdmin = $("kgAuto");
     const kgOp = $("kgAutoOp");
     const kg = toNum((kgAdmin && role==="admin") ? kgAdmin.value : (kgOp ? kgOp.value : ""));
@@ -812,21 +1426,23 @@
     if(data?.code === "DUPLICATE") return { duplicate:true, venta_id: data.venta_id, puntosGanados: 0, itemsCount: items.length };
     if(!data?.ok) throw new Error("NO OK: " + JSON.stringify(data, null, 2));
 
-    // refresca cliente
     const { data: cli2 } = await sb
       .from(T_CLIENTES)
       .select("id,telefono,nombre,puntos,saldo_kg")
       .eq("id", currentClient.id)
       .single();
+
     if(cli2) currentClient = cli2;
 
     renderStatus();
     await renderClientQR();
-
-    // ✅ refresca historial tras compra
     await cargarHistorialCompras();
 
-    return { venta_id: data.venta_id, puntosGanados: Number(data.puntos_ganados||0), itemsCount: items.length };
+    return {
+      venta_id: data.venta_id,
+      puntosGanados: Number(data.puntos_ganados||0),
+      itemsCount: items.length
+    };
   }
 
   async function handleDecoded(decodedText){
@@ -853,7 +1469,6 @@
       }
 
       const fingerprint = hashQr(decodedText);
-
       updateTotalsUI(payload, fingerprint);
       ticketItemsUi = payload._itemsUi || [];
       ticketItemsInv = payload.items || [];
@@ -868,6 +1483,7 @@
         else showOpToast("ok", "Ya procesado", "Este ticket ya estaba aplicado ✅");
         return;
       }
+
       if(!invRes.ok){
         if(role === "admin") logAdmin("ERROR INVENTARIO:\n" + (invRes.error || "—"));
         else showOpToast("bad", "Error", "No se pudo descontar inventario.");
@@ -891,7 +1507,9 @@
     }
   }
 
-  async function onScanSuccess(decodedText){ await handleDecoded(decodedText); }
+  async function onScanSuccess(decodedText){
+    await handleDecoded(decodedText);
+  }
 
   async function refreshCameras(){
     cameras = await Html5Qrcode.getCameras();
@@ -925,17 +1543,26 @@
     await scanner.start(constraints, config, onScanSuccess);
   }
 
-  async function start(){ if(running) return; await refreshCameras(); await startWithCurrentCamera(); }
+  async function start(){
+    if(running) return;
+    await refreshCameras();
+    await startWithCurrentCamera();
+  }
+
   async function stop(){
     if(!running) return;
     running = false;
     toggleBtn.textContent = "Iniciar cámara";
     try{ await scanner.stop(); }catch(e){}
   }
+
   async function switchCamera(){
     if(cameras.length < 2) return;
     camIndex = (camIndex + 1) % cameras.length;
-    if(running){ await stop(); await start(); }
+    if(running){
+      await stop();
+      await start();
+    }
   }
 
   filePick.addEventListener('change', async (e)=>{
@@ -945,12 +1572,19 @@
       if(!scanner) scanner = new Html5Qrcode("reader");
       const decodedText = await scanner.scanFile(file, true);
       await handleDecoded(decodedText);
+    }catch(e){
+      console.error(e);
+      showOpToast("bad", "Error", "No se pudo leer la foto del QR.");
     }finally{
       filePick.value = "";
     }
   });
 
-  toggleBtn.addEventListener('click', async ()=>{ if(!running) await start(); else await stop(); });
+  toggleBtn.addEventListener('click', async ()=>{
+    if(!running) await start();
+    else await stop();
+  });
+
   switchBtn.addEventListener('click', switchCamera);
 
   // =========================
@@ -963,9 +1597,14 @@
       .select("id,telefono,nombre,puntos,saldo_kg")
       .order("nombre", { ascending: true })
       .limit(5000);
-    if(error) return;
+
+    if(error){
+      console.error(error);
+      return;
+    }
 
     clientsCache = (data || []).filter(c => (c.nombre || "").trim().length > 0);
+
     dl.innerHTML = "";
     for(const c of clientsCache){
       const opt = document.createElement("option");
@@ -987,7 +1626,7 @@
       currentClient = c;
       renderStatus();
       await renderClientQR();
-      await cargarHistorialCompras(); // ✅
+      await cargarHistorialCompras();
       setMsg("ok","Cliente cargado ✅");
     }
   });
@@ -995,6 +1634,7 @@
   async function buscarClientePorNombreOTel(){
     const nombre = normalizeLine($("nombre").value);
     const tel = cleanPhone($("tel").value);
+
     if(!nombre) throw new Error("Nombre es obligatorio.");
 
     const cached = findClientByName(nombre);
@@ -1003,7 +1643,7 @@
       $("tel").value = cached.telefono || tel;
       renderStatus();
       await renderClientQR();
-      await cargarHistorialCompras(); // ✅
+      await cargarHistorialCompras();
       setMsg("ok","Cliente encontrado ✅");
       return;
     }
@@ -1013,6 +1653,7 @@
       .select("id,telefono,nombre,puntos,saldo_kg")
       .ilike("nombre", nombre)
       .maybeSingle();
+
     if(error) throw error;
 
     currentClient = data || null;
@@ -1020,7 +1661,7 @@
 
     renderStatus();
     await renderClientQR();
-    await cargarHistorialCompras(); // ✅
+    await cargarHistorialCompras();
     setMsg("ok", data ? "Cliente encontrado ✅" : "No existe: crea el cliente.");
   }
 
@@ -1036,32 +1677,43 @@
 
     let res;
     if(tel){
-      res = await sb.from(T_CLIENTES).upsert(payload, { onConflict: "telefono" })
-        .select("id,telefono,nombre,puntos,saldo_kg").single();
+      res = await sb.from(T_CLIENTES)
+        .upsert(payload, { onConflict: "telefono" })
+        .select("id,telefono,nombre,puntos,saldo_kg")
+        .single();
     }else{
-      res = await sb.from(T_CLIENTES).insert(payload)
-        .select("id,telefono,nombre,puntos,saldo_kg").single();
+      res = await sb.from(T_CLIENTES)
+        .insert(payload)
+        .select("id,telefono,nombre,puntos,saldo_kg")
+        .single();
     }
+
     if(res.error) throw res.error;
 
     currentClient = res.data;
     renderStatus();
     await renderClientQR();
-    await cargarHistorialCompras(); // ✅
+    await cargarHistorialCompras();
     setMsg("ok", "Cliente creado/actualizado ✅");
     await loadNameDatalist();
   }
 
   $("btnBuscar").addEventListener("click", async ()=>{
     setMsg("muted","Buscando...");
-    try{ await buscarClientePorNombreOTel(); }
-    catch(e){ setMsg("bad", e.message || String(e)); }
+    try{
+      await buscarClientePorNombreOTel();
+    }catch(e){
+      setMsg("bad", e.message || String(e));
+    }
   });
 
   $("btnCrear").addEventListener("click", async ()=>{
     setMsg("muted","Guardando...");
-    try{ await crearOActualizarCliente(); }
-    catch(e){ setMsg("bad", e.message || String(e)); }
+    try{
+      await crearOActualizarCliente();
+    }catch(e){
+      setMsg("bad", e.message || String(e));
+    }
   });
 
   $("btnReloadNames").addEventListener("click", async ()=>{
@@ -1086,9 +1738,9 @@
     if(kgAdmin) kgAdmin.value = "";
     const kgOp = $("kgAutoOp");
     if(kgOp) kgOp.value = "";
-
     ticketItemsUi = [];
     ticketItemsInv = [];
+    $("detalleBox").textContent = "—";
     logAdmin("Listo.");
   });
 
@@ -1102,9 +1754,16 @@
       .select("id,telefono,nombre,puntos,saldo_kg")
       .eq("id", cid)
       .maybeSingle();
-    if(error) return;
 
-    if(!data){ setMsg("bad", "Este cid no existe."); return; }
+    if(error){
+      console.error(error);
+      return;
+    }
+
+    if(!data){
+      setMsg("bad", "Este cid no existe.");
+      return;
+    }
 
     currentClient = data;
     $("nombre").value = data.nombre || "";
@@ -1112,11 +1771,13 @@
 
     renderStatus();
     await renderClientQR();
-    await cargarHistorialCompras(); // ✅
+    await cargarHistorialCompras();
     setMsg("ok", "Cliente cargado desde QR ✅");
   }
 
-  // init
+  // =========================
+  // Init
+  // =========================
   (async function init(){
     applyRoleUI();
     renderStatus();
@@ -1124,7 +1785,6 @@
     await cargarClientePorQuery();
     await refreshCameras();
 
-    // tip: por default muestra historial
     $("histBox").style.display = "block";
     if(currentClient?.id) await cargarHistorialCompras();
 
